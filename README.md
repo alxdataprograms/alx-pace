@@ -163,6 +163,7 @@ negative timezones.
 | `alx-reminders` | reminder mode | unset | **no** — see below |
 | `alx-metrics-day` | analytics dedupe stamp | unset | **no** — see below |
 | `alx-handoff-done` | ISO date the handoff ran | unset | n/a |
+| `alx-reminders-lapsed` | `"1"` while the re-enable prompt is pending | unset | set *by* the handoff |
 
 Completed-lesson ids are validated against the bundled schedule (and deduplicated)
 on read, so stale or corrupt entries are silently dropped — a defensive guardrail.
@@ -210,6 +211,15 @@ survive the move, so carrying the flag across would leave the app promising a
 weekly nudge it can never send. `alx-metrics-day` is the once-per-day analytics
 dedupe stamp; carrying it would suppress the learner's first day on the new
 origin from the counts.
+
+**But dropping the reminder flag silently is its own failure.** A learner who
+had reminders on would find their Monday nudge simply stops, with nothing to
+explain it. So the bridge sends a separate advisory field, `remindersWereOn`,
+which sets `alx-reminders-lapsed` on arrival. `ReminderToggle` reads that and
+shows a dismissible line asking them to switch reminders back on. The asymmetry
+is the point: the flag can only ever produce a *prompt*, never the claim that
+anything is already enabled, so a stale hint costs one dismissed line rather
+than a notification nothing is registered to send.
 
 The bridge is dependency-free and unbuilt, because it has to keep working long
 after nobody is maintaining it. Its encoder is a hand-mirrored copy of the one

@@ -123,6 +123,12 @@ export const translations = {
     remindersOn: 'Weekly reminders on',
     notificationsAllowed: 'Notifications allowed',
     remindersBlocked: 'Notifications are blocked — allow them in your browser settings.',
+    // Shown once, only to someone whose reminders were on at the app's previous
+    // address. Notification permission is granted per origin and cannot be
+    // carried across, so the honest thing is to say so rather than let a weekly
+    // nudge stop arriving with no explanation.
+    remindersLapsed: 'Your weekly reminders did not survive the move to the new address. Turn them back on below.',
+    dismiss: 'Dismiss',
 
     reminderTitle: (week, total) => `ALX Pace — Week ${week} of ${total}`,
     reminderBehind: (behind, graded) =>
@@ -277,6 +283,9 @@ export const translations = {
     notificationsAllowed: 'Notifications autorisées',
     remindersBlocked:
       'Les notifications sont bloquées — autorise-les dans les réglages du navigateur.',
+    remindersLapsed:
+      'Tes rappels hebdomadaires n’ont pas survécu au changement d’adresse. Réactive-les ci-dessous.',
+    dismiss: 'Fermer',
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
     reminderBehind: (behind, graded) =>
@@ -429,6 +438,8 @@ export const translations = {
     remindersOn: 'التذكيرات الأسبوعية مفعّلة',
     notificationsAllowed: 'الإشعارات مسموح بها',
     remindersBlocked: 'الإشعارات محظورة — اسمح بها من إعدادات المتصفح.',
+    remindersLapsed: 'لم تنتقل تذكيراتك الأسبوعية مع تغيير العنوان. أعد تفعيلها من الأسفل.',
+    dismiss: 'إغلاق',
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
     reminderBehind: (behind, graded) =>

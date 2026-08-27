@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, it, expect } from 'vitest'
 import {
   HANDOFF_DONE_KEY,
+  REMINDERS_LAPSED_KEY,
   applyHandoff,
   decodeHandoff,
   encodeHandoff,
@@ -103,6 +104,14 @@ describe("the bridge page's inlined encoder", () => {
     expect(keyLine).not.toContain('alx-reminders')
     expect(keyLine).not.toContain('alx-metrics-day')
   })
+
+  it('sends a note that reminders lapsed, never the reminder flag itself', () => {
+    expect(html).toContain('out.remindersWereOn = true')
+    // The flag may only ever be READ. If it were ever assigned into the
+    // payload under its own key, the new origin would restore it and claim
+    // reminders are on with no permission behind them.
+    expect(html).not.toMatch(/out\[?['"]alx-reminders/)
+  })
 })
 
 describe('sanitizeHandoff', () => {
@@ -200,6 +209,45 @@ describe('applyHandoff', () => {
     const storage = fakeStorage()
     applyHandoff({}, storage)
     expect(storage.getItem(HANDOFF_DONE_KEY)).toBeTruthy()
+  })
+
+  describe('lapsed reminders', () => {
+    it('records that reminders lapsed, and never writes the flag itself', () => {
+      const storage = fakeStorage()
+      const result = applyHandoff({ ...clean, remindersWereOn: true }, storage)
+      expect(storage.getItem(REMINDERS_LAPSED_KEY)).toBe('1')
+      // The whole point: a prompt, not a claim.
+      expect(storage.getItem('alx-reminders')).toBeNull()
+      expect(result.keys).toContain('remindersLapsed')
+    })
+
+    it('stays quiet when reminders are already running on this origin', () => {
+      const storage = fakeStorage({ 'alx-reminders': 'periodic' })
+      applyHandoff({ ...clean, remindersWereOn: true }, storage)
+      expect(storage.getItem(REMINDERS_LAPSED_KEY)).toBeNull()
+      expect(storage.getItem('alx-reminders')).toBe('periodic')
+    })
+
+    it('stays quiet when the learner never had reminders on', () => {
+      const storage = fakeStorage()
+      applyHandoff(clean, storage)
+      expect(storage.getItem(REMINDERS_LAPSED_KEY)).toBeNull()
+    })
+
+    it('only accepts a literal true, so a truthy string cannot trip it', () => {
+      const opts = { validLessonIds: LESSON_IDS, validLangs: LANGS }
+      expect(sanitizeHandoff({ remindersWereOn: true }, opts).remindersWereOn).toBe(true)
+      for (const bad of ['yes', 1, {}, 'false']) {
+        expect(sanitizeHandoff({ remindersWereOn: bad }, opts).remindersWereOn).toBeUndefined()
+      }
+    })
+
+    it('carries the hint even for a learner with no progress to carry', () => {
+      const storage = fakeStorage()
+      applyHandoff({ remindersWereOn: true }, storage)
+      expect(storage.getItem(REMINDERS_LAPSED_KEY)).toBe('1')
+      expect(storage.getItem('startDate')).toBeNull()
+    })
   })
 
   it('degrades quietly when storage throws', () => {
