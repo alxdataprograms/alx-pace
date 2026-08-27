@@ -9,7 +9,7 @@
  *      - bind a KV namespace as `SUBS`
  *      - set vars `SENDER_TOKEN` (long random string — same value as the
  *        repo secret PUSH_SENDER_TOKEN) and `ALLOWED_ORIGIN`
- *        (https://balogvn.github.io)
+ *        (https://alxdataprograms.github.io) — both required, no defaults
  *   2. Put the worker URL in PUSH_ENDPOINT below (and in the repo secret
  *      PUSH_ENDPOINT so the weekly GitHub Action can read subscriptions).
  *   3. Done — the VAPID keys already exist as repo secrets, the public half

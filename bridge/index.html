@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#03134F" />
+    <meta name="robots" content="noindex" />
+    <title>ALX Pace has moved</title>
+    <!--
+      THE BRIDGE.
+
+      This page is served at the app's OLD address after the app itself moved
+      to the ALX Data Programs account. It exists because localStorage is
+      scoped to the origin: every learner's start date and completed lessons
+      live on this hostname and are unreachable from the new one. The only
+      code that can read them is code served from here.
+
+      It does three things, in this order:
+
+        1. Retires the old service worker and its caches. Without this, anyone
+           who installed the PWA keeps being served the old app shell from
+           cache forever and never learns there is a new address.
+        2. Reads the learner's saved progress and encodes it into a URL
+           FRAGMENT — never a query string, so the learner's name is never
+           sent to a server or written to any access log.
+        3. Sends them to the new home, where main.jsx decodes it before React
+           mounts.
+
+      Deliberately dependency-free and unbuilt: it has to keep working long
+      after nobody is maintaining it.
+    -->
+    <style>
+      :root { color-scheme: light dark; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; min-height: 100dvh; display: grid; place-items: center;
+        padding: 24px calc(24px + env(safe-area-inset-right)) 24px calc(24px + env(safe-area-inset-left));
+        background: #03134F; color: #F8F8F8;
+        font-family: Poppins, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        line-height: 1.6; text-align: center;
+      }
+      main { max-width: 30rem; }
+      .mark {
+        display: inline-block; font-weight: 800; font-size: 13px; letter-spacing: .18em;
+        text-transform: uppercase; color: #C4E878; margin-bottom: 28px;
+      }
+      h1 { font-size: clamp(1.6rem, 6vw, 2.3rem); line-height: 1.15; margin: 0 0 14px; font-weight: 700; }
+      p { margin: 0 0 12px; color: #C9D2EA; font-size: 15px; }
+      .status { color: #C4E878; font-weight: 600; }
+      a.go {
+        display: inline-block; margin-top: 22px; padding: 14px 26px; min-height: 44px;
+        background: #C4E878; color: #03134F; text-decoration: none; border-radius: 8px;
+        font-weight: 700; font-size: 16px;
+      }
+      a.go:focus-visible { outline: 3px solid #F8F8F8; outline-offset: 3px; }
+      .fine { margin-top: 26px; font-size: 13px; color: #8C9BC4; }
+      @media (prefers-reduced-motion: no-preference) {
+        main { animation: rise .4s ease-out both; }
+        @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <span class="mark">alx pace</span>
+      <h1 id="head">This app has a new home</h1>
+      <p id="body">ALX Pace is now published by ALX Data Programs.</p>
+      <p class="status" id="status"></p>
+      <!-- Present in the markup, so the page still works with JS disabled or
+           if the script throws. The script rewrites the href with the handoff. -->
+      <a class="go" id="go" href="https://alxdataprograms.github.io/alx-pace/">Continue &rarr;</a>
+      <p class="fine" id="fine">
+        If you added ALX Pace to your home screen, remove the old icon and add it
+        again from the new address.
+      </p>
+    </main>
+
+    <script>
+      (function () {
+        'use strict'
+
+        /* The app's new address. The single thing to edit if it ever moves again. */
+        var NEW_HOME = 'https://alxdataprograms.github.io/alx-pace/'
+
+        /* Exactly the keys that travel. alx-reminders is excluded on purpose:
+           notification permission is origin-scoped and does not survive the
+           move, so carrying the flag would promise a weekly nudge that can
+           never fire. alx-metrics-day is excluded so the learner's first day
+           on the new origin is actually counted. */
+        var KEYS = ['learnerName', 'startDate', 'completedLessons', 'alx-theme', 'alx-lang']
+
+        /* handoff-codec:start — mirrored from src/lib/handoff.js.
+           handoff.test.js extracts this block and asserts it round-trips
+           against that module's decoder, so the two cannot drift. */
+        function encodeHandoff(payload) {
+          var json = JSON.stringify(payload)
+          var bytes = new TextEncoder().encode(json)
+          var binary = ''
+          for (var i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i])
+          return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+        }
+        /* handoff-codec:end */
+
+        function readProfile() {
+          var out = {}
+          var found = 0
+          for (var i = 0; i < KEYS.length; i += 1) {
+            var key = KEYS[i]
+            var raw = null
+            try { raw = window.localStorage.getItem(key) } catch (e) { return { data: {}, found: 0 } }
+            if (raw === null || raw === '') continue
+            if (key === 'completedLessons') {
+              try {
+                var list = JSON.parse(raw)
+                if (Object.prototype.toString.call(list) === '[object Array]' && list.length) {
+                  out[key] = list
+                  found += 1
+                }
+              } catch (e) { /* corrupt — leave it behind rather than ship garbage */ }
+            } else {
+              out[key] = raw
+              if (key === 'startDate' || key === 'learnerName') found += 1
+            }
+          }
+          return { data: out, found: found }
+        }
+
+        /* Retire the old service worker and every cache it holds. Runs first
+           and without awaiting: the redirect must not depend on it, but an
+           installed PWA that never reaches this page again would otherwise
+           keep serving a dead app out of cache indefinitely. */
+        function retireServiceWorker() {
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              navigator.serviceWorker.getRegistrations().then(function (regs) {
+                for (var i = 0; i < regs.length; i += 1) regs[i].unregister()
+              })['catch'](function () {})
+            }
+            if (window.caches && caches.keys) {
+              caches.keys().then(function (keys) {
+                for (var i = 0; i < keys.length; i += 1) caches['delete'](keys[i])
+              })['catch'](function () {})
+            }
+          } catch (e) { /* nothing here may block the redirect */ }
+        }
+
+        /* Three languages, matching the app the learner was already using. */
+        var COPY = {
+          en: { head: 'This app has a new home', body: 'ALX Pace is now published by ALX Data Programs.',
+                carried: 'Your progress is coming with you.', none: 'Nothing saved on this device to carry over.',
+                go: 'Continue →', fine: 'If you added ALX Pace to your home screen, remove the old icon and add it again from the new address.' },
+          fr: { head: 'Cette application a une nouvelle adresse', body: 'ALX Pace est maintenant publiée par ALX Data Programs.',
+                carried: 'Votre progression vous accompagne.', none: 'Aucune donnée enregistrée sur cet appareil à transférer.',
+                go: 'Continuer →', fine: "Si vous avez ajouté ALX Pace à votre écran d'accueil, supprimez l'ancienne icône et ajoutez-la de nouveau depuis la nouvelle adresse." },
+          ar: { head: 'لهذا التطبيق موقع جديد', body: 'يُنشر ALX Pace الآن من قِبل ALX Data Programs.',
+                carried: 'تقدمُك ينتقل معك.', none: 'لا توجد بيانات محفوظة على هذا الجهاز لنقلها.',
+                go: 'متابعة →', fine: 'إذا أضفت ALX Pace إلى الشاشة الرئيسية، فاحذف الأيقونة القديمة وأضفها من العنوان الجديد.' }
+        }
+
+        retireServiceWorker()
+
+        var profile = readProfile()
+        var lang = COPY[profile.data['alx-lang']] ? profile.data['alx-lang'] : 'en'
+        var copy = COPY[lang]
+
+        document.documentElement.lang = lang
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+        document.getElementById('head').textContent = copy.head
+        document.getElementById('body').textContent = copy.body
+        document.getElementById('status').textContent = profile.found ? copy.carried : copy.none
+        document.getElementById('fine').textContent = copy.fine
+
+        var target = NEW_HOME
+        if (profile.found) {
+          try {
+            target = NEW_HOME + '#alx-handoff=' + encodeHandoff(profile.data)
+          } catch (e) { target = NEW_HOME }
+        }
+
+        var go = document.getElementById('go')
+        go.href = target
+        go.textContent = copy.go
+
+        /* Long enough to read what happened, short enough not to feel broken.
+           replace() rather than assign() so Back does not bounce them here. */
+        window.setTimeout(function () { window.location.replace(target) }, 2000)
+      })()
+    </script>
+  </body>
+</html>

@@ -5,8 +5,9 @@
  *   1. Cloudflare dashboard → Workers → create → paste this file.
  *   2. Bind a KV namespace as `SUBS`.
  *   3. Set vars: SENDER_TOKEN  (long random string; same value as the GitHub
- *      repo secret PUSH_SENDER_TOKEN) and ALLOWED_ORIGIN
- *      (https://balogvn.github.io).
+ *      repo secret PUSH_SENDER_TOKEN) and ALLOWED_ORIGIN — the exact origin
+ *      the app is served from, e.g. https://alxdataprograms.github.io. Both
+ *      are required; there is no default, deliberately (see below).
  *   4. Put the worker URL in src/lib/pushConfig.js (PUSH_ENDPOINT) and in the
  *      repo secret PUSH_ENDPOINT.
  *
@@ -42,7 +43,15 @@ function isRealPushService(endpoint) {
 export default {
   async fetch(request, env) {
     const cors = {
-      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || 'https://balogvn.github.io',
+      /*
+        No fallback origin. This previously defaulted to the account the app
+        first shipped from, which meant a deploy that forgot ALLOWED_ORIGIN
+        kept working — while silently authorising the WRONG site and refusing
+        the real one. A missing origin now yields a header no browser matches,
+        so the misconfiguration surfaces immediately as a CORS failure instead
+        of hiding until someone notices reminders never arrive.
+      */
+      'Access-Control-Allow-Origin': env.ALLOWED_ORIGIN || 'null',
       'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'content-type',
     }

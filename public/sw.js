@@ -17,7 +17,7 @@
  *
  * Bump CACHE version to invalidate everything after a breaking change.
  */
-const CACHE = 'alx-pace-v2'
+const CACHE = 'alx-pace-v3'
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -49,8 +49,18 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          caches.open(CACHE).then((cache) => cache.put('./', copy))
+          /*
+            Only a real page is worth keeping. Caching unconditionally turns a
+            404 or a 502 into the offline shell — and since './' is the single
+            entry the app ever falls back to, the learner would then be served
+            that error page every time they open offline, with no way to
+            recover but clearing site data. It bites hardest during a move,
+            when the old address is precisely what starts returning 404.
+          */
+          if (response.ok) {
+            const copy = response.clone()
+            caches.open(CACHE).then((cache) => cache.put('./', copy))
+          }
           return response
         })
         .catch(() => caches.match('./')),
