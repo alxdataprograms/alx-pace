@@ -6,7 +6,7 @@ no login — everything lives in the browser. Styled after **alxafrica.com**'s l
 brand system.
 
 <p>
-  <a href="https://github.com/balogvn/alx-pace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/balogvn/alx-pace/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="React" src="https://img.shields.io/badge/React-18-149ECA?logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white">
@@ -153,15 +153,70 @@ negative timezones.
 
 ## localStorage contract
 
-| Key | Type | Default |
-| --- | --- | --- |
-| `learnerName` | string | `"ALX Tech Fellow"` |
-| `startDate` | ISO date string `YYYY-MM-DD` | `""` (unset) |
-| `completedLessons` | JSON array of lesson ids | `[]` |
-| `alx-theme` | `"light"` \| `"dark"` | `"light"` |
+| Key | Type | Default | Travels on a move? |
+| --- | --- | --- | --- |
+| `learnerName` | string | `""` (unset) | yes |
+| `startDate` | ISO date string `YYYY-MM-DD` | `""` (unset) | yes |
+| `completedLessons` | JSON array of lesson ids | `[]` | yes |
+| `alx-theme` | `"light"` \| `"dark"` | `"light"` | yes |
+| `alx-lang` | `"en"` \| `"fr"` \| `"ar"` | browser language | yes |
+| `alx-reminders` | reminder mode | unset | **no** — see below |
+| `alx-metrics-day` | analytics dedupe stamp | unset | **no** — see below |
+| `alx-handoff-done` | ISO date the handoff ran | unset | n/a |
 
 Completed-lesson ids are validated against the bundled schedule (and deduplicated)
 on read, so stale or corrupt entries are silently dropped — a defensive guardrail.
+
+---
+
+## Moving the app to a new address
+
+`localStorage` is scoped to the **origin**. Publishing the app from a different
+GitHub account changes the hostname, which means every learner's start date and
+completed lessons become unreachable — silently, with no error and nothing to
+restore from. Re-pointing a DNS record would avoid this; changing accounts does
+not.
+
+The fix is a one-way handoff. The only code that can read the old origin's
+storage is code served *by* the old origin, so:
+
+```
+old origin                          new origin
+──────────                          ──────────
+bridge/index.html
+  ├─ retires the old service worker and its caches
+  ├─ reads the five keys marked "travels" above
+  └─ encodes them into a URL FRAGMENT ─────────▶  src/lib/handoff.js
+                                                    ├─ decodes + validates
+     (a fragment, never a query string, so a         ├─ merges (see below)
+      learner's name is never sent to a server       └─ strips the fragment
+      or written to an access log)
+```
+
+`runHandoff()` is called from [`src/main.jsx`](src/main.jsx) **before React
+mounts** — `useLocalStorage` reads storage in a `useState` initialiser that runs
+once and never re-reads, so a handoff applied after render would sit invisibly
+in storage until the learner happened to reload.
+
+**Merge rules are deliberately asymmetric.** Completed lessons are *unioned*: a
+lesson wrongly ticked costs one click to correct, while a lesson wrongly cleared
+is indistinguishable from work never done. Everything else is written only if
+the new origin has nothing there, so a stale bookmark cannot overwrite a date
+the learner has since set. The whole thing runs at most once per device.
+
+**Two keys deliberately stay behind.** `alx-reminders` records that the learner
+granted notification permission — permission is origin-scoped and does *not*
+survive the move, so carrying the flag across would leave the app promising a
+weekly nudge it can never send. `alx-metrics-day` is the once-per-day analytics
+dedupe stamp; carrying it would suppress the learner's first day on the new
+origin from the counts.
+
+The bridge is dependency-free and unbuilt, because it has to keep working long
+after nobody is maintaining it. Its encoder is a hand-mirrored copy of the one
+in `handoff.js`; [`src/lib/handoff.test.js`](src/lib/handoff.test.js) reads
+`bridge/index.html` off disk, extracts the block between the `handoff-codec`
+sentinels and asserts it round-trips against the shipped decoder, so the two
+cannot drift apart unnoticed.
 
 ---
 
