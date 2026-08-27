@@ -44,6 +44,21 @@ export const HANDOFF_PARAM = 'alx-handoff'
 /** Set once a handoff has been applied, so a bookmarked link cannot re-apply. */
 export const HANDOFF_DONE_KEY = 'alx-handoff-done'
 
+/**
+ * Set when the learner had reminders switched on at the OLD address.
+ *
+ * Not the reminder flag — a note that the flag was lost. `alx-reminders` is
+ * deliberately never carried, because permission is granted per origin and the
+ * new one holds none; writing it would leave the app claiming reminders are on
+ * while nothing is registered to send them.
+ *
+ * But silently dropping it is its own failure: the learner's Monday nudge stops
+ * arriving and nothing ever says why. This key exists so the UI can tell them,
+ * and it can only ever produce a prompt to re-enable — never the claim that
+ * anything is already enabled.
+ */
+export const REMINDERS_LAPSED_KEY = 'alx-reminders-lapsed'
+
 /** Exactly the keys that travel. See the note above on the two that do not. */
 export const HANDOFF_KEYS = Object.freeze([
   'learnerName',
@@ -148,6 +163,11 @@ export function sanitizeHandoff(raw, { validLessonIds, validLangs } = {}) {
     out['alx-lang'] = raw['alx-lang']
   }
 
+  // Advisory only, and deliberately not one of HANDOFF_KEYS: it never becomes
+  // a storage value the app treats as state, only a prompt. See
+  // REMINDERS_LAPSED_KEY.
+  if (raw.remindersWereOn === true) out.remindersWereOn = true
+
   return out
 }
 
@@ -206,6 +226,15 @@ export function applyHandoff(clean, storage) {
         storage.setItem(key, String(clean[key]))
         result.keys.push(key)
       }
+    }
+
+    /*
+      Only if reminders are not already running here. Someone who has already
+      re-enabled them on this origin does not need to be told they lapsed.
+    */
+    if (clean.remindersWereOn && !storage.getItem('alx-reminders')) {
+      storage.setItem(REMINDERS_LAPSED_KEY, '1')
+      result.keys.push('remindersLapsed')
     }
 
     storage.setItem(HANDOFF_DONE_KEY, new Date().toISOString().slice(0, 10))

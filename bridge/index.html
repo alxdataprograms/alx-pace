@@ -122,6 +122,17 @@
               if (key === 'startDate' || key === 'learnerName') found += 1
             }
           }
+          /*
+            A note that reminders WERE on — never the flag itself, which stays
+            behind with the permission it depends on. The new origin can only
+            use this to prompt the learner to switch them back on, so a stale
+            hint costs one dismissed line rather than a promise of a weekly
+            notification nothing is registered to send.
+          */
+          try {
+            if (window.localStorage.getItem('alx-reminders')) out.remindersWereOn = true
+          } catch (e) { /* storage vanished mid-read */ }
+
           return { data: out, found: found }
         }
 
@@ -171,7 +182,9 @@
         document.getElementById('fine').textContent = copy.fine
 
         var target = NEW_HOME
-        if (profile.found) {
+        var hasAnything = false
+        for (var k in profile.data) { if (Object.prototype.hasOwnProperty.call(profile.data, k)) hasAnything = true }
+        if (hasAnything) {
           try {
             target = NEW_HOME + '#alx-handoff=' + encodeHandoff(profile.data)
           } catch (e) { target = NEW_HOME }
