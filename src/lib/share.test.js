@@ -82,6 +82,29 @@ describe('shareToLinkedIn', () => {
     expect(order).toEqual(['copy', 'open'])
   })
 
+  it('opens SYNCHRONOUSLY, without waiting for the clipboard', () => {
+    /*
+      The iOS half of the ordering, and the reason this is not just `await copy;
+      open`. Safari on iOS demands window.open inside the gesture that triggered
+      it; an await spends the activation and the popup blocker takes the call.
+
+      Asserted by never resolving the clipboard write and checking that open has
+      already happened. If someone reintroduces the await, open has not been
+      called at this point and this fails — which is the only way to catch it
+      without an iPhone, since desktop browsers forgive the delay.
+    */
+    let releaseTheWrite
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: () => new Promise((resolve) => { releaseTheWrite = resolve }) },
+    })
+    const open = vi.fn().mockReturnValue({})
+
+    shareToLinkedIn('post', open) // deliberately not awaited
+    expect(open, 'window.open must fire before the clipboard settles').toHaveBeenCalledOnce()
+
+    releaseTheWrite()
+  })
+
   it('still opens LinkedIn when the copy fails', async () => {
     vi.stubGlobal('navigator', {
       clipboard: { writeText: vi.fn().mockRejectedValue(new Error('nope')) },

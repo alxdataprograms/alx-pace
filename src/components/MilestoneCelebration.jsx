@@ -54,8 +54,10 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
   }, [onDismiss])
 
   const share = async () => {
-    // Copy first, then open — window.open takes focus, and a clipboard write
-    // from an unfocused document is refused. See src/lib/share.js.
+    // The copy STARTS before the open, and the open does not wait for it.
+    // Both halves matter and they break different platforms: opening first
+    // loses the clipboard to focus, and awaiting the copy loses the open to
+    // iOS Safari's popup blocker. See src/lib/share.js.
     const { copied } = await shareToLinkedIn(post)
     setStatus(copied ? t.milestoneCopied : t.milestoneOpened)
   }

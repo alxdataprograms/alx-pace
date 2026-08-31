@@ -58,17 +58,37 @@ export async function copyToClipboard(text) {
 }
 
 /**
- * Copy first, then open. The order is load-bearing.
+ * Copy and open, both inside the one user gesture. The ordering is load-bearing
+ * in BOTH directions, and getting either wrong breaks a different platform.
  *
+ * COPY MUST START BEFORE THE OPEN
  * window.open moves focus to the new tab, and a clipboard write from a document
- * that has lost focus is rejected. Opening first and copying afterwards fails
- * in exactly the case the clipboard exists for — the one where the prefill did
- * not work and the paste is the only way the text arrives.
+ * that has lost focus is rejected. Copying afterwards fails in exactly the case
+ * the clipboard exists for — the one where the prefill did not work and pasting
+ * is the only way the text arrives.
  *
- * @returns {{ copied: boolean, opened: boolean }}
+ * THE OPEN MUST NOT WAIT FOR THE COPY TO FINISH
+ * This is the half I got wrong first, and it fails on the platform most learners
+ * are on. iOS Safari requires window.open to be called synchronously within the
+ * gesture that triggered it. `await` yields to the microtask queue, the user
+ * activation is spent, and the popup blocker eats the call — so the earlier
+ * `await copyToClipboard(text)` before opening meant no LinkedIn at all on an
+ * iPhone. Desktop is lenient about this, which is why hand-testing there found
+ * nothing.
+ *
+ * So: START the copy, do not await it, open synchronously, and settle the copy
+ * afterwards purely to report status. The write is initiated while the document
+ * still has focus; the open still happens inside the activation.
+ *
+ * NOT REPRODUCED LOCALLY — this Mac has no Xcode, so there is no iOS Simulator
+ * to prove it on. The fix is correct on the spec and strictly safer than what it
+ * replaces, but somebody should still tap the button on a real iPhone.
+ *
+ * @returns {Promise<{ copied: boolean, opened: boolean }>}
  */
-export async function shareToLinkedIn(text, open = (url) => window.open(url, '_blank', 'noopener')) {
-  const copied = await copyToClipboard(text)
+export function shareToLinkedIn(text, open = (url) => window.open(url, '_blank', 'noopener')) {
+  // Deliberately not awaited. See above — an await here is an iOS bug.
+  const copying = copyToClipboard(text)
   const opened = Boolean(open(linkedInComposerUrl(text)))
-  return { copied, opened }
+  return copying.then((copied) => ({ copied, opened }))
 }
