@@ -66,7 +66,22 @@ export const HANDOFF_KEYS = Object.freeze([
   'completedLessons',
   'alx-theme',
   'alx-lang',
+  /*
+    Which milestones have already been celebrated.
+
+    It travels, and the decision is not obvious either way. Leaving it behind
+    would re-congratulate a migrating learner for a module they finished — and
+    possibly already posted about — weeks ago, which reads as the app having
+    forgotten them at the exact moment it claims to be celebrating them.
+
+    Unioned on arrival like completedLessons, for the same reason: a milestone
+    seen on either origin has been seen.
+  */
+  'alx-celebrated',
 ])
+
+/** The two keys carried as JSON arrays rather than raw strings. */
+const ARRAY_KEYS = new Set(['completedLessons', 'alx-celebrated'])
 
 /*
   A ceiling on what will be decoded at all. A full profile — name, date and all
@@ -163,6 +178,22 @@ export function sanitizeHandoff(raw, { validLessonIds, validLangs } = {}) {
     out['alx-lang'] = raw['alx-lang']
   }
 
+  /*
+    Milestone ids, filtered to shapes this build actually produces —
+    "module:DA-3" or "programme". A stale or invented id could otherwise
+    suppress a celebration that was never shown.
+  */
+  if (Array.isArray(raw['alx-celebrated'])) {
+    const ids = Array.from(
+      new Set(
+        raw['alx-celebrated'].filter(
+          (id) => typeof id === 'string' && /^(module:[\w-]{1,20}|programme)$/.test(id),
+        ),
+      ),
+    )
+    if (ids.length) out['alx-celebrated'] = ids
+  }
+
   // Advisory only, and deliberately not one of HANDOFF_KEYS: it never becomes
   // a storage value the app treats as state, only a prompt. See
   // REMINDERS_LAPSED_KEY.
@@ -203,17 +234,17 @@ export function applyHandoff(clean, storage) {
     for (const key of HANDOFF_KEYS) {
       if (!(key in clean)) continue
 
-      if (key === 'completedLessons') {
+      if (ARRAY_KEYS.has(key)) {
         let existing = []
         try {
-          const stored = JSON.parse(storage.getItem('completedLessons') ?? '[]')
+          const stored = JSON.parse(storage.getItem(key) ?? '[]')
           if (Array.isArray(stored)) existing = stored.filter((x) => typeof x === 'string')
         } catch {
           existing = []
         }
-        const merged = Array.from(new Set([...existing, ...clean.completedLessons]))
+        const merged = Array.from(new Set([...existing, ...clean[key]]))
         if (merged.length !== existing.length) {
-          storage.setItem('completedLessons', JSON.stringify(merged))
+          storage.setItem(key, JSON.stringify(merged))
           result.keys.push(key)
         }
         continue

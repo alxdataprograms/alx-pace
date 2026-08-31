@@ -87,7 +87,7 @@
            move, so carrying the flag would promise a weekly nudge that can
            never fire. alx-metrics-day is excluded so the learner's first day
            on the new origin is actually counted. */
-        var KEYS = ['learnerName', 'startDate', 'completedLessons', 'alx-theme', 'alx-lang']
+        var KEYS = ['learnerName', 'startDate', 'completedLessons', 'alx-theme', 'alx-lang', 'alx-celebrated']
 
         /* handoff-codec:start — mirrored from src/lib/handoff.js.
            handoff.test.js extracts this block and asserts it round-trips
@@ -109,12 +109,15 @@
             var raw = null
             try { raw = window.localStorage.getItem(key) } catch (e) { return { data: {}, found: 0 } }
             if (raw === null || raw === '') continue
-            if (key === 'completedLessons') {
+            if (key === 'completedLessons' || key === 'alx-celebrated') {
               try {
                 var list = JSON.parse(raw)
                 if (Object.prototype.toString.call(list) === '[object Array]' && list.length) {
                   out[key] = list
-                  found += 1
+                  // `found` governs the wording — "your progress is coming with
+                  // you". Milestones already celebrated are not progress, so
+                  // they travel without making that claim on their own.
+                  if (key === 'completedLessons') found += 1
                 }
               } catch (e) { /* corrupt — leave it behind rather than ship garbage */ }
             } else {
