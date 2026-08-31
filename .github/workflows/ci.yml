@@ -51,6 +51,13 @@ jobs:
   deploy:
     name: deploy
     needs: verify
+    # Overrides the top-level block wholesale, so every scope this job needs is
+    # listed. `contents: write` is here and nowhere else: it exists solely to
+    # push the rollback tag below, and `verify` stays read-only.
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
     if: >-
       github.ref == 'refs/heads/main' &&
       (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
@@ -80,3 +87,27 @@ jobs:
 
       - id: deployment
         uses: actions/deploy-pages@v5
+
+      # A NAMED ROLLBACK POINT FOR EVERY VERSION THAT REACHED LEARNERS.
+      #
+      # Without this, "put the previous version back" means reading the log and
+      # working out which commit was last live. With it, `git tag` is the list.
+      #
+      # Tagged AFTER deploy-pages, never before: a tag on a build that failed to
+      # publish would be a trap, pointing at something that was never live.
+      #
+      # This does not retrigger CI — the workflow runs on pushes to the `main`
+      # branch, and a tag lands on refs/tags/*.
+      - name: Tag this deploy as a rollback point
+        run: |
+          set -euo pipefail
+          # The sha keeps the tag unique if two deploys land in the same minute,
+          # and makes the target readable without resolving the tag.
+          TAG="live-$(date -u +%Y%m%d-%H%M)-$(git rev-parse --short HEAD)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Live on GitHub Pages: $GITHUB_SHA"
+          git push origin "$TAG"
+          echo "### Rollback point: \`$TAG\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "Roll back with: \`git revert <sha>\` — or inspect with \`git show $TAG\`" >> "$GITHUB_STEP_SUMMARY"
