@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, CircleDot, ListChecks } from 'lucide-react'
+import { CheckCircle2, ChevronDown, CircleDot, ListChecks, Share2 } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -7,7 +7,29 @@ import { useLang } from '../i18n/LanguageContext'
  * Full curriculum browser: every module → week → lesson, collapsible, with the
  * learner's current week expanded and flagged by default.
  */
-export default function WeekAccordion({ schedule, completedSet, currentWeek, onToggle, onSetWeek }) {
+export default function WeekAccordion({
+  schedule,
+  completedSet,
+  currentWeek,
+  onToggle,
+  onSetWeek,
+  achieved = [],
+  onShare,
+}) {
+  /*
+    A milestone stays shareable for good.
+
+    The celebration dialogue is a moment and is deliberately shown once — a box
+    that reappears until you post would be a dark pattern. But "once" was also
+    the ONLY way to reach the post, so a learner who dismissed it, or who simply
+    was not ready to publish that day, had no way back to it. Reported from real
+    use: the dialogue does not return for a milestone already crossed.
+
+    So the roadmap carries a permanent route to the same post. The moment is
+    still a moment; it is just no longer the only door.
+  */
+  const shareable = new Map(achieved.map((m) => [m.code ?? 'programme', m]))
+  const programme = shareable.get('programme')
   const { t } = useLang()
   const [openWeeks, setOpenWeeks] = useState(() => new Set([currentWeek]))
 
@@ -27,6 +49,20 @@ export default function WeekAccordion({ schedule, completedSet, currentWeek, onT
         <h2 className="text-sm font-bold uppercase tracking-wide">{t.roadmapTitle}</h2>
       </div>
 
+      {programme && onShare ? (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-alxgreen/40 bg-alxgreen/10 px-3 py-2">
+          <span className="text-xs font-bold uppercase tracking-wide text-alxgreen-700 dark:text-alxgreen">
+            {t.roadmapProgrammeDone}
+          </span>
+          <ShareButton
+            milestone={programme}
+            label={t.roadmapShare}
+            aria={t.roadmapShareAria(programme.title)}
+            onShare={onShare}
+          />
+        </div>
+      ) : null}
+
       {schedule.modules.map((module) => (
         <div key={module.code} className="space-y-2">
           <div className="flex items-baseline justify-between gap-2 px-1">
@@ -40,6 +76,20 @@ export default function WeekAccordion({ schedule, completedSet, currentWeek, onT
               {t.weekRange(module.weekStart, module.weekEnd)}
             </span>
           </div>
+
+          {shareable.has(module.code) && onShare ? (
+            <div className="flex items-center justify-between gap-3 px-1">
+              <span className="text-xs font-semibold uppercase tracking-wide text-alxgreen-700 dark:text-alxgreen">
+                {t.roadmapModuleDone}
+              </span>
+              <ShareButton
+                milestone={shareable.get(module.code)}
+                label={t.roadmapShare}
+                aria={t.roadmapShareAria(module.title)}
+                onShare={onShare}
+              />
+            </div>
+          ) : null}
 
           {module.weeks.map((week) => {
             const isOpen = openWeeks.has(week.week)
@@ -126,5 +176,26 @@ export default function WeekAccordion({ schedule, completedSet, currentWeek, onT
         </div>
       ))}
     </section>
+  )
+}
+
+/**
+ * The permanent route back to a milestone's post.
+ *
+ * Sized to the 44px tap target the whole app is built to rather than shrunk to
+ * fit the header row — it sits on its own line for exactly that reason. A
+ * control a learner cannot reliably hit on a phone is not a control.
+ */
+function ShareButton({ milestone, label, aria, onShare }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onShare(milestone)}
+      aria-label={aria}
+      className="inline-flex min-h-[44px] flex-none items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-cobalt-600 transition-colors hover:bg-cobalt/10 dark:text-lime dark:hover:bg-lime/10"
+    >
+      <Share2 size={14} aria-hidden="true" />
+      {label}
+    </button>
   )
 }
