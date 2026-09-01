@@ -21,9 +21,13 @@
  * nicety. If the prefill dies, the feature degrades to "paste it" rather than
  * to nothing.
  *
- * NOT VERIFIED ON MOBILE: whether this opens the LinkedIn app and whether the
- * text survives that hand-off. Most learners here are on phones, so treat the
- * clipboard as the load-bearing half until someone checks.
+ * VERIFIED ON MOBILE, AND HALF OF IT FAILED
+ * Tested by hand on a real phone: the composer URL opens the LinkedIn app, but
+ * the text does NOT survive that hand-off. The learner lands in LinkedIn with an
+ * empty composer and has to tap it and paste. The clipboard was doing all the
+ * work, which is why it was written to be load-bearing rather than a nicety.
+ *
+ * So mobile gets a different route entirely — see nativeShare below.
  */
 
 const LINKEDIN_COMPOSER = 'https://www.linkedin.com/feed/'
@@ -58,6 +62,29 @@ export async function copyToClipboard(text) {
 }
 
 /**
+ * Whether to hand off to the operating system instead of a URL.
+ *
+ * `navigator.share` alone is the wrong test: macOS Safari has it too, and on
+ * desktop the composer URL demonstrably works — prefill and all, verified by
+ * hand. Replacing a working desktop flow with a share sheet would be a
+ * regression bought with a feature detect.
+ *
+ * So it is gated on a COARSE POINTER as well: the share sheet is used where
+ * the URL prefill was actually observed to fail, and nowhere else. That is a
+ * capability query rather than user-agent sniffing, and it degrades the right
+ * way — an unknown device keeps the flow that is known to work.
+ */
+function nativeShareAvailable() {
+  return (
+    typeof navigator !== 'undefined' &&
+    typeof navigator.share === 'function' &&
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse)').matches
+  )
+}
+
+/**
  * Copy and open, both inside the one user gesture. The ordering is load-bearing
  * in BOTH directions, and getting either wrong breaks a different platform.
  *
@@ -86,9 +113,41 @@ export async function copyToClipboard(text) {
  *
  * @returns {Promise<{ copied: boolean, opened: boolean }>}
  */
-export function shareToLinkedIn(text, open = (url) => window.open(url, '_blank', 'noopener')) {
-  // Deliberately not awaited. See above — an await here is an iOS bug.
+export function shareToLinkedIn(text, options = {}) {
+  const {
+    open = (url) => window.open(url, '_blank', 'noopener'),
+    share = nativeShareAvailable() ? (data) => navigator.share(data) : null,
+  } = options
+
+  // Started first and deliberately not awaited. See above — an await before the
+  // open is an iOS bug, and the copy still matters on both routes: on mobile it
+  // is the recovery if the share sheet has no LinkedIn on it.
   const copying = copyToClipboard(text)
+
+  if (share) {
+    /*
+      Called synchronously, inside the gesture, for the same activation reason
+      as window.open.
+
+      A cancelled sheet rejects with AbortError. That is not a failure — the
+      learner saw the sheet and chose not to post, which is the feature working.
+      Anything else is a real failure, and there is no falling back to the URL
+      by then: the activation is spent, so window.open would be blocked. Hence
+      the narrow gate above rather than a hopeful attempt.
+    */
+    const sheet = Promise.resolve()
+      .then(() => share({ text }))
+      .then(
+        () => ({ opened: true, dismissed: false }),
+        (err) => ({ opened: err?.name === 'AbortError', dismissed: err?.name === 'AbortError' }),
+      )
+    return Promise.all([copying, sheet]).then(([copied, r]) => ({
+      copied,
+      opened: r.opened,
+      method: 'native',
+    }))
+  }
+
   const opened = Boolean(open(linkedInComposerUrl(text)))
-  return copying.then((copied) => ({ copied, opened }))
+  return copying.then((copied) => ({ copied, opened, method: 'composer' }))
 }

@@ -58,8 +58,11 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
     // Both halves matter and they break different platforms: opening first
     // loses the clipboard to focus, and awaiting the copy loses the open to
     // iOS Safari's popup blocker. See src/lib/share.js.
-    const { copied } = await shareToLinkedIn(post)
-    setStatus(copied ? t.milestoneCopied : t.milestoneOpened)
+    const { copied, opened, method } = await shareToLinkedIn(post)
+    // The system share sheet is its own feedback. Adding "copied to clipboard"
+    // underneath it would be noise about a step the learner did not take.
+    if (method === 'native' && opened) setStatus(null)
+    else setStatus(copied ? t.milestoneCopied : t.milestoneOpened)
   }
 
   const isProgramme = milestone.kind === 'programme'

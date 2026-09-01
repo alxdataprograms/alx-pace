@@ -78,7 +78,7 @@ describe('shareToLinkedIn', () => {
       return {}
     })
 
-    await shareToLinkedIn('post', open)
+    await shareToLinkedIn('post', { open })
     expect(order).toEqual(['copy', 'open'])
   })
 
@@ -99,7 +99,7 @@ describe('shareToLinkedIn', () => {
     })
     const open = vi.fn().mockReturnValue({})
 
-    shareToLinkedIn('post', open) // deliberately not awaited
+    shareToLinkedIn('post', { open }) // deliberately not awaited
     expect(open, 'window.open must fire before the clipboard settles').toHaveBeenCalledOnce()
 
     releaseTheWrite()
@@ -111,8 +111,8 @@ describe('shareToLinkedIn', () => {
     })
     const open = vi.fn().mockReturnValue({})
 
-    const result = await shareToLinkedIn('post', open)
-    expect(result).toEqual({ copied: false, opened: true })
+    const result = await shareToLinkedIn('post', { open })
+    expect(result).toEqual({ copied: false, opened: true, method: 'composer' })
     expect(open).toHaveBeenCalledOnce()
   })
 
@@ -120,7 +120,7 @@ describe('shareToLinkedIn', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
     const open = vi.fn().mockReturnValue({})
 
-    await shareToLinkedIn(`Done.\n\n${CAMPAIGN_HASHTAG}`, open)
+    await shareToLinkedIn(`Done.\n\n${CAMPAIGN_HASHTAG}`, { open })
     const [url] = open.mock.calls[0]
     expect(url).toContain('linkedin.com/feed/')
     expect(url).toContain('shareActive=true')
@@ -129,7 +129,65 @@ describe('shareToLinkedIn', () => {
 
   it('reports opened:false when a popup blocker returns null', async () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
-    const result = await shareToLinkedIn('post', () => null)
-    expect(result).toEqual({ copied: true, opened: false })
+    const result = await shareToLinkedIn('post', { open: () => null })
+    expect(result).toEqual({ copied: true, opened: false, method: 'composer' })
+  })
+})
+
+describe('the mobile route', () => {
+  /*
+    Hand-tested on a real phone, and this is why the route exists: the composer
+    URL DOES open the LinkedIn app, but the text does not survive the hand-off.
+    The learner arrives at an empty composer and has to paste. So on a touch
+    device the post goes through the operating system's share sheet instead,
+    which hands the text to the app properly.
+
+    Desktop keeps the URL. Its prefill was verified working, and swapping a
+    working flow for a share sheet on the strength of a feature detect would be
+    a regression — macOS Safari has navigator.share too.
+  */
+  it('hands the text to the system sheet rather than a URL', async () => {
+    const share = vi.fn().mockResolvedValue(undefined)
+    const open = vi.fn()
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+
+    const result = await shareToLinkedIn('post text', { share, open })
+
+    expect(share).toHaveBeenCalledWith({ text: 'post text' })
+    expect(open, 'no popup when the sheet is used').not.toHaveBeenCalled()
+    expect(result).toEqual({ copied: true, opened: true, method: 'native' })
+  })
+
+  it('treats a cancelled sheet as opened, not as a failure', async () => {
+    // Dismissing the sheet is the learner deciding not to post. The feature
+    // worked; reporting an error for a deliberate choice would be a lie.
+    const err = Object.assign(new Error('cancelled'), { name: 'AbortError' })
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+
+    const result = await shareToLinkedIn('post', { share: vi.fn().mockRejectedValue(err) })
+    expect(result.opened).toBe(true)
+  })
+
+  it('reports a genuine sheet failure as not opened', async () => {
+    const err = Object.assign(new Error('nope'), { name: 'NotAllowedError' })
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+
+    const result = await shareToLinkedIn('post', { share: vi.fn().mockRejectedValue(err) })
+    expect(result.opened).toBe(false)
+    // The clipboard is the recovery, and it still ran.
+    expect(result.copied).toBe(true)
+  })
+
+  it('still copies, so an empty sheet is recoverable', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    await shareToLinkedIn('post', { share: vi.fn().mockResolvedValue(undefined) })
+    expect(writeText).toHaveBeenCalledWith('post')
+  })
+
+  it('labels the desktop route so the two are distinguishable', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    const result = await shareToLinkedIn('post', { open: vi.fn().mockReturnValue({}) })
+    expect(result.method).toBe('composer')
   })
 })
