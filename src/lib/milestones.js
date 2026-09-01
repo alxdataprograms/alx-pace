@@ -19,6 +19,8 @@
  * The only thing persisted is which ones have already been SHOWN.
  */
 
+import { APP_URL } from './appUrl'
+
 /** @typedef {{ id: string, kind: 'module'|'programme', code: string|null, title: string, weeks: number, index: number, total: number, lessons: number }} Milestone */
 
 /**
@@ -111,8 +113,27 @@ export const CAMPAIGN_HASHTAG = '#IAmTheStory_ALX'
  * @param {{ moduleDone: (m: Milestone) => string, programmeDone: (m: Milestone) => string }} t
  */
 export function buildPostText(milestone, t) {
-  const body = milestone.kind === 'programme' ? t.programmeDone(milestone) : t.moduleDone(milestone)
-  return `${body}\n\n${CAMPAIGN_HASHTAG}`
+  const { body, url, hashtag } = postParts(milestone, t)
+  return `${body}\n\n${url}\n\n${hashtag}`
+}
+
+/**
+ * The same post, in pieces, for display.
+ *
+ * The dialogue cannot just print the finished string. Both the URL and the
+ * hashtag are Latin runs, and inside the Arabic paragraph the bidirectional
+ * algorithm reorders them — the hashtag came out as "IAmTheStory_ALX#" before it
+ * was isolated, and a bare URL fares no better. Each needs its own <bdi>.
+ *
+ * Composed the other way round — buildPostText is built FROM this — so the text
+ * that reaches LinkedIn and the text on screen cannot drift apart.
+ */
+export function postParts(milestone, t) {
+  return {
+    body: milestone.kind === 'programme' ? t.programmeDone(milestone) : t.moduleDone(milestone),
+    url: APP_URL,
+    hashtag: CAMPAIGN_HASHTAG,
+  }
 }
 
 /**

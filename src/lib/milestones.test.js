@@ -155,7 +155,14 @@ describe('the celebration renders the hashtag as an isolated run', () => {
   )
 
   it('wraps the hashtag in <bdi dir="ltr">', () => {
-    expect(source).toMatch(/<bdi dir="ltr">\{CAMPAIGN_HASHTAG\}<\/bdi>/)
+    expect(source).toMatch(/<bdi dir="ltr">\{hashtag\}<\/bdi>/)
+  })
+
+  it('wraps the app URL too, which has the same problem', () => {
+    // A bare Latin URL in an RTL paragraph is reordered exactly like the
+    // hashtag was. It was added to the post after that bug was fixed, so it
+    // never went out broken — this is here so it cannot start.
+    expect(source).toMatch(/<bdi dir="ltr">\{url\}<\/bdi>/)
   })
 
   it('still copies the whole post, hashtag included, not the split display text', () => {

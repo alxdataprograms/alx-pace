@@ -16,6 +16,47 @@
       rel="stylesheet"
     />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%2303134F'/%3E%3Ctext x='50' y='66' font-size='44' font-family='Arial,sans-serif' font-weight='bold' text-anchor='middle' fill='%23C4E878'%3Ealx%3C/text%3E%3C/svg%3E" />
+    <!--
+      Open Graph / Twitter card.
+
+      The whole milestone feature exists so learners post about ALX, and every
+      one of those posts now carries this link. Without these tags LinkedIn has
+      nothing to build a preview from and renders a bare, unpersuasive stub — so
+      the card is the first thing another learner sees of the app, not the
+      hundredth.
+
+      THE ABSOLUTE URLS ARE DELIBERATE, AND ARE NOT THE HARDCODED SUBPATH
+      CLAUDE.md forbids hardcoding /alx-pace/ for ASSETS, because dev serves from
+      / and CI injects the subpath; those must go through import.meta.env.BASE_URL.
+      These are different: a crawler fetching the page from the internet cannot
+      resolve a relative og:image, and the canonical address does not change with
+      where the code happens to be running. Kept in step with src/lib/appUrl.js,
+      which puts the same URL in the post text.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="ALX Pace" />
+    <meta property="og:url" content="https://alxdataprograms.github.io/alx-pace/" />
+    <meta property="og:title" content="ALX Pace — know exactly where you should be" />
+    <meta
+      property="og:description"
+      content="A week-by-week pace tracker for the ALX 14-week Data Analytics self-paced track. No login, works offline, and your progress never leaves your device."
+    />
+    <meta property="og:image" content="https://alxdataprograms.github.io/alx-pace/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="ALX Pace — 14 weeks, paced week by week. No login. Works offline." />
+    <meta property="og:locale" content="en" />
+    <meta property="og:locale:alternate" content="fr" />
+    <meta property="og:locale:alternate" content="ar" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="ALX Pace — know exactly where you should be" />
+    <meta
+      name="twitter:description"
+      content="A week-by-week pace tracker for the ALX 14-week Data Analytics self-paced track. No login, works offline."
+    />
+    <meta name="twitter:image" content="https://alxdataprograms.github.io/alx-pace/og-image.png" />
+    <link rel="canonical" href="https://alxdataprograms.github.io/alx-pace/" />
+
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />

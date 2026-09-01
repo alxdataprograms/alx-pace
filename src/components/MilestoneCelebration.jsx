@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Share2, X } from 'lucide-react'
 
 import { useLang } from '../i18n/LanguageContext'
-import { buildPostText, CAMPAIGN_HASHTAG } from '../lib/milestones'
+import { buildPostText, postParts } from '../lib/milestones'
 import { shareToLinkedIn } from '../lib/share'
 
 /**
@@ -31,11 +31,9 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
     an isolated LTR run to survive Arabic. The two must not drift, so the body
     is derived from the post rather than built a second way.
   */
-  const post = buildPostText(milestone, {
-    moduleDone: t.postModuleDone,
-    programmeDone: t.postProgrammeDone,
-  })
-  const body = post.slice(0, post.lastIndexOf(CAMPAIGN_HASHTAG)).trimEnd()
+  const strings = { moduleDone: t.postModuleDone, programmeDone: t.postProgrammeDone }
+  const post = buildPostText(milestone, strings)
+  const { body, url, hashtag } = postParts(milestone, strings)
 
   /*
     Escape closes it, and focus starts on the primary action.
@@ -129,17 +127,20 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
           {body}
           {'\n\n'}
           {/*
-            The hashtag is isolated as its own LTR run, and this is not a
-            nicety. Rendered inside the Arabic paragraph it came out as
-            "IAmTheStory_ALX#" — the bidirectional algorithm moves a leading #
-            to the visual end of a Latin run in RTL text. The STRING was always
-            correct, so what reached LinkedIn was fine; what the learner saw
-            looked like a broken hashtag, which is worse than it sounds for the
-            one element the whole feature exists to deliver.
+            The URL and the hashtag are each isolated as their own LTR run, and
+            this is not a nicety. Rendered inside the Arabic paragraph the
+            hashtag came out as "IAmTheStory_ALX#" — the bidirectional algorithm
+            moves a leading # to the visual end of a Latin run in RTL text. The
+            STRING was always correct, so what reached LinkedIn was fine; what
+            the learner saw looked broken, which is worse than it sounds for the
+            one element the whole feature exists to deliver. A bare URL sitting
+            in the same paragraph has exactly the same problem.
 
-            <bdi> isolates it without changing a character of the text.
+            <bdi> isolates them without changing a character of the text.
           */}
-          <bdi dir="ltr">{CAMPAIGN_HASHTAG}</bdi>
+          <bdi dir="ltr">{url}</bdi>
+          {'\n\n'}
+          <bdi dir="ltr">{hashtag}</bdi>
         </blockquote>
 
         <div className="mt-5 flex flex-wrap gap-3">
