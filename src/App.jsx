@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SCHEDULE, getWeek } from './lib/schedule'
 import { computePacing, progressPercent } from './lib/pacing'
-import { achievedMilestones, nextToCelebrate } from './lib/milestones'
+import { achievedMilestones, nextToCelebrate, pruneCelebrated } from './lib/milestones'
 import { computePaceStatus } from './lib/paceStatus'
 import { saveReminderState } from './lib/reminderStore'
 import { trackAppOpen, trackPacingDaily } from './lib/analytics'
@@ -90,6 +90,19 @@ export default function App() {
     () => nextToCelebrate(achieved, Array.isArray(celebrated) ? celebrated : []),
     [achieved, celebrated],
   )
+  /*
+    Keep `celebrated` a subset of what is currently achieved.
+
+    Without this, dismissing one dialogue burns every milestone achieved at that
+    moment, and un-ticking afterwards leaves those records stranded — silently
+    suppressing celebrations for work the learner has yet to redo, with nothing
+    on screen to explain it. See pruneCelebrated for the path that produced it.
+  */
+  useEffect(() => {
+    const pruned = pruneCelebrated(achieved, celebrated)
+    if (pruned) setCelebrated(pruned)
+  }, [achieved, celebrated, setCelebrated])
+
   const dismissMilestone = useCallback(() => {
     setCelebrated((prev) => {
       const seen = new Set(Array.isArray(prev) ? prev : [])
