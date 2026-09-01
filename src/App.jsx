@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { SCHEDULE, getWeek } from './lib/schedule'
 import { computePacing, progressPercent } from './lib/pacing'
+import { achievedMilestones, nextToCelebrate } from './lib/milestones'
 import { computePaceStatus } from './lib/paceStatus'
 import { saveReminderState } from './lib/reminderStore'
 import { trackAppOpen, trackPacingDaily } from './lib/analytics'
 import { useLang } from './i18n/LanguageContext'
 import { useLearnerProfile } from './hooks/useLearnerProfile'
 import { useTheme } from './hooks/useTheme'
+import { useLocalStorage } from './hooks/useLocalStorage'
 
 import AlxLogo from './components/AlxLogo'
 import PaceStatusCard from './components/PaceStatusCard'
@@ -20,6 +22,7 @@ import CountdownState from './components/CountdownState'
 import GraduationState from './components/GraduationState'
 import StartDatePrompt from './components/StartDatePrompt'
 import Footer from './components/Footer'
+import { MilestoneCelebration } from './components/MilestoneCelebration'
 
 export default function App() {
   const { t } = useLang()
@@ -68,6 +71,32 @@ export default function App() {
     () => computePaceStatus(SCHEDULE, completedSet, pacing, today),
     [completedSet, pacing, today],
   )
+
+  /*
+    Milestones.
+
+    Achievement is DERIVED from completed lessons every render — nothing writes
+    down "you finished DA-3" — so it cannot drift from the progress bar beside
+    it, and it survives a lesson being un-ticked and re-ticked. The only thing
+    persisted is which ones have already been SHOWN.
+
+    Dismissing marks every currently-achieved milestone seen, not just the one
+    on screen. Somebody catching up can cross two at once, and a second dialogue
+    appearing the instant they close the first would be worse than either.
+  */
+  const [celebrated, setCelebrated] = useLocalStorage('alx-celebrated', [])
+  const achieved = useMemo(() => achievedMilestones(SCHEDULE, completedSet), [completedSet])
+  const milestone = useMemo(
+    () => nextToCelebrate(achieved, Array.isArray(celebrated) ? celebrated : []),
+    [achieved, celebrated],
+  )
+  const dismissMilestone = useCallback(() => {
+    setCelebrated((prev) => {
+      const seen = new Set(Array.isArray(prev) ? prev : [])
+      for (const m of achieved) seen.add(m.id)
+      return Array.from(seen)
+    })
+  }, [achieved, setCelebrated])
 
   // Anonymous usage tallies (no-ops until GOATCOUNTER_SITE is configured).
   useEffect(() => {
@@ -166,6 +195,11 @@ export default function App() {
 
         <Footer theme={theme} onToggleTheme={toggleTheme} onReset={resetProfile} />
       </main>
+
+      {/* Last in the tree so it lays over everything without needing a portal. */}
+      {milestone ? (
+        <MilestoneCelebration milestone={milestone} onDismiss={dismissMilestone} />
+      ) : null}
     </div>
   )
 }

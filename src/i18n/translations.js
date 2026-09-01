@@ -128,6 +128,27 @@ export const translations = {
     // carried across, so the honest thing is to say so rather than let a weekly
     // nudge stop arriving with no explanation.
     remindersLapsed: 'Your weekly reminders did not survive the move to the new address. Turn them back on below.',
+
+    // ── Milestone celebration ──────────────────────────────────────────
+    // The post body is written in the learner's own language. The campaign
+    // hashtag is not translated — it is one tag ALX counts across every
+    // market, and a localised variant would simply not be found.
+    milestoneModuleTitle: (m) => `${m.title} — done`,
+    milestoneProgrammeTitle: 'You finished the programme',
+    milestoneModuleSub: (m) => `Module ${m.index} of ${m.total}, ${m.weeks} weeks of it.`,
+    milestoneProgrammeSub: (m) => `All ${m.total} modules, ${m.lessons} lessons, ${m.weeks} weeks.`,
+    milestoneShareIntro: 'Worth saying out loud. Post it as it is, or edit it on LinkedIn first.',
+    milestoneShare: 'Share on LinkedIn',
+    milestoneDismiss: 'Not now',
+    milestoneCopied: 'Copied — if LinkedIn opens empty, paste it in.',
+    milestoneOpened: 'LinkedIn is open in a new tab.',
+    // Written in the first person, plainly. The pull is towards "Thrilled to
+    // share that I have embarked on…", and that is what makes a campaign post
+    // read as homework instead of as somebody saying something.
+    postModuleDone: (m) =>
+      `I have just finished ${m.title} — module ${m.index} of ${m.total} in the ALX Data Analytics programme.`,
+    postProgrammeDone: (m) =>
+      `I have finished the ALX Data Analytics programme: ${m.weeks} weeks, ${m.lessons} lessons, all ${m.total} modules.`,
     dismiss: 'Dismiss',
 
     reminderTitle: (week, total) => `ALX Pace — Week ${week} of ${total}`,
@@ -285,6 +306,20 @@ export const translations = {
       'Les notifications sont bloquées — autorise-les dans les réglages du navigateur.',
     remindersLapsed:
       'Tes rappels hebdomadaires n’ont pas survécu au changement d’adresse. Réactive-les ci-dessous.',
+
+    milestoneModuleTitle: (m) => `${m.title} — terminé`,
+    milestoneProgrammeTitle: 'Tu as terminé le parcours',
+    milestoneModuleSub: (m) => `Module ${m.index} sur ${m.total}, ${m.weeks} semaines.`,
+    milestoneProgrammeSub: (m) => `Les ${m.total} modules, ${m.lessons} leçons, ${m.weeks} semaines.`,
+    milestoneShareIntro: 'À dire à voix haute. Publie-le tel quel, ou modifie-le sur LinkedIn.',
+    milestoneShare: 'Partager sur LinkedIn',
+    milestoneDismiss: 'Plus tard',
+    milestoneCopied: 'Copié — si LinkedIn s’ouvre vide, colle-le.',
+    milestoneOpened: 'LinkedIn est ouvert dans un nouvel onglet.',
+    postModuleDone: (m) =>
+      `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ALX Data Analytics.`,
+    postProgrammeDone: (m) =>
+      `J’ai terminé le parcours ALX Data Analytics : ${m.weeks} semaines, ${m.lessons} leçons, les ${m.total} modules.`,
     dismiss: 'Fermer',
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
@@ -439,6 +474,20 @@ export const translations = {
     notificationsAllowed: 'الإشعارات مسموح بها',
     remindersBlocked: 'الإشعارات محظورة — اسمح بها من إعدادات المتصفح.',
     remindersLapsed: 'لم تنتقل تذكيراتك الأسبوعية مع تغيير العنوان. أعد تفعيلها من الأسفل.',
+
+    milestoneModuleTitle: (m) => `${m.title} — اكتمل`,
+    milestoneProgrammeTitle: 'لقد أكملت البرنامج',
+    milestoneModuleSub: (m) => `الوحدة ${m.index} من ${m.total}، ${m.weeks} أسابيع.`,
+    milestoneProgrammeSub: (m) => `كل الوحدات ${m.total}، و${m.lessons} درساً، و${m.weeks} أسبوعاً.`,
+    milestoneShareIntro: 'يستحق أن يُقال. انشره كما هو، أو عدّله على لينكدإن.',
+    milestoneShare: 'المشاركة على لينكدإن',
+    milestoneDismiss: 'لاحقاً',
+    milestoneCopied: 'تم النسخ — إذا فُتح لينكدإن فارغاً، الصقه.',
+    milestoneOpened: 'فُتح لينكدإن في تبويب جديد.',
+    postModuleDone: (m) =>
+      `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ALX لتحليل البيانات.`,
+    postProgrammeDone: (m) =>
+      `أنهيت برنامج ALX لتحليل البيانات: ${m.weeks} أسبوعاً، و${m.lessons} درساً، وكل الوحدات ${m.total}.`,
     dismiss: 'إغلاق',
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
