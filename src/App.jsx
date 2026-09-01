@@ -111,6 +111,27 @@ export default function App() {
     })
   }, [achieved, setCelebrated])
 
+  /*
+    A milestone opened deliberately from the roadmap, rather than by crossing it.
+
+    Kept separate from the automatic one so that closing it does not consume a
+    celebration the learner has not been shown yet. The exception is closing a
+    re-share of the very milestone that is currently pending: dismissing that
+    should count, or the automatic dialogue reopens the instant this one closes.
+  */
+  const [manualMilestone, setManualMilestone] = useState(null)
+  const shownMilestone = manualMilestone ?? milestone
+
+  const closeMilestone = useCallback(() => {
+    if (manualMilestone) {
+      const wasAlsoPending = milestone?.id === manualMilestone.id
+      setManualMilestone(null)
+      if (wasAlsoPending) dismissMilestone()
+      return
+    }
+    dismissMilestone()
+  }, [manualMilestone, milestone, dismissMilestone])
+
   // Anonymous usage tallies (no-ops until GOATCOUNTER_SITE is configured).
   useEffect(() => {
     trackAppOpen()
@@ -204,14 +225,16 @@ export default function App() {
           currentWeek={pacing.currentWeek}
           onToggle={toggleLesson}
           onSetWeek={setLessonsCompleted}
+          achieved={achieved}
+          onShare={setManualMilestone}
         />
 
         <Footer theme={theme} onToggleTheme={toggleTheme} onReset={resetProfile} />
       </main>
 
       {/* Last in the tree so it lays over everything without needing a portal. */}
-      {milestone ? (
-        <MilestoneCelebration milestone={milestone} onDismiss={dismissMilestone} />
+      {shownMilestone ? (
+        <MilestoneCelebration milestone={shownMilestone} onDismiss={closeMilestone} />
       ) : null}
     </div>
   )

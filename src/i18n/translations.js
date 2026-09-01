@@ -142,6 +142,10 @@ export const translations = {
     milestoneDismiss: 'Not now',
     milestoneCopied: 'Copied — if LinkedIn opens empty, paste it in.',
     milestoneOpened: 'LinkedIn is open in a new tab.',
+    roadmapShare: 'Share',
+    roadmapShareAria: (title) => `Share that you finished ${title}`,
+    roadmapModuleDone: 'Complete',
+    roadmapProgrammeDone: 'Whole programme complete',
     // Written in the first person, plainly. The pull is towards "Thrilled to
     // share that I have embarked on…", and that is what makes a campaign post
     // read as homework instead of as somebody saying something.
@@ -316,6 +320,10 @@ export const translations = {
     milestoneDismiss: 'Plus tard',
     milestoneCopied: 'Copié — si LinkedIn s’ouvre vide, colle-le.',
     milestoneOpened: 'LinkedIn est ouvert dans un nouvel onglet.',
+    roadmapShare: 'Partager',
+    roadmapShareAria: (title) => `Partager que tu as terminé ${title}`,
+    roadmapModuleDone: 'Terminé',
+    roadmapProgrammeDone: 'Programme entièrement terminé',
     postModuleDone: (m) =>
       `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ALX Data Analytics.`,
     postProgrammeDone: (m) =>
@@ -484,6 +492,10 @@ export const translations = {
     milestoneDismiss: 'لاحقاً',
     milestoneCopied: 'تم النسخ — إذا فُتح لينكدإن فارغاً، الصقه.',
     milestoneOpened: 'فُتح لينكدإن في تبويب جديد.',
+    roadmapShare: 'مشاركة',
+    roadmapShareAria: (title) => `شارك أنك أنهيت ${title}`,
+    roadmapModuleDone: 'مكتملة',
+    roadmapProgrammeDone: 'اكتمل البرنامج بالكامل',
     postModuleDone: (m) =>
       `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ALX لتحليل البيانات.`,
     postProgrammeDone: (m) =>
