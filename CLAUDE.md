@@ -60,6 +60,29 @@ lose data.
   two permission levels. A collaborator can push, open and merge PRs and re-run
   Actions, but Pages settings, secrets and environments require the owner.
 
+### Rolling back
+
+Every deploy that reaches learners is tagged `live-<UTC date>-<time>-<sha>` by
+the deploy job. `git tag` is therefore the list of known-good versions — no
+reading the log to work out which commit was last live.
+
+```bash
+git tag                          # every version that was ever live
+git revert <sha> && git push     # ~4 min to redeploy through the full gate
+```
+
+There is no faster path. Pages publishes what CI builds, so a rollback is a
+commit like any other and runs lint → test → parser → build first. That is the
+right trade: the gate is what makes every tagged version trustworthy.
+
+**A revert does not restore learner data.** Progress lives only in each
+learner's browser — no backend, no backup, by design. Roll back after a change
+that cleared `localStorage` and the old app returns; the ticked lessons do not.
+`storage-safety.test.js` guards the structural half of this: only
+`useLocalStorage` may remove keys. The half it cannot guard is the CSV — lesson
+ids embed the week number, so moving a lesson between weeks invalidates saved
+completions, and no revert undoes that.
+
 ## Architecture
 
 ### Determinism is the design constraint
