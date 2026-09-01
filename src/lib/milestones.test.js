@@ -8,6 +8,7 @@ import {
   buildPostText,
   CAMPAIGN_HASHTAG,
   nextToCelebrate,
+  pruneCelebrated,
 } from './milestones'
 import { buildScheduleFromCsv } from './scheduleModel'
 
@@ -160,5 +161,68 @@ describe('the celebration renders the hashtag as an isolated run', () => {
   it('still copies the whole post, hashtag included, not the split display text', () => {
     // The display splits body from hashtag; what is copied must not.
     expect(source).toMatch(/shareToLinkedIn\(post\)/)
+  })
+})
+
+describe('pruneCelebrated', () => {
+  it('returns null when every seen milestone is still achieved', () => {
+    // Runs on every change to completed lessons, so "nothing to do" has to be
+    // distinguishable from "here is an identical array" or it writes forever.
+    const achieved = achievedMilestones(SCHEDULE, idsOf([SCHEDULE.modules[0]]))
+    expect(pruneCelebrated(achieved, ['module:DA-1'])).toBeNull()
+    expect(pruneCelebrated(achieved, [])).toBeNull()
+  })
+
+  it('drops records for milestones that are no longer achieved', () => {
+    const achieved = achievedMilestones(SCHEDULE, idsOf([SCHEDULE.modules[0]]))
+    expect(pruneCelebrated(achieved, ['module:DA-1', 'module:DA-2', 'programme']))
+      .toEqual(['module:DA-1'])
+  })
+
+  it('copes with a corrupt or absent seen list', () => {
+    expect(pruneCelebrated([], null)).toBeNull()
+    expect(pruneCelebrated([], 'nonsense')).toBeNull()
+  })
+
+  /*
+    THE BUG THIS SHIPPED WITH, REPRODUCED.
+
+    Found on a real device with 16 of 27 lessons ticked and all five milestones
+    recorded as seen — a state the feature could never recover from on its own.
+
+    The path is ordinary: tick everything to see what the app does, get the
+    programme dialogue, dismiss it. Dismissing marks EVERY achieved milestone
+    seen, so all five are burnt at once. Then un-tick back to real progress.
+    Achievement is derived and withdraws correctly; the seen-records were not,
+    and stayed. Every future module completion was then silently suppressed,
+    with nothing on screen to explain it.
+  */
+  it('recovers the state that had permanently suppressed every celebration', () => {
+    const everything = new Set(SCHEDULE.lessons.map((l) => l.id))
+
+    // Ticked everything, saw the programme dialogue, dismissed it.
+    const allAchieved = achievedMilestones(SCHEDULE, everything)
+    const burnt = allAchieved.map((m) => m.id)
+    expect(burnt).toHaveLength(5)
+
+    // Un-ticked back to just the first module.
+    const backToOne = achievedMilestones(SCHEDULE, idsOf([SCHEDULE.modules[0]]))
+
+    // Before the fix this stayed at five and nothing could ever fire again.
+    expect(pruneCelebrated(backToOne, burnt)).toEqual(['module:DA-1'])
+
+    // And the proof it is actually recovered: finishing module two celebrates.
+    const pruned = pruneCelebrated(backToOne, burnt)
+    const afterTwo = achievedMilestones(SCHEDULE, idsOf(SCHEDULE.modules.slice(0, 2)))
+    expect(nextToCelebrate(afterTwo, pruned)?.id).toBe('module:DA-2')
+  })
+
+  it('leaves a genuinely-seen milestone suppressed', () => {
+    // The fix must not turn the dialogue into something that reappears for work
+    // the learner has already been congratulated on and has not undone.
+    const achieved = achievedMilestones(SCHEDULE, idsOf([SCHEDULE.modules[0]]))
+    const pruned = pruneCelebrated(achieved, ['module:DA-1'])
+    expect(pruned).toBeNull()
+    expect(nextToCelebrate(achieved, ['module:DA-1'])).toBeNull()
   })
 })

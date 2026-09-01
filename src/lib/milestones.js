@@ -114,3 +114,40 @@ export function buildPostText(milestone, t) {
   const body = milestone.kind === 'programme' ? t.programmeDone(milestone) : t.moduleDone(milestone)
   return `${body}\n\n${CAMPAIGN_HASHTAG}`
 }
+
+/**
+ * Drops seen-records for milestones that are no longer achieved.
+ *
+ * WHY THIS EXISTS — A REAL BUG, FOUND IN THE WILD
+ * Achievement is derived from completed lessons, so un-ticking withdraws it.
+ * The record of what has been SHOWN was not following the same rule, and the
+ * two drifting apart is unrecoverable without a console.
+ *
+ * The path is ordinary. Someone ticks everything to see what the app does, gets
+ * the programme dialogue, dismisses it — and dismissing marks every achieved
+ * milestone seen, all five. Then they un-tick back to their real progress. The
+ * milestones are withdrawn; the seen-records are not. Every future module
+ * completion is now silently suppressed, forever, with nothing on screen to
+ * explain why and no way to undo it.
+ *
+ * Pruning keeps the invariant that makes the feature comprehensible: `seen` is
+ * always a subset of `achieved`. Lose a milestone, lose its record; earn it
+ * again, and it is celebrated again.
+ *
+ * The cost is a learner who un-ticks and re-ticks a lesson seeing the dialogue
+ * a second time. That is a mild annoyance, and it is visible. The alternative
+ * is silence that looks exactly like the feature being broken — which is how
+ * this was found.
+ *
+ * @param {Milestone[]} achieved
+ * @param {string[]} seen
+ * @returns {string[]|null} the pruned list, or null when nothing needs pruning
+ */
+export function pruneCelebrated(achieved, seen) {
+  const list = Array.isArray(seen) ? seen : []
+  const achievedIds = new Set(achieved.map((m) => m.id))
+  // null rather than an equal array, so callers can skip a pointless write —
+  // this runs on every change to completed lessons.
+  if (list.every((id) => achievedIds.has(id))) return null
+  return list.filter((id) => achievedIds.has(id))
+}
