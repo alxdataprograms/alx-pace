@@ -151,3 +151,35 @@ export function shareToLinkedIn(text, options = {}) {
   const opened = Boolean(open(linkedInComposerUrl(text)))
   return copying.then((copied) => ({ copied, opened, method: 'composer' }))
 }
+
+/**
+ * The ALX community space for this programme.
+ *
+ * Deep-links straight to DP_Data Analytics for a signed-in learner. Signed out,
+ * ALX bounces the whole thing to the eHub login and the path is dropped — so the
+ * first click of the day may be a sign-in before the space appears. Verified
+ * both ways rather than assumed.
+ */
+export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytics-data-program'
+
+/**
+ * Open the community with the post on the clipboard.
+ *
+ * THERE IS NO PREFILL, AND THAT IS NOT AN OVERSIGHT
+ * Circle's composer is a client-side modal: opening it does not change the URL,
+ * and query parameters are ignored entirely — checked against the live
+ * community with `?open=post&title=…&body=…`, which loaded the space and did
+ * nothing else. So unlike the LinkedIn composer there is no address that
+ * arrives with the text already in it, and the clipboard is the whole mechanism
+ * rather than a fallback.
+ *
+ * Same ordering rule as {@link shareToLinkedIn}: start the copy, do not await
+ * it, open synchronously. An await before the open spends the user activation
+ * and iOS Safari's popup blocker takes the call.
+ */
+export function shareToCommunity(text, options = {}) {
+  const { open = (url) => window.open(url, '_blank', 'noopener') } = options
+  const copying = copyToClipboard(text)
+  const opened = Boolean(open(COMMUNITY_URL))
+  return copying.then((copied) => ({ copied, opened }))
+}

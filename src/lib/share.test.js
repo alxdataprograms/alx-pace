@@ -1,6 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 
-import { linkedInComposerUrl, copyToClipboard, shareToLinkedIn } from './share'
+import {
+  linkedInComposerUrl,
+  copyToClipboard,
+  shareToLinkedIn,
+  shareToCommunity,
+  COMMUNITY_URL,
+} from './share'
 import { CAMPAIGN_HASHTAG } from './milestones'
 
 afterEach(() => {
@@ -192,5 +198,60 @@ describe('the mobile route', () => {
     vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
     const result = await shareToLinkedIn('post', { open: vi.fn().mockReturnValue({}) })
     expect(result.method).toBe('composer')
+  })
+})
+
+describe('shareToCommunity', () => {
+  /*
+    Circle has no prefill and that is the premise of these tests, not an
+    omission. Its composer is a client-side modal — opening it does not change
+    the URL — and query parameters are ignored, verified against the live
+    community. So the clipboard is the entire mechanism, and a copy that fails
+    silently would leave the learner staring at an empty composer with nothing
+    to paste.
+  */
+  it('opens the programme space, not the community root', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    const open = vi.fn().mockReturnValue({})
+    await shareToCommunity('post', { open })
+    // The injected open takes the URL alone; '_blank' and 'noopener' live in
+    // the default wrapper, same as the LinkedIn route.
+    expect(open).toHaveBeenCalledWith(COMMUNITY_URL)
+    expect(COMMUNITY_URL).toContain('/c/dp-data-analytics-data-program')
+  })
+
+  it('copies the whole post, because there is nothing else to carry it', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    const text = `Done.\n\n${CAMPAIGN_HASHTAG}`
+    await shareToCommunity(text, { open: vi.fn().mockReturnValue({}) })
+    expect(writeText).toHaveBeenCalledWith(text)
+  })
+
+  it('opens SYNCHRONOUSLY, without waiting for the clipboard', () => {
+    // Same iOS rule as the LinkedIn route: an await before the open spends the
+    // user activation and Safari's popup blocker takes the call. Asserted by
+    // never resolving the write and checking open already fired.
+    let release
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: () => new Promise((r) => { release = r }) },
+    })
+    const open = vi.fn().mockReturnValue({})
+    shareToCommunity('post', { open })   // deliberately not awaited
+    expect(open, 'window.open must fire before the clipboard settles').toHaveBeenCalledOnce()
+    release()
+  })
+
+  it('still opens the space when the copy fails', async () => {
+    vi.stubGlobal('navigator', {
+      clipboard: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    })
+    const result = await shareToCommunity('post', { open: vi.fn().mockReturnValue({}) })
+    expect(result).toEqual({ copied: false, opened: true })
+  })
+
+  it('reports opened:false when a popup blocker returns null', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    expect(await shareToCommunity('post', { open: () => null })).toEqual({ copied: true, opened: false })
   })
 })
