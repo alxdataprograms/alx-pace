@@ -24,11 +24,14 @@ describe('linkedInComposerUrl', () => {
     // this whole feature exists to deliver.
     const url = linkedInComposerUrl(`Done.\n\n${CAMPAIGN_HASHTAG}`)
     expect(url).not.toContain(`#${CAMPAIGN_HASHTAG.slice(1)}`)
-    expect(url).toContain('%23IAmTheStory_ALX')
+    // Derived from the constant, so changing the campaign tag does not require
+    // editing assertions — the previous hardcoding is why a one-line rename
+    // touched three files.
+    expect(url).toContain(`%23${CAMPAIGN_HASHTAG.slice(1)}`)
   })
 
   it('survives accents, dashes and quotes a translated post may contain', () => {
-    const text = 'Fini — module 2 sur 4 & « données » #IAmTheStory_ALX'
+    const text = `Fini — module 2 sur 4 & « données » ${CAMPAIGN_HASHTAG}`
     expect(new URL(linkedInComposerUrl(text)).searchParams.get('text')).toBe(text)
   })
 })
@@ -124,7 +127,7 @@ describe('shareToLinkedIn', () => {
     const [url] = open.mock.calls[0]
     expect(url).toContain('linkedin.com/feed/')
     expect(url).toContain('shareActive=true')
-    expect(url).toContain('%23IAmTheStory_ALX')
+    expect(url).toContain(`%23${CAMPAIGN_HASHTAG.slice(1)}`)
   })
 
   it('reports opened:false when a popup blocker returns null', async () => {

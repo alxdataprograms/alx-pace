@@ -95,7 +95,7 @@ export function nextToCelebrate(achieved, alreadySeen) {
  * spots it if they trim the post while editing. A hashtag buried mid-sentence
  * is the one that gets deleted by accident.
  */
-export const CAMPAIGN_HASHTAG = '#IAmTheStory_ALX'
+export const CAMPAIGN_HASHTAG = '#LifeAtALX'
 
 /**
  * What the learner is offered to post.
