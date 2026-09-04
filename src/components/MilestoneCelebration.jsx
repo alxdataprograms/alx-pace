@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { Share2, X } from 'lucide-react'
+import { MessagesSquare, Share2, X } from 'lucide-react'
 
 import { useLang } from '../i18n/LanguageContext'
 import { buildPostText, postParts } from '../lib/milestones'
-import { shareToLinkedIn } from '../lib/share'
+import { shareToCommunity, shareToLinkedIn } from '../lib/share'
 
 /**
  * Shown once, when a learner finishes a module or the whole programme.
@@ -61,6 +61,18 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
     // underneath it would be noise about a step the learner did not take.
     if (method === 'native' && opened) setStatus(null)
     else setStatus(copied ? t.milestoneCopied : t.milestoneOpened)
+  }
+
+  /*
+    Circle cannot be prefilled — its composer is a modal with no URL and it
+    ignores query parameters, checked against the live community. So this copies
+    the post and opens the space; the learner pastes. That is the whole
+    mechanism here rather than a fallback, which is why the status line always
+    mentions pasting.
+  */
+  const shareCommunity = async () => {
+    const { copied } = await shareToCommunity(post)
+    setStatus(copied ? t.milestoneCommunityOpened : t.milestoneOpened)
   }
 
   const isProgramme = milestone.kind === 'programme'
@@ -155,8 +167,29 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
           </button>
           <button
             type="button"
+            onClick={() => void shareCommunity()}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-cobalt/40 px-5 text-sm font-semibold text-cobalt-600 transition-colors hover:bg-cobalt/10 dark:border-lime/40 dark:text-lime dark:hover:bg-lime/10"
+          >
+            <MessagesSquare size={15} aria-hidden="true" />
+            {t.milestoneShareCommunity}
+          </button>
+        </div>
+
+        {/*
+          The points note is a line rather than a third button. It is a reason to
+          press one of the two above, not an action of its own — and ALX caps
+          community posts at ten a month, so it says "earns Legacy Points" rather
+          than naming a figure this app cannot verify for a given learner.
+        */}
+        <p className="mt-3 text-[12px] leading-relaxed text-ink-soft dark:text-paper/60">
+          {t.milestonePointsNote}
+        </p>
+
+        <div className="mt-4 border-t border-ink/10 pt-3 dark:border-white/10">
+          <button
+            type="button"
             onClick={onDismiss}
-            className="inline-flex min-h-[44px] items-center rounded-full border border-ink/20 px-5 text-sm font-semibold text-ink-soft transition-colors hover:bg-navy-900/5 dark:border-white/20 dark:text-paper/80 dark:hover:bg-white/5"
+            className="inline-flex min-h-[44px] items-center text-sm font-semibold text-ink-soft transition-colors hover:text-ink dark:text-paper/70 dark:hover:text-paper"
           >
             {t.milestoneDismiss}
           </button>
