@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react'
 import { sloganForWeek } from '../lib/slogans'
+import { PROGRAMS } from '../lib/programs'
 import { plannedEndDate, toISODateString } from '../lib/pacing'
 import { formatHumanDate } from '../lib/formatDate'
 import { useLang } from '../i18n/LanguageContext'
@@ -73,6 +74,9 @@ export default function PersonalizationWidget({
     onUpdateStartDate(dateDraft)
     setEditingDate(false)
   }
+
+  // Creative Tech tracks name their family too; Data Analytics is its own family.
+  const familyName = PROGRAMS[program]?.family === 'creative-tech' ? t.creativeTech : ''
 
   const week = pacing.currentWeek
   const slogan = sloganForWeek(week, lang, program)
@@ -180,7 +184,19 @@ export default function PersonalizationWidget({
             onClick={onChangeProgram}
             className="group inline-flex min-h-[44px] items-center gap-1.5 rounded-md text-start hover:text-lime"
           >
-            {programName ? (
+            {programName && familyName ? (
+              /*
+                The family rides above the track as an eyebrow rather than
+                beside it: "Content Creation · Creative Tech" wrapped onto two
+                ragged lines at 390px, so the family used to be dropped.
+              */
+              <span className="flex flex-col py-1 leading-tight">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70 group-hover:text-lime">
+                  {familyName}
+                </span>
+                <span className="font-semibold text-white group-hover:text-lime">{programName}</span>
+              </span>
+            ) : programName ? (
               <span className="font-semibold text-white group-hover:text-lime">{programName}</span>
             ) : (
               <span className="font-semibold text-lime">{t.chooseProgram}</span>
