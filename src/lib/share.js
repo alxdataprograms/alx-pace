@@ -163,15 +163,19 @@ export function shareToLinkedIn(text, options = {}) {
 export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytics-data-program'
 
 /*
-  Creative Tech has no verified space link yet, so its learners land on the
-  community root rather than in the Data Analytics space, which would be the
-  wrong room. Swap in the programme's own /c/… path once it is known.
+  One space per program. Content Creation and Graphic Design use the Data
+  Analytics space until their own links arrive — the owner's call — so adding
+  one is a one-line change here.
 */
-export const COMMUNITY_ROOT_URL = 'https://community.alxafrica.com/'
+export const COMMUNITY_URLS = {
+  da: COMMUNITY_URL,
+  cc: COMMUNITY_URL,
+  gd: COMMUNITY_URL,
+}
 
 /** The space a learner of `programId` should post in. */
 export function communityUrl(programId = 'da') {
-  return programId === 'da' ? COMMUNITY_URL : COMMUNITY_ROOT_URL
+  return COMMUNITY_URLS[programId] ?? COMMUNITY_URL
 }
 
 /**
