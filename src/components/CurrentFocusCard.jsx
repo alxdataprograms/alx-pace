@@ -1,9 +1,12 @@
 import { CheckCircle2, RefreshCcw, Target } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
+import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
 
 // How many open items a catch-up week lists at once; ticking one pulls the
 // next oldest in, so the card stays short however far behind a learner is.
+// A ticked item stays in place (struck through) until the card remounts, so
+// an accidental tick can be undone right where it happened.
 const CATCH_UP_LIMIT = 6
 
 /**
@@ -51,7 +54,14 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
       </div>
 
       {isCatchUp ? (
-        <CatchUpList items={catchUp} completedSet={completedSet} onToggle={onToggle} />
+        // Keyed per week (module codes are unique across programs), so the rows
+        // kept in place reset when the week or the program changes.
+        <CatchUpList
+          key={`${week.moduleCode}-${week.week}`}
+          items={catchUp}
+          completedSet={completedSet}
+          onToggle={onToggle}
+        />
       ) : (
         <>
           <p dir="ltr" className="mb-3 text-start text-sm font-medium text-ink-soft dark:text-paper/75">
@@ -77,35 +87,33 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
 
 function CatchUpList({ items, completedSet, onToggle }) {
   const { t } = useLang()
+  const [kept, keep] = useKeptInPlace(onToggle)
 
-  if (items.length === 0) {
-    return (
-      <p className="flex items-start gap-2 rounded-xl bg-alxgreen/10 p-3 text-sm font-medium">
-        <CheckCircle2
-          size={18}
-          className="mt-0.5 flex-none text-alxgreen-700 dark:text-alxgreen"
-          aria-hidden="true"
-        />
-        <span>{t.catchUpAllClear}</span>
-      </p>
-    )
-  }
+  // The oldest open items, plus anything ticked here this visit — still shown,
+  // struck through, so it can be unticked from the same spot.
+  const shown = withKept(items.slice(0, CATCH_UP_LIMIT), kept)
+  const more = items.length - Math.min(items.length, CATCH_UP_LIMIT)
 
-  const shown = items.slice(0, CATCH_UP_LIMIT)
-  const more = items.length - shown.length
+  if (shown.length === 0) return <AllClear text={t.catchUpAllClear} />
 
   return (
     <>
-      <p className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75">
-        {t.catchUpBody(items.length)}
-      </p>
+      {items.length === 0 ? (
+        <div className="mb-3">
+          <AllClear text={t.catchUpAllClear} />
+        </div>
+      ) : (
+        <p className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75">
+          {t.catchUpBody(items.length)}
+        </p>
+      )}
       <ul className="-mx-1 space-y-0.5">
         {shown.map((lesson) => (
           <LessonRow
             key={lesson.id}
             lesson={lesson}
             checked={completedSet.has(lesson.id)}
-            onToggle={onToggle}
+            onToggle={() => keep(lesson)}
             meta={`${lesson.weekLabel} · ${lesson.moduleCode}`}
             highlight
           />
@@ -117,5 +125,18 @@ function CatchUpList({ items, completedSet, onToggle }) {
         </p>
       )}
     </>
+  )
+}
+
+function AllClear({ text }) {
+  return (
+    <p className="flex items-start gap-2 rounded-xl bg-alxgreen/10 p-3 text-sm font-medium">
+      <CheckCircle2
+        size={18}
+        className="mt-0.5 flex-none text-alxgreen-700 dark:text-alxgreen"
+        aria-hidden="true"
+      />
+      <span>{text}</span>
+    </p>
   )
 }
