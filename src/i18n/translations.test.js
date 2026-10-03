@@ -163,3 +163,16 @@ describe('the Arabic milestone post', () => {
     )
   })
 })
+
+describe('Arabic agreement in the catch-up status', () => {
+  const ar = translations.ar
+
+  it('agrees with one, two, and three-or-more, for lessons and items alike', () => {
+    for (const unit of ['lesson', 'item']) {
+      expect(ar.statusBehind(1, unit)).toContain('ما زال مفتوحًا')
+      expect(ar.statusBehind(2, unit)).toContain('ما زالا مفتوحين')
+      expect(ar.statusBehind(5, unit)).toContain('ما زالت مفتوحة')
+      expect(ar.statusBehind(14, unit)).toContain('ما زالت مفتوحة')
+    }
+  })
+})

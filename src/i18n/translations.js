@@ -41,6 +41,12 @@ const postProgram = (lang, m) => POST_PROGRAM[lang][m.program] ?? POST_PROGRAM[l
 */
 const pick = (unit, lesson, item) => (unit === 'item' ? item : lesson)
 
+// The predicate after a counted noun must agree with it: one (masculine
+// singular) and two (dual) take their own forms; three and up, a non-human
+// plural, take the feminine singular.
+const arStillOpen = (n) =>
+  n === 1 ? 'ما زال مفتوحًا' : n === 2 ? 'ما زالا مفتوحين' : 'ما زالت مفتوحة'
+
 const frPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`
 
 // Arabic-Indic digits (١٤) for the week counts that used to be hard-coded.
@@ -594,7 +600,7 @@ export const translations = {
     overallProgress: 'التقدّم العام',
 
     statusBehind: (n, unit) =>
-      `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ما زالت مفتوحة.`,
+      `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ${arStillOpen(n)}.`,
     statusOnTrack: 'أنت على الوتيرة الصحيحة — واصل التقدّم.',
     statusAhead: (n, unit) =>
       `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} عن الجدول. ممتاز.`,
