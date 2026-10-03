@@ -35,6 +35,7 @@ export default function PersonalizationWidget({
   startDate,
   pacing,
   schedule,
+  program,
   programName,
   onUpdateName,
   onUpdateStartDate,
@@ -74,7 +75,7 @@ export default function PersonalizationWidget({
   }
 
   const week = pacing.currentWeek
-  const slogan = sloganForWeek(week, lang)
+  const slogan = sloganForWeek(week, lang, program)
   const showWeekLine = pacing.status === 'active'
 
   const todayIso = toISODateString(new Date())

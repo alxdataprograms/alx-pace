@@ -255,6 +255,19 @@ export const translations = {
       'Small Steps, Big Data',
       'Earned, Not Given',
     ],
+    // Creative Tech's cycle: the same eight, with the one data pun swapped.
+    // Same length and order, so a week's slogan only differs where DA's would
+    // not make sense.
+    slogansCreative: [
+      'Do Hard Things',
+      'Grit in Progress',
+      'Show Up. Level Up.',
+      'Consistency Compounds',
+      'Learn. Build. Repeat.',
+      'Progress Over Perfection',
+      'Small Steps, Big Ideas',
+      'Earned, Not Given',
+    ],
     quotes: [
       'Discipline is choosing the rep you don’t feel like doing.',
       'Small consistent steps beat rare heroic sprints.',
@@ -478,6 +491,16 @@ export const translations = {
       'Petits pas, grandes données',
       'Ça se mérite',
     ],
+    slogansCreative: [
+      'Fais des choses difficiles',
+      'Le cran en action',
+      'Présent aujourd’hui, meilleur demain',
+      'La régularité paie',
+      'Apprendre. Créer. Recommencer.',
+      'Le progrès avant la perfection',
+      'Petits pas, grandes idées',
+      'Ça se mérite',
+    ],
     quotes: [
       'La discipline, c’est faire la répétition dont on n’a pas envie.',
       'De petits pas réguliers valent mieux que de rares sprints héroïques.',
@@ -695,6 +718,16 @@ export const translations = {
       'تعلّم. ابنِ. كرّر.',
       'التقدّم قبل الكمال',
       'خطوات صغيرة، بيانات كبيرة',
+      'يُكتسب ولا يُوهب',
+    ],
+    slogansCreative: [
+      'افعل الأشياء الصعبة',
+      'العزيمة في العمل',
+      'كن حاضرًا وارتقِ',
+      'الاستمرارية تصنع الفرق',
+      'تعلّم. ابنِ. كرّر.',
+      'التقدّم قبل الكمال',
+      'خطوات صغيرة، أفكار كبيرة',
       'يُكتسب ولا يُوهب',
     ],
     quotes: [

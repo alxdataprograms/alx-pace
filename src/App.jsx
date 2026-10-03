@@ -218,6 +218,7 @@ export default function App() {
           startDate={startDate}
           pacing={pacing}
           schedule={schedule}
+          program={program}
           programName={programName}
           onUpdateName={updateName}
           onUpdateStartDate={updateStartDate}
@@ -249,6 +250,7 @@ export default function App() {
                 pacing={pacing}
                 firstWeek={firstWeek}
                 schedule={schedule}
+                program={program}
                 programName={programName}
               />
             )}
