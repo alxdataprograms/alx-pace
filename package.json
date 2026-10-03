@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "parser:check": "node scripts/verify-parser.mjs"
+    "parser:check": "node scripts/verify-parser.mjs",
+    "share:cards": "node scripts/share-cards.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.417.0",

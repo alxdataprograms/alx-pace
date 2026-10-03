@@ -19,6 +19,12 @@
  */
 const CACHE = 'alx-pace-v3'
 
+// Paths resolved against this worker's own location, so they are right under
+// /alx-pace/ on Pages and under / in local preview.
+const ROOT_PATH = new URL('./', self.location).pathname
+const SHELL_PATHS = new Set([ROOT_PATH, `${ROOT_PATH}index.html`])
+const SHARE_PATH = `${ROOT_PATH}share/`
+
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches
@@ -44,6 +50,16 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url)
   if (url.origin !== self.location.origin) return
 
+  /*
+    The per-program share pages (share/<id>/) are not the app. They exist for
+    link crawlers and bounce a person straight on to the root. Left to the
+    navigation branch below, the redirect page would be cached as './' — the
+    one entry the app falls back to offline — and an installed app opened
+    offline would show a page that only redirects. So the SW stays out of
+    their way entirely.
+  */
+  if (url.pathname.startsWith(SHARE_PATH)) return
+
   // Navigations: network-first with offline fallback to the cached shell.
   if (request.mode === 'navigate') {
     event.respondWith(
@@ -57,7 +73,9 @@ self.addEventListener('fetch', (event) => {
             recover but clearing site data. It bites hardest during a move,
             when the old address is precisely what starts returning 404.
           */
-          if (response.ok) {
+          // And only the app itself is the shell — never some other page
+          // that happens to be navigable under this scope.
+          if (response.ok && SHELL_PATHS.has(url.pathname)) {
             const copy = response.clone()
             caches.open(CACHE).then((cache) => cache.put('./', copy))
           }

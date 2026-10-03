@@ -300,7 +300,8 @@ src/
 │   ├── schedule.js          # Vite ?raw imports → SCHEDULES (one per program)
 │   ├── pacing.js            # deterministic date/pacing engine (pure)
 │   ├── paceStatus.js        # behind / on-track / ahead, catch-up list, forecast
-│   └── slogans.js           # ALX motivational slogans
+│   ├── slogans.js           # ALX motivational slogans
+│   └── appUrl.js            # canonical address + per-program share URLs
 ├── hooks/
 │   ├── useLocalStorage.js   # defensive persisted state (pure updaters, cross-tab sync)
 │   ├── useLearnerProfile.js # the zero-login profile (name/date/completed)
@@ -337,6 +338,40 @@ official assets from alxafrica.com (this is an internal ALX learner tool).
 Built for **375px+** smartphone browsers: 44px minimum tap targets, safe-area
 insets, WCAG-AA text contrast in both themes, `prefers-reduced-motion` support,
 and a theme-aware focus ring.
+
+---
+
+## Link previews (one card per program)
+
+LinkedIn, WhatsApp, X and Slack build a link's preview from Open Graph tags in
+the HTML they are served, and never run JavaScript — so the app root can only
+ever show one card. The root's card (`index.html`, `public/og-image.png`) is
+program-neutral. Each program also has a tiny static page with its own card:
+
+| Page | Card |
+| --- | --- |
+| `share/da/` | Data Analytics · 14 weeks |
+| `share/cc/` | Content Creation · 22 weeks |
+| `share/gd/` | Graphic Design · 32 weeks |
+
+A milestone post links to the learner's program page; a person following it is
+sent straight on to the app (JavaScript at once, a meta refresh after two
+seconds without it, and a visible link). The service worker leaves `share/`
+alone, so a share page can never be cached as the offline app shell.
+
+The pages and images are generated, not hand-edited — `src/lib/sharePages.test.js`
+fails if a committed page drifts from the generator:
+
+```bash
+npm run share:cards                 # rewrite public/share/*/index.html
+npm run share:cards -- --images     # …and re-render every og-image.png (needs Playwright)
+```
+
+Images render an HTML template in headless Chromium with Poppins vendored under
+`scripts/share-cards/fonts` (OFL), so they come out the same offline. If
+`playwright` is not installed in the repo, set `PLAYWRIGHT_MODULE` to its path and
+`CHROMIUM_PATH` to a browser binary. LinkedIn caches a card per URL: after
+changing one, run the URL through LinkedIn's Post Inspector to refresh it.
 
 ---
 

@@ -9,6 +9,7 @@ import {
   CAMPAIGN_HASHTAG,
   milestoneIds,
   nextToCelebrate,
+  postParts,
   pruneCelebrated,
 } from './milestones'
 import { buildScheduleFromCsv } from './scheduleModel'
@@ -289,5 +290,21 @@ describe('across programs', () => {
   it('has no milestones before a program is chosen', () => {
     expect(achievedMilestones(null, new Set())).toEqual([])
     expect(milestoneIds(null, 'da').size).toBe(0)
+  })
+})
+
+/*
+  The post links to the learner's program page, so it previews as their
+  program — a crawler can only see the card of the exact URL in the post.
+*/
+describe('the post link', () => {
+  it.each([
+    ['da', SCHEDULE],
+    ['cc', CC],
+    ['gd', GD],
+  ])('points a %s post at that program’s share page', (program, schedule) => {
+    const m = achievedMilestones(schedule, idsOf([schedule.modules[0]]), program)[0]
+    const { url } = postParts(m, { moduleDone: () => '', programmeDone: () => '' })
+    expect(url).toBe(`https://alxdataprograms.github.io/alx-pace/share/${program}/`)
   })
 })

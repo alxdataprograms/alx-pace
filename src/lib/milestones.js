@@ -19,7 +19,7 @@
  * The only thing persisted is which ones have already been SHOWN.
  */
 
-import { APP_URL } from './appUrl'
+import { shareUrl } from './appUrl'
 
 const PROGRAM_TITLES = { da: 'Data Analytics', cc: 'Content Creation', gd: 'Graphic Design' }
 
@@ -164,7 +164,8 @@ export function buildPostText(milestone, t) {
 export function postParts(milestone, t) {
   return {
     body: milestone.kind === 'programme' ? t.programmeDone(milestone) : t.moduleDone(milestone),
-    url: APP_URL,
+    // The learner's program page, so the link previews as their program.
+    url: shareUrl(milestone.program),
     hashtag: CAMPAIGN_HASHTAG,
   }
 }
