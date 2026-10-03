@@ -1,4 +1,5 @@
-import { CheckCircle2, RefreshCcw, Target } from 'lucide-react'
+import { useId, useState } from 'react'
+import { CheckCircle2, ChevronDown, RefreshCcw, Target } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
@@ -8,6 +9,12 @@ import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
 // A ticked item stays in place (struck through) until the card remounts, so
 // an accidental tick can be undone right where it happened.
 const CATCH_UP_LIMIT = 6
+
+// A focus week longer than this tucks its already-done items behind a toggle,
+// so the next open item is near the top instead of under a screen of ticks.
+// Creative Tech weeks run to 31 items; Data Analytics never exceeds 5, so DA
+// learners always see the full list exactly as before.
+const LONG_WEEK = 8
 
 /**
  * "This Week's Focus" — the exact Module, Week and lessons the learner should
@@ -68,20 +75,91 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
             {week.moduleTitle}
           </p>
 
-          <ul className="-mx-1 space-y-0.5">
-            {week.lessons.map((lesson) => (
-              <LessonRow
-                key={lesson.id}
-                lesson={lesson}
-                checked={completedSet.has(lesson.id)}
-                onToggle={onToggle}
-                highlight
-              />
-            ))}
-          </ul>
+          {total > LONG_WEEK ? (
+            <LongWeekList
+              key={`${week.moduleCode}-${week.week}`}
+              lessons={week.lessons}
+              completedSet={completedSet}
+              onToggle={onToggle}
+            />
+          ) : (
+            <ul className="-mx-1 space-y-0.5">
+              {week.lessons.map((lesson) => (
+                <LessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  checked={completedSet.has(lesson.id)}
+                  onToggle={onToggle}
+                  highlight
+                />
+              ))}
+            </ul>
+          )}
         </>
       )}
     </section>
+  )
+}
+
+/**
+ * A long week: open items first-class, finished ones folded away.
+ *
+ * Items already done when the learner arrived sit behind "Show N done"; the
+ * list keeps curriculum order either way, so expanding it restores the week
+ * exactly as the sheet lays it out. Anything ticked on this visit stays where
+ * it is (see useKeptInPlace) — folding it away on tick would make a mis-tap
+ * impossible to undo here and pull focus out from under the learner.
+ */
+function LongWeekList({ lessons, completedSet, onToggle }) {
+  const { t } = useLang()
+  const [kept, keep] = useKeptInPlace(onToggle)
+  const [showDone, setShowDone] = useState(false)
+  const listId = useId()
+
+  const folded = lessons.filter((l) => completedSet.has(l.id) && !kept.has(l.id))
+  const shown = showDone ? lessons : lessons.filter((l) => !folded.includes(l))
+  const allDone = lessons.every((l) => completedSet.has(l.id))
+
+  return (
+    <>
+      {allDone && !showDone && (
+        <div className="mb-2">
+          <AllClear text={t.catchUpAllClear} />
+        </div>
+      )}
+
+      {folded.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setShowDone((v) => !v)}
+          aria-expanded={showDone}
+          aria-controls={listId}
+          className="mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 text-start text-xs font-semibold text-cobalt-600 hover:bg-navy-900/[0.04] dark:text-lime dark:hover:bg-white/[0.05]"
+        >
+          <CheckCircle2 size={16} className="flex-none" aria-hidden="true" />
+          <span className="flex-1">{showDone ? t.hideDone : t.showDone(folded.length)}</span>
+          <ChevronDown
+            size={16}
+            className={`flex-none transition-transform motion-reduce:transition-none ${
+              showDone ? 'rotate-180' : ''
+            }`}
+            aria-hidden="true"
+          />
+        </button>
+      )}
+
+      <ul id={listId} className="-mx-1 space-y-0.5">
+        {shown.map((lesson) => (
+          <LessonRow
+            key={lesson.id}
+            lesson={lesson}
+            checked={completedSet.has(lesson.id)}
+            onToggle={() => keep(lesson)}
+            highlight
+          />
+        ))}
+      </ul>
+    </>
   )
 }
 

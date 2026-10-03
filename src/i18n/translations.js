@@ -152,6 +152,8 @@ export const translations = {
       `No new content this week — use it to clear the ${n} ${n === 1 ? 'item' : 'items'} still open from earlier weeks.`,
     catchUpAllClear: "You're all caught up! Rest, review, or get a head start on next week.",
     catchUpMore: (n) => `+${n} more open — see the roadmap below`,
+    showDone: (n) => `Show ${n} done`,
+    hideDone: 'Hide done',
 
     roadmapTitle: (weeks) => `Full ${weeks}-Week Roadmap`,
     weekRange: (a, b) => (a === b ? `Week ${a}` : `Weeks ${a}–${b}`),
@@ -379,6 +381,8 @@ export const translations = {
     catchUpAllClear:
       "Tu es à jour ! Repose-toi, révise ou prends de l'avance sur la semaine prochaine.",
     catchUpMore: (n) => `+${n} encore ouvert(s) — voir la feuille de route ci-dessous`,
+    showDone: (n) => `Afficher ${frPlural(n, 'élément terminé', 'éléments terminés')}`,
+    hideDone: 'Masquer les éléments terminés',
 
     roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
@@ -597,6 +601,9 @@ export const translations = {
       `لا محتوى جديد هذا الأسبوع — استغلّه لإنهاء ما تبقّى مفتوحًا من الأسابيع السابقة (${n}).`,
     catchUpAllClear: 'لا شيء متأخّر! استرح أو راجع أو ابدأ مبكرًا في الأسبوع القادم.',
     catchUpMore: (n) => `+${n} أخرى مفتوحة — راجع الخارطة أدناه`,
+    showDone: (n) =>
+      `عرض ${arCount(n, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' })}`,
+    hideDone: 'إخفاء العناصر المكتملة',
 
     roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${arNum(weeks)} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),

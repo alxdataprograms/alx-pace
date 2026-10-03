@@ -108,3 +108,62 @@ describe('withKept', () => {
     expect(withKept([a, c], new Map([['b', b], ['a', a]]))).toEqual([a, b, c])
   })
 })
+
+describe('a long focus week', () => {
+  const gd = SCHEDULES.gd
+  const week9 = gd.weeks.find((w) => w.week === 9) // 31 items
+
+  /** Like Harness, but starting with some of the week already done. */
+  function Seeded({ week, initiallyDone }) {
+    const [done, setDone] = useState(() => new Set(initiallyDone))
+    const toggle = (id) =>
+      setDone((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    return createElement(CurrentFocusCard, { week, completedSet: done, onToggle: toggle })
+  }
+  const renderSeeded = (props) => {
+    root = createRoot(container)
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(Seeded, props)))
+    })
+  }
+  const toggleButton = () => container.querySelector('button[aria-expanded]')
+
+  it('puts the next open item first, with finished ones folded away', () => {
+    const doneIds = week9.lessons.slice(0, 10).map((l) => l.id)
+    renderSeeded({ week: week9, initiallyDone: doneIds })
+    expect(boxes()).toHaveLength(21)
+    expect(boxes()[0].closest('li').textContent).toContain(week9.lessons[10].title)
+    expect(toggleButton().getAttribute('aria-expanded')).toBe('false')
+    expect(toggleButton().textContent).toContain('10')
+  })
+
+  it('unfolds back to the full week in curriculum order', () => {
+    renderSeeded({ week: week9, initiallyDone: week9.lessons.slice(0, 10).map((l) => l.id) })
+    click(toggleButton())
+    expect(toggleButton().getAttribute('aria-expanded')).toBe('true')
+    expect(boxes()).toHaveLength(31)
+    expect(boxes()[0].closest('li').textContent).toContain(week9.lessons[0].title)
+    // The toggle controls the list it sits above.
+    expect(document.getElementById(toggleButton().getAttribute('aria-controls'))).not.toBeNull()
+  })
+
+  it('does not fold away an item ticked on this visit', () => {
+    renderSeeded({ week: week9, initiallyDone: [] })
+    expect(toggleButton()).toBeNull()
+    click(boxes()[0])
+    expect(boxes()).toHaveLength(31)
+    expect(boxes()[0].getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('leaves a short week (every Data Analytics week) exactly as it was', () => {
+    const da = SCHEDULES.da.weeks[0]
+    renderSeeded({ week: da, initiallyDone: [da.lessons[0].id] })
+    expect(toggleButton()).toBeNull()
+    expect(boxes()).toHaveLength(da.lessons.length)
+  })
+})
