@@ -136,3 +136,28 @@ describe('the forecast countdown', () => {
     expect(t.noPaceYetMore(1)).toBe(t.noPaceYetMore(1, 'lesson'))
   })
 })
+
+/*
+  Arabic posts name every program the way the DA post always has: translated,
+  after "ALX". A Latin program name inside an RTL sentence is reordered
+  unpredictably by LinkedIn's bidi rendering, so none may appear.
+*/
+describe('the Arabic milestone post', () => {
+  const ar = translations.ar
+  const m = (program) => ({ program, title: 'X', index: 1, total: 4, weeks: 2, lessons: 7 })
+
+  it('translates every program name, as the DA post does', () => {
+    for (const id of ['da', 'cc', 'gd']) {
+      for (const text of [ar.postModuleDone(m(id)), ar.postProgrammeDone(m(id))]) {
+        expect(text).not.toMatch(/Data|Analytics|Content|Creation|Graphic|Design/)
+        expect(text).toContain(`برنامج ALX ل`)
+      }
+    }
+  })
+
+  it('keeps the DA sentence exactly as it was', () => {
+    expect(ar.postModuleDone(m('da'))).toBe(
+      'أنهيت للتو X — الوحدة 1 من 4 في برنامج ALX لتحليل البيانات.',
+    )
+  })
+})
