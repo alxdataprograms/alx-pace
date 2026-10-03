@@ -113,9 +113,12 @@ describe('a long focus week', () => {
   const gd = SCHEDULES.gd
   const week9 = gd.weeks.find((w) => w.week === 9) // 31 items
 
+  // Lets a test tick something "elsewhere" (the roadmap) while the card is up.
+  let setFromOutside
   /** Like Harness, but starting with some of the week already done. */
   function Seeded({ week, initiallyDone }) {
     const [done, setDone] = useState(() => new Set(initiallyDone))
+    setFromOutside = setDone
     const toggle = (id) =>
       setDone((prev) => {
         const next = new Set(prev)
@@ -165,5 +168,37 @@ describe('a long focus week', () => {
     renderSeeded({ week: da, initiallyDone: [da.lessons[0].id] })
     expect(toggleButton()).toBeNull()
     expect(boxes()).toHaveLength(da.lessons.length)
+  })
+
+  it('does not fold away an item ticked in the roadmap during this visit', () => {
+    renderSeeded({ week: week9, initiallyDone: [] })
+    act(() => setFromOutside(new Set([week9.lessons[0].id])))
+    expect(toggleButton()).toBeNull()
+    expect(boxes()[0].getAttribute('aria-checked')).toBe('true')
+  })
+
+  it('says the WEEK is done — not "all caught up" — below the list, in a live region', () => {
+    const allButLast = week9.lessons.slice(0, -1).map((l) => l.id)
+    renderSeeded({ week: week9, initiallyDone: allButLast })
+    const status = container.querySelector('[role="status"]')
+    expect(status).not.toBeNull()
+    expect(status.textContent).toBe('')
+
+    const last = boxes()[0]
+    click(last)
+    // The row just ticked is still there and still first: nothing moved above it.
+    expect(boxes()[0]).toBe(last)
+    expect(status.textContent).toMatch(/this week is done/i)
+    expect(status.textContent).not.toMatch(/caught up/i)
+    // Below the list, never above the rows being ticked.
+    const list = container.querySelector('ul')
+    expect(list.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('keeps the week-done note visible whether the done items are folded or not', () => {
+    renderSeeded({ week: week9, initiallyDone: week9.lessons.map((l) => l.id) })
+    expect(container.textContent).toMatch(/this week is done/i)
+    click(toggleButton())
+    expect(container.textContent).toMatch(/this week is done/i)
   })
 })

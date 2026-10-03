@@ -154,6 +154,7 @@ export const translations = {
     catchUpMore: (n) => `+${n} more open — see the roadmap below`,
     showDone: (n) => `Show ${n} done`,
     hideDone: 'Hide done',
+    weekAllDone: 'Everything in this week is done. Nicely paced.',
 
     roadmapTitle: (weeks) => `Full ${weeks}-Week Roadmap`,
     weekRange: (a, b) => (a === b ? `Week ${a}` : `Weeks ${a}–${b}`),
@@ -244,6 +245,8 @@ export const translations = {
     noPaceYet: (unit) => `Tick off your first ${pick(unit, 'lesson', 'item')} to unlock your finish forecast.`,
     noPaceYetMore: (n, unit) =>
       `Tick off ${n} more ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} to unlock your finish forecast.`,
+    noPaceYetCount: (n, unit) =>
+      `Tick off ${n} ${pick(unit, 'lessons', 'items')} to unlock your finish forecast.`,
 
     slogans: [
       'Do Hard Things',
@@ -396,6 +399,7 @@ export const translations = {
     catchUpMore: (n) => `+${n} encore ouvert(s) — voir la feuille de route ci-dessous`,
     showDone: (n) => `Afficher ${frPlural(n, 'élément terminé', 'éléments terminés')}`,
     hideDone: 'Masquer les éléments terminés',
+    weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
 
     roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
@@ -480,6 +484,8 @@ export const translations = {
       `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour débloquer ta date de fin estimée.`,
     noPaceYetMore: (n, unit) =>
       `Coche encore ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour débloquer ta date de fin estimée.`,
+    noPaceYetCount: (n, unit) =>
+      `Coche ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour débloquer ta date de fin estimée.`,
 
     slogans: [
       'Fais des choses difficiles',
@@ -627,6 +633,7 @@ export const translations = {
     showDone: (n) =>
       `عرض ${arCount(n, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' })}`,
     hideDone: 'إخفاء العناصر المكتملة',
+    weekAllDone: 'اكتمل كل ما في هذا الأسبوع. وتيرة رائعة.',
 
     roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${arNum(weeks)} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),
@@ -709,6 +716,8 @@ export const translations = {
     noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض تاريخ انتهائك المتوقّع.`,
     noPaceYetMore: (n, unit) =>
       `بقي ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} لعرض تاريخ انتهائك المتوقّع.`,
+    noPaceYetCount: (n, unit) =>
+      `أكمل ${arCount(n, pick(unit, { one: 'درسًا واحدًا', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصرًا واحدًا', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} لعرض تاريخ انتهائك المتوقّع.`,
 
     slogans: [
       'افعل الأشياء الصعبة',

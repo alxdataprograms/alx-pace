@@ -74,9 +74,11 @@ export default function ForecastCard({ paceStatus }) {
       ) : (
         <div className="mt-3">
           <p className="text-sm text-ink-soft dark:text-paper/75">
-            {completedCount > 0 && forecastNeeds > 0
+            {completedCount > 0
               ? t.noPaceYetMore(forecastNeeds, unit)
-              : t.noPaceYet(unit)}
+              : forecastNeeds > 1
+                ? t.noPaceYetCount(forecastNeeds, unit)
+                : t.noPaceYet(unit)}
           </p>
           {plannedEnd && (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-cobalt/10 px-2.5 py-1 text-xs font-semibold text-cobalt-600 dark:bg-lime/15 dark:text-lime">

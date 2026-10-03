@@ -134,6 +134,8 @@ describe('the forecast countdown', () => {
     const t = translations[lang]
     expect(t.noPaceYetMore(11, 'item')).not.toBe(t.noPaceYetMore(11, 'lesson'))
     expect(t.noPaceYetMore(1)).toBe(t.noPaceYetMore(1, 'lesson'))
+    expect(t.noPaceYetCount(12, 'item')).not.toBe(t.noPaceYetCount(12, 'lesson'))
+    expect(t.noPaceYetCount(2)).toBe(t.noPaceYetCount(2, 'lesson'))
   })
 })
 

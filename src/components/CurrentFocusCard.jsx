@@ -106,28 +106,32 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
  *
  * Items already done when the learner arrived sit behind "Show N done"; the
  * list keeps curriculum order either way, so expanding it restores the week
- * exactly as the sheet lays it out. Anything ticked on this visit stays where
- * it is (see useKeptInPlace) — folding it away on tick would make a mis-tap
- * impossible to undo here and pull focus out from under the learner.
+ * exactly as the sheet lays it out. Anything ticked during this visit — here,
+ * or in the roadmap below — stays where it is: folding it away on tick would
+ * make a mis-tap impossible to undo here and pull focus out from under the
+ * learner (see useKeptInPlace).
+ *
+ * The "week done" note sits BELOW the list in a polite live region: above it,
+ * it pushed the rows down the moment the last one was ticked, moving the
+ * control just used, and appearing silently it said nothing to a screen reader.
  */
 function LongWeekList({ lessons, completedSet, onToggle }) {
   const { t } = useLang()
   const [kept, keep] = useKeptInPlace(onToggle)
   const [showDone, setShowDone] = useState(false)
+  const [doneOnArrival] = useState(
+    () => new Set(lessons.filter((l) => completedSet.has(l.id)).map((l) => l.id)),
+  )
   const listId = useId()
 
-  const folded = lessons.filter((l) => completedSet.has(l.id) && !kept.has(l.id))
+  const folded = lessons.filter(
+    (l) => doneOnArrival.has(l.id) && completedSet.has(l.id) && !kept.has(l.id),
+  )
   const shown = showDone ? lessons : lessons.filter((l) => !folded.includes(l))
   const allDone = lessons.every((l) => completedSet.has(l.id))
 
   return (
     <>
-      {allDone && !showDone && (
-        <div className="mb-2">
-          <AllClear text={t.catchUpAllClear} />
-        </div>
-      )}
-
       {folded.length > 0 && (
         <button
           type="button"
@@ -159,6 +163,11 @@ function LongWeekList({ lessons, completedSet, onToggle }) {
           />
         ))}
       </ul>
+
+      {/* Always in the DOM, so the note is announced when it appears. */}
+      <div role="status" aria-live="polite" className={allDone ? 'mt-2' : ''}>
+        {allDone && <AllClear text={t.weekAllDone} />}
+      </div>
     </>
   )
 }
@@ -174,17 +183,25 @@ function CatchUpList({ items, completedSet, onToggle }) {
 
   if (shown.length === 0) return <AllClear text={t.catchUpAllClear} />
 
+  /*
+    Ticking the last open item swaps the intro for the all-clear in the SAME
+    paragraph, so the rows under the learner's finger do not move. A visually
+    hidden live region announces it; the visible copy is hidden from assistive
+    tech meanwhile, so it is not read twice.
+  */
+  const cleared = items.length === 0
+
   return (
     <>
-      {items.length === 0 ? (
-        <div className="mb-3">
-          <AllClear text={t.catchUpAllClear} />
-        </div>
-      ) : (
-        <p className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75">
-          {t.catchUpBody(items.length)}
-        </p>
-      )}
+      <p
+        className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75"
+        aria-hidden={cleared || undefined}
+      >
+        {cleared ? t.catchUpAllClear : t.catchUpBody(items.length)}
+      </p>
+      <p role="status" aria-live="polite" className="sr-only">
+        {cleared ? t.catchUpAllClear : ''}
+      </p>
       <ul className="-mx-1 space-y-0.5">
         {shown.map((lesson) => (
           <LessonRow
