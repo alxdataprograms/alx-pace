@@ -240,6 +240,8 @@ export const translations = {
       return days > 0 ? `≈ ${span} ahead of plan` : `≈ ${span} behind plan`
     },
     noPaceYet: (unit) => `Tick off your first ${pick(unit, 'lesson', 'item')} to unlock your finish forecast.`,
+    noPaceYetMore: (n, unit) =>
+      `Tick off ${n} more ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} to unlock your finish forecast.`,
 
     slogans: [
       'Do Hard Things',
@@ -459,6 +461,8 @@ export const translations = {
     },
     noPaceYet: (unit) =>
       `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour débloquer ta date de fin estimée.`,
+    noPaceYetMore: (n, unit) =>
+      `Coche encore ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour débloquer ta date de fin estimée.`,
 
     slogans: [
       'Fais des choses difficiles',
@@ -673,6 +677,8 @@ export const translations = {
       return days > 0 ? `≈ متقدّم بـ ${span}` : `≈ متأخّر بـ ${span}`
     },
     noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض تاريخ انتهائك المتوقّع.`,
+    noPaceYetMore: (n, unit) =>
+      `بقي ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} لعرض تاريخ انتهائك المتوقّع.`,
 
     slogans: [
       'افعل الأشياء الصعبة',

@@ -128,3 +128,11 @@ describe('count wording', () => {
     expect(translations.en.paceValue(14.8, 'item')).toBe('14.8 items/week')
   })
 })
+
+describe('the forecast countdown', () => {
+  it.each(langs)('%s counts down in the right unit', (lang) => {
+    const t = translations[lang]
+    expect(t.noPaceYetMore(11, 'item')).not.toBe(t.noPaceYetMore(11, 'lesson'))
+    expect(t.noPaceYetMore(1)).toBe(t.noPaceYetMore(1, 'lesson'))
+  })
+})

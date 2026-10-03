@@ -103,4 +103,40 @@ describe('computePaceStatus', () => {
     expect(s.projectedFinish).toBeNull()
     expect(s.finishDeltaDays).toBeNull()
   })
+
+  /*
+    The forecast waits for a week's worth of signal. Without this, one tick in a
+    373-item course after nine days projected a finish in 2032.
+  */
+  describe('forecast minimum', () => {
+    // 250 items over 22 weeks — Content Creation's shape. A week's worth is 12.
+    const big = {
+      totalLessons: 250,
+      totalWeeks: 22,
+      totalDays: 154,
+      lessons: Array.from({ length: 250 }, (_, i) => ({ id: `x${i}`, week: 1 + Math.floor(i / 12) })),
+      weeks: [{ week: 2, lessons: [], gradedItems: [] }],
+    }
+    const ids = (n) => new Set(Array.from({ length: n }, (_, i) => `x${i}`))
+    const nineDaysIn = activePacing({ currentWeek: 2, elapsedDays: 8 })
+
+    it('withholds the projection after a single tick', () => {
+      const s = computePaceStatus(big, ids(1), nineDaysIn, new Date(2026, 2, 9))
+      expect(s.projectedFinish).toBeNull()
+      expect(s.finishDeltaDays).toBeNull()
+      expect(s.forecastNeeds).toBe(11)
+    })
+
+    it('projects once a week of items is done', () => {
+      const s = computePaceStatus(big, ids(12), nineDaysIn, new Date(2026, 2, 9))
+      expect(s.forecastNeeds).toBe(0)
+      expect(s.projectedFinish).toBeInstanceOf(Date)
+    })
+
+    it('asks Data Analytics for two lessons — a week of its 27', () => {
+      const da = { ...big, totalLessons: 27, totalWeeks: 14 }
+      expect(computePaceStatus(da, ids(1), nineDaysIn).forecastNeeds).toBe(1)
+      expect(computePaceStatus(da, ids(2), nineDaysIn).forecastNeeds).toBe(0)
+    })
+  })
 })
