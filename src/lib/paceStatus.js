@@ -58,6 +58,8 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
     status: behindCount > 0 ? 'behind' : aheadCount > 0 ? 'ahead' : 'on-track',
     week,
     totalWeeks: pacing.totalWeeks,
+    // 'lesson' | 'item' — what the counts below are counting, for the copy.
+    unit: schedule.itemNoun ?? 'lesson',
     // Buffer weeks carry no new content — the UI turns them into catch-up time.
     isBuffer: Boolean(thisWeek?.isBuffer),
     behindCount,

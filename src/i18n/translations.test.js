@@ -91,3 +91,40 @@ describe('the milestone post', () => {
     expect(translations.ar.postProgrammeDone(m('da'))).toContain('برنامج ALX لتحليل البيانات')
   })
 })
+
+/*
+  Counts name what was counted. A Creative Tech row may be a lesson, an activity
+  or a quiz, so "lessons" undercounts it; DA rows really are lessons and must
+  read exactly as they always have when no unit is passed.
+*/
+describe('count wording', () => {
+  const COUNTED = [
+    ['statusBehind', [3]],
+    ['statusAhead', [3]],
+    ['reminderBehind', [3, 1]],
+    ['reminderOnTrack', [3]],
+    ['paceValue', [3]],
+    ['noPaceYet', []],
+    ['lessonsComplete', [3, 9]],
+    ['completedBody', [22]],
+  ]
+
+  it.each(langs)('%s reads the same for DA with or without the unit', (lang) => {
+    const t = translations[lang]
+    for (const [key, args] of COUNTED) {
+      expect(t[key](...args, 'lesson'), `${lang}.${key}`).toBe(t[key](...args))
+    }
+  })
+
+  it.each(langs)('%s says something different for Creative Tech items', (lang) => {
+    const t = translations[lang]
+    for (const [key, args] of COUNTED) {
+      expect(t[key](...args, 'item'), `${lang}.${key}`).not.toBe(t[key](...args, 'lesson'))
+    }
+  })
+
+  it('keeps the English DA wording word for word', () => {
+    expect(translations.en.paceValue(2.5)).toBe('2.5 lessons/week')
+    expect(translations.en.paceValue(14.8, 'item')).toBe('14.8 items/week')
+  })
+})

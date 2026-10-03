@@ -245,5 +245,8 @@ export function buildScheduleFromCsv(csvText, { layout = 'cyu' } = {}) {
     // cannot lie if a sheet is edited: DA = 98 days, CC = 154, GD = 224.
     totalDays,
     totalWeeks: Math.round((totalDays / DAYS_PER_WEEK) * 10) / 10,
+    // What a row is called in counts: every DA row is a lesson; a Creative
+    // Tech row may be a lesson, an activity or a quiz, so it is an "item".
+    itemNoun: activityLayout ? 'item' : 'lesson',
   }
 }

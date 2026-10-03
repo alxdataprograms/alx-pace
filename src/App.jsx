@@ -175,10 +175,10 @@ export default function App() {
     const body = s.isBuffer
       ? t.reminderBuffer(s.behindCount)
       : s.status === 'behind'
-        ? t.reminderBehind(s.behindCount, s.gradedLeft)
+        ? t.reminderBehind(s.behindCount, s.gradedLeft, s.unit)
         : s.gradedLeft > 0
           ? t.reminderGraded(s.gradedLeft)
-          : t.reminderOnTrack(s.weekTotal - s.weekDone)
+          : t.reminderOnTrack(s.weekTotal - s.weekDone, s.unit)
     saveReminderState({ title: t.reminderTitle(s.week, s.totalWeeks), body })
   }, [status, paceStatus, t])
 
@@ -260,6 +260,7 @@ export default function App() {
                 gradedDone={gradedDone}
                 totalGraded={schedule.totalGraded}
                 totalWeeks={schedule.totalWeeks}
+                unit={schedule.itemNoun}
               />
             )}
 

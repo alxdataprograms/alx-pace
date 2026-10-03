@@ -32,6 +32,15 @@ const POST_PROGRAM = {
 }
 const postProgram = (lang, m) => POST_PROGRAM[lang][m.program] ?? POST_PROGRAM[lang].da
 
+/*
+  What a curriculum row is called. A Data Analytics row is a lesson; a Creative
+  Tech row may be a lesson, an activity or a quiz, so counting those as
+  "lessons" undercounts what the learner actually did. Every count string takes
+  the unit as its last argument and defaults to 'lesson', so DA reads exactly
+  as it always has.
+*/
+const pick = (unit, lesson, item) => (unit === 'item' ? item : lesson)
+
 const frPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`
 
 // Arabic-Indic digits (١٤) for the week counts that used to be hard-coded.
@@ -92,24 +101,25 @@ export const translations = {
 
     completedTitle: 'Course Completed!',
     finishLineTitle: 'You Reached the Finish Line!',
-    completedBody: (weeks) =>
-      `Every lesson checked off across all ${weeks} weeks. That is what doing hard things looks like.`,
+    completedBody: (weeks, unit) =>
+      `Every ${pick(unit, 'lesson', 'item')} checked off across all ${weeks} weeks. That is what doing hard things looks like.`,
     finishLineBody: (weeks) =>
       `The ${weeks}-week timeline is complete. Wrap up any remaining items below to finish 100%.`,
     curriculumComplete: 'Curriculum complete',
     gradedMilestonesStat: 'Graded milestones',
-    lessonsComplete: (done, total) => `${done} of ${total} lessons complete`,
+    lessonsComplete: (done, total, unit) =>
+      `${done} of ${total} ${pick(unit, 'lessons', 'items')} complete`,
 
     progressTitle: 'Curriculum Progress',
     itemsComplete: (done, total) => `${done} of ${total} items complete`,
     progressAria: (p) => `${p}% of the curriculum complete`,
     overallProgress: 'Overall progress',
 
-    statusBehind: (n) =>
-      `Catch-up nudge: ${n} ${n === 1 ? 'lesson' : 'lessons'} from earlier weeks still open.`,
+    statusBehind: (n, unit) =>
+      `Catch-up nudge: ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} from earlier weeks still open.`,
     statusOnTrack: 'Right on pace — keep the streak alive.',
-    statusAhead: (n) =>
-      `You're ${n} ${n === 1 ? 'lesson' : 'lessons'} ahead of schedule. Excellent.`,
+    statusAhead: (n, unit) =>
+      `You're ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} ahead of schedule. Excellent.`,
     weekOf: (week, total) => `Week ${week} of ${total}`,
     doneThisWeek: (done, total) => `${done}/${total} done this week`,
     gradedStillDue: (n) => `${n} graded ${n === 1 ? 'item' : 'items'} still due`,
@@ -205,12 +215,12 @@ export const translations = {
     dismiss: 'Dismiss',
 
     reminderTitle: (week, total) => `ALX Pace — Week ${week} of ${total}`,
-    reminderBehind: (behind, graded) =>
-      `${behind} ${behind === 1 ? 'lesson' : 'lessons'} to catch up · ${graded} graded due this week.`,
+    reminderBehind: (behind, graded, unit) =>
+      `${behind} ${behind === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} to catch up · ${graded} graded due this week.`,
     reminderGraded: (n) =>
       `${n} graded ${n === 1 ? 'item' : 'items'} due this week — keep your pace.`,
-    reminderOnTrack: (left) =>
-      `You're on track — ${left} ${left === 1 ? 'lesson' : 'lessons'} left this week.`,
+    reminderOnTrack: (left, unit) =>
+      `You're on track — ${left} ${left === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} left this week.`,
     reminderBuffer: (n) =>
       n > 0
         ? `Catch-up week — ${n} ${n === 1 ? 'item' : 'items'} to clear.`
@@ -220,7 +230,7 @@ export const translations = {
     targetFinish: (date) => `Finish by ${date}`,
     promptFinishPreview: (date) => `With this start date, you'll be done by ${date}.`,
     yourPace: 'Your pace',
-    paceValue: (n) => `${n} lessons/week`,
+    paceValue: (n, unit) => `${n} ${pick(unit, 'lessons', 'items')}/week`,
     projectedFinishLabel: 'Projected finish',
     targetLabel: 'Target',
     finishDelta: (days) => {
@@ -229,7 +239,7 @@ export const translations = {
       const span = abs >= 14 ? `${Math.round(abs / 7)} weeks` : `${abs} ${abs === 1 ? 'day' : 'days'}`
       return days > 0 ? `≈ ${span} ahead of plan` : `≈ ${span} behind plan`
     },
-    noPaceYet: 'Tick off your first lesson to unlock your finish forecast.',
+    noPaceYet: (unit) => `Tick off your first ${pick(unit, 'lesson', 'item')} to unlock your finish forecast.`,
 
     slogans: [
       'Do Hard Things',
@@ -315,23 +325,25 @@ export const translations = {
 
     completedTitle: 'Cours terminé !',
     finishLineTitle: "Tu as atteint la ligne d'arrivée !",
-    completedBody: (weeks) =>
-      `Toutes les leçons des ${weeks} semaines sont cochées. Voilà ce que ça donne de faire des choses difficiles.`,
+    completedBody: (weeks, unit) =>
+      `${pick(unit, 'Toutes les leçons', 'Tous les éléments')} des ${weeks} semaines sont ${pick(unit, 'cochées', 'cochés')}. Voilà ce que ça donne de faire des choses difficiles.`,
     finishLineBody: (weeks) =>
       `Les ${weeks} semaines sont écoulées. Termine les éléments restants ci-dessous pour atteindre 100 %.`,
     curriculumComplete: 'Parcours terminé',
     gradedMilestonesStat: 'Évaluations notées',
-    lessonsComplete: (done, total) => `${done} leçons terminées sur ${total}`,
+    lessonsComplete: (done, total, unit) =>
+      `${done} ${pick(unit, 'leçons terminées', 'éléments terminés')} sur ${total}`,
 
     progressTitle: 'Progression du parcours',
     itemsComplete: (done, total) => `${done} éléments terminés sur ${total}`,
     progressAria: (p) => `${p} % du parcours terminé`,
     overallProgress: 'Progression globale',
 
-    statusBehind: (n) =>
-      `À rattraper : ${frPlural(n, 'leçon des semaines précédentes', 'leçons des semaines précédentes')}.`,
+    statusBehind: (n, unit) =>
+      `À rattraper : ${pick(unit, frPlural(n, 'leçon des semaines précédentes', 'leçons des semaines précédentes'), frPlural(n, 'élément des semaines précédentes', 'éléments des semaines précédentes'))}.`,
     statusOnTrack: 'Parfaitement dans le rythme — continue sur ta lancée.',
-    statusAhead: (n) => `Tu as ${frPlural(n, "leçon d'avance", "leçons d'avance")}. Excellent.`,
+    statusAhead: (n, unit) =>
+      `Tu as ${pick(unit, frPlural(n, "leçon d'avance", "leçons d'avance"), frPlural(n, "élément d'avance", "éléments d'avance"))}. Excellent.`,
     weekOf: (week, total) => `Semaine ${week} sur ${total}`,
     doneThisWeek: (done, total) => `${done}/${total} cette semaine`,
     gradedStillDue: (n) => `${frPlural(n, 'évaluation à rendre', 'évaluations à rendre')}`,
@@ -420,12 +432,12 @@ export const translations = {
     dismiss: 'Fermer',
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
-    reminderBehind: (behind, graded) =>
-      `${frPlural(behind, 'leçon à rattraper', 'leçons à rattraper')} · ${graded} évaluation(s) cette semaine.`,
+    reminderBehind: (behind, graded, unit) =>
+      `${pick(unit, frPlural(behind, 'leçon à rattraper', 'leçons à rattraper'), frPlural(behind, 'élément à rattraper', 'éléments à rattraper'))} · ${graded} évaluation(s) cette semaine.`,
     reminderGraded: (n) =>
       `${frPlural(n, 'évaluation notée à rendre', 'évaluations notées à rendre')} cette semaine — garde le rythme.`,
-    reminderOnTrack: (left) =>
-      `Tu es dans le rythme — ${frPlural(left, 'leçon restante', 'leçons restantes')} cette semaine.`,
+    reminderOnTrack: (left, unit) =>
+      `Tu es dans le rythme — ${pick(unit, frPlural(left, 'leçon restante', 'leçons restantes'), frPlural(left, 'élément restant', 'éléments restants'))} cette semaine.`,
     reminderBuffer: (n) =>
       n > 0
         ? `Semaine de rattrapage — ${frPlural(n, 'élément à terminer', 'éléments à terminer')}.`
@@ -435,7 +447,7 @@ export const translations = {
     targetFinish: (date) => `Fin prévue : ${date}`,
     promptFinishPreview: (date) => `Avec cette date de début, tu auras terminé le ${date}.`,
     yourPace: 'Ton rythme',
-    paceValue: (n) => `${n} leçons/semaine`,
+    paceValue: (n, unit) => `${n} ${pick(unit, 'leçons', 'éléments')}/semaine`,
     projectedFinishLabel: 'Fin estimée',
     targetLabel: 'Objectif',
     finishDelta: (days) => {
@@ -445,7 +457,8 @@ export const translations = {
         abs >= 14 ? `${Math.round(abs / 7)} semaines` : `${abs} ${abs === 1 ? 'jour' : 'jours'}`
       return days > 0 ? `≈ ${span} d'avance` : `≈ ${span} de retard`
     },
-    noPaceYet: 'Coche ta première leçon pour débloquer ta date de fin estimée.',
+    noPaceYet: (unit) =>
+      `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour débloquer ta date de fin estimée.`,
 
     slogans: [
       'Fais des choses difficiles',
@@ -530,24 +543,24 @@ export const translations = {
 
     completedTitle: 'أكملت الدورة!',
     finishLineTitle: 'وصلت إلى خط النهاية!',
-    completedBody: (weeks) =>
-      `أنجزت كل الدروس على مدى ${arNum(weeks)} أسبوعًا. هكذا يبدو فعل الأشياء الصعبة.`,
+    completedBody: (weeks, unit) =>
+      `أنجزت كل ${pick(unit, 'الدروس', 'العناصر')} على مدى ${arNum(weeks)} أسبوعًا. هكذا يبدو فعل الأشياء الصعبة.`,
     finishLineBody: (weeks) =>
       `اكتملت مدة المسار البالغة ${arNum(weeks)} أسبوعًا. أنهِ العناصر المتبقية أدناه لتصل إلى ١٠٠٪.`,
     curriculumComplete: 'اكتمال المنهج',
     gradedMilestonesStat: 'التقييمات المحتسبة',
-    lessonsComplete: (done, total) => `اكتمل ${done} من ${total} درسًا`,
+    lessonsComplete: (done, total, unit) => `اكتمل ${done} من ${total} ${pick(unit, 'درسًا', 'عنصرًا')}`,
 
     progressTitle: 'التقدّم في المنهج',
     itemsComplete: (done, total) => `اكتمل ${done} من ${total} عنصرًا`,
     progressAria: (p) => `اكتمل ${p}٪ من المنهج`,
     overallProgress: 'التقدّم العام',
 
-    statusBehind: (n) =>
-      `للحاق بالركب: ${arCount(n, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' })} من الأسابيع السابقة ما زالت مفتوحة.`,
+    statusBehind: (n, unit) =>
+      `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ما زالت مفتوحة.`,
     statusOnTrack: 'أنت على الوتيرة الصحيحة — واصل التقدّم.',
-    statusAhead: (n) =>
-      `أنت متقدّم بـ${arCount(n, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' })} عن الجدول. ممتاز.`,
+    statusAhead: (n, unit) =>
+      `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} عن الجدول. ممتاز.`,
     weekOf: (week, total) => `الأسبوع ${week} من ${total}`,
     doneThisWeek: (done, total) => `أُنجز ${done}/${total} هذا الأسبوع`,
     gradedStillDue: (n) =>
@@ -632,12 +645,12 @@ export const translations = {
     dismiss: 'إغلاق',
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
-    reminderBehind: (behind, graded) =>
-      `${arCount(behind, { one: 'درس واحد للّحاق', two: 'درسان للّحاق', few: 'دروس للّحاق', many: 'درسًا للّحاق' })} · ${graded} تقييم مستحق هذا الأسبوع.`,
+    reminderBehind: (behind, graded, unit) =>
+      `${arCount(behind, pick(unit, { one: 'درس واحد للّحاق', two: 'درسان للّحاق', few: 'دروس للّحاق', many: 'درسًا للّحاق' }, { one: 'عنصر واحد للّحاق', two: 'عنصران للّحاق', few: 'عناصر للّحاق', many: 'عنصرًا للّحاق' }))} · ${graded} تقييم مستحق هذا الأسبوع.`,
     reminderGraded: (n) =>
       `${arCount(n, { one: 'تقييم محتسب مستحق', two: 'تقييمان محتسبان مستحقان', few: 'تقييمات محتسبة مستحقة', many: 'تقييمًا محتسبًا مستحقًا' })} هذا الأسبوع — حافظ على وتيرتك.`,
-    reminderOnTrack: (left) =>
-      `أنت على المسار الصحيح — ${arCount(left, { one: 'درس واحد متبقٍ', two: 'درسان متبقيان', few: 'دروس متبقية', many: 'درسًا متبقيًا' })} هذا الأسبوع.`,
+    reminderOnTrack: (left, unit) =>
+      `أنت على المسار الصحيح — ${arCount(left, pick(unit, { one: 'درس واحد متبقٍ', two: 'درسان متبقيان', few: 'دروس متبقية', many: 'درسًا متبقيًا' }, { one: 'عنصر واحد متبقٍ', two: 'عنصران متبقيان', few: 'عناصر متبقية', many: 'عنصرًا متبقيًا' }))} هذا الأسبوع.`,
     reminderBuffer: (n) =>
       n > 0
         ? `أسبوع استدراك — ${arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' })} للإنهاء.`
@@ -647,7 +660,7 @@ export const translations = {
     targetFinish: (date) => `الانتهاء بحلول ${date}`,
     promptFinishPreview: (date) => `بهذا التاريخ، ستنتهي بحلول ${date}.`,
     yourPace: 'وتيرتك',
-    paceValue: (n) => `${n} درس/أسبوع`,
+    paceValue: (n, unit) => `${n} ${pick(unit, 'درس', 'عنصر')}/أسبوع`,
     projectedFinishLabel: 'الانتهاء المتوقّع',
     targetLabel: 'الهدف',
     finishDelta: (days) => {
@@ -659,7 +672,7 @@ export const translations = {
           : arCount(abs, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا' })
       return days > 0 ? `≈ متقدّم بـ ${span}` : `≈ متأخّر بـ ${span}`
     },
-    noPaceYet: 'أكمل أول درس لك لعرض تاريخ انتهائك المتوقّع.',
+    noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض تاريخ انتهائك المتوقّع.`,
 
     slogans: [
       'افعل الأشياء الصعبة',

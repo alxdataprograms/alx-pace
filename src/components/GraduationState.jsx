@@ -8,6 +8,7 @@ export default function GraduationState({
   gradedDone,
   totalGraded,
   totalWeeks,
+  unit = 'lesson',
 }) {
   const { t } = useLang()
   const percent = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0
@@ -32,7 +33,7 @@ export default function GraduationState({
           <PartyPopper className="inline h-6 w-6" aria-hidden="true" />
         </h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-white/80">
-          {finished ? t.completedBody(totalWeeks) : t.finishLineBody(totalWeeks)}
+          {finished ? t.completedBody(totalWeeks, unit) : t.finishLineBody(totalWeeks)}
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">
@@ -50,7 +51,7 @@ export default function GraduationState({
         </div>
 
         <p className="mt-4 text-sm font-bold text-lime">
-          {t.lessonsComplete(completedCount, totalLessons)}
+          {t.lessonsComplete(completedCount, totalLessons, unit)}
         </p>
       </div>
     </section>
