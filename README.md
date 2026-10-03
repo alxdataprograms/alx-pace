@@ -1,9 +1,14 @@
-# ALX Pace — Data Analytics Self-Pace Tracker
+# ALX Pace — Self-Pace Tracker
 
 A responsive, **mobile-first** web app that helps ALX Africa learners track their
-progress through the **14-week Self-Paced Data Analytics** curriculum. No sign-up,
-no login — everything lives in the browser. Styled after **alxafrica.com**'s live
-brand system.
+progress through their self-paced curriculum. No sign-up, no login — everything
+lives in the browser. Styled after **alxafrica.com**'s live brand system.
+
+| Program | Track | Length | Modules | Items |
+| --- | --- | --- | --- | --- |
+| **Data Analytics** | — | 14 weeks | 4 | 27 lessons |
+| **Creative Tech** | Content Creation | 22 weeks (5 buffer) | 5 | 250 lessons, activities & quizzes |
+| **Creative Tech** | Graphic Design | 32 weeks (10 buffer, 2 half weeks) | 10 | 373 lessons, activities & quizzes |
 
 <p>
   <a href="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml/badge.svg"></a>
@@ -27,8 +32,8 @@ Other scripts:
 npm run build          # production build to dist/
 npm run preview        # serve the production build
 npm run lint           # ESLint (flat config)
-npm test               # Vitest unit tests (pacing, parser, schedule, forecast)
-npm run parser:check   # run the deterministic CSV-parser verification in Node
+npm test               # Vitest unit tests (pacing, parser, schedules, programs, forecast)
+npm run parser:check   # verify all three program CSVs with the production parser in Node
 ```
 
 Every push and pull request runs lint → unit tests → parser verification → build
@@ -43,20 +48,26 @@ runs after those gates pass on `main`.
 
 | Area | Behaviour |
 | --- | --- |
-| **Zero-login state** | Name, start date and completed lessons persist in `localStorage`. |
-| **Pacing engine** | Enter a start date → the app computes the current week (1–14) and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
+| **Program picker** | First visit asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
+| **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
+| **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
 | **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes. |
-| **Graded Milestones** | Evaluation quizzes, graded tests and integrated projects due this week are surfaced prominently. |
-| **Progress** | Overall % complete across all 27 lessons, plus per-week counts. |
-| **Full roadmap** | Collapsible 14-week / 4-module browser; the current week auto-expands. |
-| **Edge states** | Future start date → countdown · past week 14 → graduation · no date → onboarding · storage reset → clean defaults. |
+| **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
+| **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
+| **Progress** | Overall % complete across every item in the program, plus per-week counts. |
+| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); the current week auto-expands. |
+| **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
 
 ### The four learner states
 
 ```
-no-start-date  →  future (countdown)  →  active (week 1..14)  →  completed (graduation)
+no-program (picker)  →  no-start-date  →  future (countdown)  →  active (week 1..N)  →  completed (graduation)
 ```
+
+Learners who used the tracker before programs existed (they have a start date
+or ticked lessons but no `program` key) are pinned to Data Analytics on their
+first load, so their tracker opens exactly as before — no picker, no lost ticks.
 
 ---
 
@@ -83,7 +94,8 @@ modes, best available wins:
 
 1. **Local (zero infrastructure, on by default)** — Periodic Background Sync: the
    service worker wakes and shows the learner's latest status ("Week 3 — 2 graded
-   items due") composed from data mirrored on-device. No data leaves the phone.
+   items due", or the catch-up count on a buffer week) composed from data
+   mirrored on-device. No data leaves the phone.
    Chromium on Android/desktop; installed app recommended.
 2. **True Web Push (dormant until activated)** — works with the app fully closed,
    including iOS 16.4+ home-screen installs. Everything is wired: VAPID keys live
@@ -101,8 +113,9 @@ modes, best available wins:
 
 [`src/lib/analytics.js`](src/lib/analytics.js) can report aggregate, cookieless
 tallies to a free [GoatCounter](https://www.goatcounter.com) site: app opens,
-installed-vs-browser, and a once-per-device-per-day week-number / pacing-status
-event — bare numbers only, never anything identifying a learner. Do Not Track and
+installed-vs-browser, and a once-per-device-per-day program / week-number /
+pacing-status event (`program-gd`, `gd-week-5`, `status-behind`; DA keeps its
+original bare `week-N` names) — never anything identifying a learner. Do Not Track and
 Global Privacy Control are honored, and no third-party script runs (plain GET
 beacons). Off by default: set `GOATCOUNTER_SITE` in
 [`src/lib/analyticsConfig.js`](src/lib/analyticsConfig.js) to activate.
@@ -115,10 +128,15 @@ This project applies the **Deterministic Tool & Data Normalization** principle: 
 curriculum is a fixed developer asset and parsing is a pure, predictable state
 machine — no AI, no guessing, same bytes → same model every time.
 
-- **Source of truth:** [`src/data/schedule.csv`](src/data/schedule.csv) — the real ALX
-  DA Self-Pace curriculum. Learners never see a file input.
-- **Build-time bundling:** the CSV is imported with Vite's `?raw` suffix
-  ([`src/lib/schedule.js`](src/lib/schedule.js)) so it is compiled straight into the
+- **Source of truth:** one CSV per program in [`src/data/`](src/data) — the real ALX
+  self-paced curricula. Learners never see a file input.
+  - [`da-schedule.csv`](src/data/da-schedule.csv) — Data Analytics
+  - [`cc-schedule.csv`](src/data/cc-schedule.csv) — Creative Tech · Content Creation
+  - [`gd-schedule.csv`](src/data/gd-schedule.csv) — Creative Tech · Graphic Design
+- **Program registry:** [`src/lib/programs.js`](src/lib/programs.js) lists each
+  program's family (drives the two-step picker), sheet layout and CSV file.
+- **Build-time bundling:** the CSVs are imported with Vite's `?raw` suffix
+  ([`src/lib/schedule.js`](src/lib/schedule.js)) so they are compiled straight into the
   bundle — the curriculum data needs no runtime `fetch` and is never missing or
   stale. (The Poppins typeface loads from Google Fonts with a system-font
   fallback, so the app remains fully functional without it.)
@@ -127,24 +145,50 @@ machine — no AI, no guessing, same bytes → same model every time.
   **newlines** (the Integrated Projects span two lines), escaped `""`, and mixed
   CRLF/LF line endings.
 - **Forward-fill:** the export uses *merged cells*, so `Module` and `Week` are blank
-  on continuation rows. `forwardFill()` carries the last value downward, so every one
-  of the 27 lessons is deterministically tied to its module and week.
+  on continuation rows. `forwardFill()` carries the last value downward, so every
+  item is deterministically tied to its module and week.
+- **Two sheet layouts, same five columns:**
+  - *DA* (`Module | Week | Lessons | Check Your Understanding | Graded`) — one row
+    per lesson; its CYU line and graded milestone ride along.
+  - *Creative Tech* (`Module | Week | Lessons | Activity | Evaluation quiz`) — one
+    item per row: a lesson, an activity, or a graded quiz / mastery project.
+    Buffer weeks hold a single `Buffer / catch-up week` marker, which declares the
+    week but is not a task.
 - **Stable ids:** lesson ids are content-derived slugs
-  (`da-1-w1-ways-of-work`), not row positions — inserting or removing a CSV row can
-  never silently re-map a learner's saved completion state.
+  (`da-1-w1-ways-of-work`, `gd-5-w14.5-working-with-imagery`), not row positions —
+  inserting or removing a CSV row can never silently re-map a learner's saved
+  completion state. Module codes namespace them, so one `completedLessons` array
+  holds every program's progress without collisions.
 - **Verification:** [`scripts/verify-parser.mjs`](scripts/verify-parser.mjs) runs the
-  **production parser** against the real CSV in plain Node and asserts 14 weeks,
-  4 modules, forward-fill integrity, multi-line cell parsing, and id stability.
-  Run it with `npm run parser:check`.
+  **production parser** against all three CSVs in plain Node and asserts program
+  length (14 / 22 / 32 weeks), module counts, a gap-free day timeline, buffer and
+  half weeks, forward-fill integrity, multi-line cell parsing, graded
+  classification, one mastery project per Creative Tech module, and id uniqueness
+  within and across programs. Run it with `npm run parser:check`.
 
 ### The pacing formula
 
-Implemented exactly as specified in [`src/lib/pacing.js`](src/lib/pacing.js):
+Implemented in [`src/lib/pacing.js`](src/lib/pacing.js). For a plain N-week
+program (Data Analytics) it is exactly the original spec:
 
 ```
 elapsedDays = today − startDate            (whole days, local midnight)
-currentWeek = min(14, max(1, ⌊elapsedDays / 7⌋ + 1))
+currentWeek = min(N, max(1, ⌊elapsedDays / 7⌋ + 1))
 ```
+
+The Graphic Design sheet also has **half weeks** (`Week 13 (½ week)`) followed by
+weeks labelled mid-week (`Week 13.5 (Buffer)`, `Week 14.5`, …). So every schedule
+carries a day timeline built from its labels, and pacing looks the elapsed day up
+in it:
+
+```
+startDay(Week W) = ⌈(W − 1) × 7⌉           (a mid-day start begins next morning)
+endDay(Week W)   = startDay(next week)     (last week: a full week, or half if "½ week")
+totalDays        = endDay(final week)      DA 98 · CC 154 · GD 224
+```
+
+On a uniform timeline this reduces to the formula above (unit-tested), and the
+target finish date is always `start + totalDays − 1`.
 
 Dates are parsed as **local** dates (not UTC) so the calendar day never shifts in
 negative timezones.
@@ -155,18 +199,28 @@ negative timezones.
 
 | Key | Type | Default | Travels on a move? |
 | --- | --- | --- | --- |
+| `program` | `"da"` \| `"cc"` \| `"gd"` \| `""` (not chosen) | `""` — or `"da"` for pre-existing learners (one-time migration) | **no** — derived on arrival, see below |
 | `learnerName` | string | `""` (unset) | yes |
 | `startDate` | ISO date string `YYYY-MM-DD` | `""` (unset) | yes |
 | `completedLessons` | JSON array of lesson ids | `[]` | yes |
 | `alx-theme` | `"light"` \| `"dark"` | `"light"` | yes |
 | `alx-lang` | `"en"` \| `"fr"` \| `"ar"` | browser language | yes |
+| `alx-celebrated` | JSON array of milestone ids already shown (`module:DA-1`, `module:CC-2`, `programme` for DA, `programme:cc` / `programme:gd`) | `[]` | yes (unioned) |
 | `alx-reminders` | reminder mode | unset | **no** — see below |
 | `alx-metrics-day` | analytics dedupe stamp | unset | **no** — see below |
 | `alx-handoff-done` | ISO date the handoff ran | unset | n/a |
 | `alx-reminders-lapsed` | `"1"` while the re-enable prompt is pending | unset | set *by* the handoff |
 
-Completed-lesson ids are validated against the bundled schedule (and deduplicated)
-on read, so stale or corrupt entries are silently dropped — a defensive guardrail.
+`program` does not travel because it does not need to: the old address only ever
+paced Data Analytics. A handoff that brings a start date or completed lessons
+pins `program` to `"da"` when none has been chosen on the new origin (including
+`""` from an earlier empty visit), and `main.jsx` runs the handoff *before*
+`migrateLegacyProgram`, so an arrival never sees the program picker.
+
+Completed-lesson ids are validated against the active program's bundled schedule
+(and deduplicated) on read, so stale or corrupt entries are silently dropped — a
+defensive guardrail. Ids from the *other* programs stay in storage untouched, so
+switching program and back restores each program's progress.
 
 ---
 
@@ -234,21 +288,27 @@ cannot drift apart unnoticed.
 
 ```
 src/
-├── data/schedule.csv        # bundled ALX DA curriculum (source of truth)
+├── data/                    # bundled curricula (source of truth)
+│   ├── da-schedule.csv      #   Data Analytics
+│   ├── cc-schedule.csv      #   Creative Tech · Content Creation
+│   └── gd-schedule.csv      #   Creative Tech · Graphic Design
 ├── assets/alx/              # official alx logo + duotone learner portraits
 ├── lib/
 │   ├── csvParser.js         # RFC 4180 parser + forward-fill (pure)
-│   ├── scheduleModel.js     # normalize CSV → weeks/modules/lessons (pure, testable)
-│   ├── schedule.js          # Vite ?raw import wrapper → SCHEDULE
+│   ├── scheduleModel.js     # normalize CSV → weeks/modules/lessons + day timeline (pure)
+│   ├── programs.js          # program registry + legacy-learner migration (pure)
+│   ├── schedule.js          # Vite ?raw imports → SCHEDULES (one per program)
 │   ├── pacing.js            # deterministic date/pacing engine (pure)
+│   ├── paceStatus.js        # behind / on-track / ahead, catch-up list, forecast
 │   └── slogans.js           # ALX motivational slogans
 ├── hooks/
 │   ├── useLocalStorage.js   # defensive persisted state (pure updaters, cross-tab sync)
 │   ├── useLearnerProfile.js # the zero-login profile (name/date/completed)
 │   └── useTheme.js          # light/dark, persisted
-├── components/              # AlxLogo, PersonalizationWidget, CurrentFocusCard,
-│                            # GradedMilestonesAlert, ProgressBar, WeekAccordion,
-│                            # CountdownState, GraduationState, StartDatePrompt, Footer
+├── components/              # AlxLogo, PersonalizationWidget, ProgramPicker,
+│                            # CurrentFocusCard, GradedMilestonesAlert, ProgressBar,
+│                            # WeekAccordion, CountdownState, GraduationState,
+│                            # StartDatePrompt, Footer
 ├── App.jsx                  # state machine wiring it all together
 └── main.jsx
 ```
@@ -280,10 +340,19 @@ and a theme-aware focus ring.
 
 ---
 
-## A note on the source CSV
+## A note on the source CSVs
 
-The bundled CSV is the curriculum as provided, with one surgical correction: the
-Week 12 graded cell in the original export contained an accidental duplicated
-paste of the project title ("…Maji NdogoIntegrated Project…"), fixed to the single
-title. Everything else is byte-for-byte verbatim. Edit `src/data/schedule.csv` and
-re-run `npm run parser:check` to update the curriculum.
+The bundled CSVs are the curricula as provided:
+
+- **Data Analytics** — verbatim, with one surgical correction: the Week 12 graded
+  cell in the original export contained an accidental duplicated paste of the
+  project title ("…Maji NdogoIntegrated Project…"), fixed to the single title.
+- **Content Creation / Graphic Design** — the `CC` and `GD` sheets of the Creative
+  Tech self-paced workbook, exported cell-for-cell (columns A–E, blank rows kept;
+  the parser skips them).
+
+Edit a file in `src/data/` and re-run `npm run parser:check` to update a
+curriculum. To add a program, drop its CSV in `src/data/`, register it in
+`src/lib/programs.js` and `src/lib/schedule.js`, add its name to
+`t.programs` in `src/i18n/translations.js`, and give it a block in the
+verification script.

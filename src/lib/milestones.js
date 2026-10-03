@@ -21,17 +21,46 @@
 
 import { APP_URL } from './appUrl'
 
-/** @typedef {{ id: string, kind: 'module'|'programme', code: string|null, title: string, weeks: number, index: number, total: number, lessons: number }} Milestone */
+const PROGRAM_TITLES = { da: 'Data Analytics', cc: 'Content Creation', gd: 'Graphic Design' }
+
+/** @typedef {{ id: string, kind: 'module'|'programme', program: string, code: string|null, title: string, weeks: number, index: number, total: number, lessons: number }} Milestone */
+
+/*
+  MILESTONE IDS ARE SHARED ACROSS PROGRAMS, SO THEY MUST NOT COLLIDE
+  `alx-celebrated` is one array for every program, like completedLessons.
+  Module ids are already distinct — the code comes from the sheet (DA-1, CC-1,
+  GD-1). The programme id is not, so it carries the program for everyone except
+  Data Analytics, which keeps the bare 'programme' it has always written: that
+  is what DA learners already have in storage, and what the bridge carries.
+*/
+export function programmeId(programId = 'da') {
+  return programId === 'da' ? 'programme' : `programme:${programId}`
+}
+
+/**
+ * Every milestone id this program can ever produce, achieved or not.
+ *
+ * @param {{ modules: any[] } | null} schedule
+ * @param {string} programId
+ * @returns {Set<string>}
+ */
+export function milestoneIds(schedule, programId = 'da') {
+  if (!schedule) return new Set()
+  return new Set([...schedule.modules.map((m) => `module:${m.code}`), programmeId(programId)])
+}
 
 /**
  * Every milestone the learner has now reached, in curriculum order.
  *
- * @param {{ modules: any[], lessons: any[], totalLessons: number }} schedule
+ * @param {{ modules: any[], lessons: any[], totalLessons: number } | null} schedule
  * @param {Set<string>} completedSet
+ * @param {string} [programId] which program `schedule` is — 'da' by default
  * @returns {Milestone[]}
  */
-export function achievedMilestones(schedule, completedSet) {
+export function achievedMilestones(schedule, completedSet, programId = 'da') {
   const found = []
+  // No program chosen yet: nothing to have achieved.
+  if (!schedule) return found
 
   schedule.modules.forEach((module, i) => {
     const lessons = module.weeks.flatMap((w) => w.lessons)
@@ -42,6 +71,7 @@ export function achievedMilestones(schedule, completedSet) {
       found.push({
         id: `module:${module.code}`,
         kind: 'module',
+        program: programId,
         code: module.code,
         title: module.title,
         weeks: module.weeks.length,
@@ -56,10 +86,13 @@ export function achievedMilestones(schedule, completedSet) {
 
   if (schedule.totalLessons > 0 && schedule.lessons.every((l) => completedSet.has(l.id))) {
     found.push({
-      id: 'programme',
+      id: programmeId(programId),
       kind: 'programme',
+      program: programId,
       code: null,
-      title: 'Data Analytics',
+      // The localised program name is applied where the text is built; this
+      // is only the English fallback, used for nothing a learner reads.
+      title: PROGRAM_TITLES[programId] ?? PROGRAM_TITLES.da,
       weeks: schedule.weeks?.length ?? 14,
       lessons: schedule.totalLessons,
       index: schedule.modules.length,
@@ -160,15 +193,24 @@ export function postParts(milestone, t) {
  * is silence that looks exactly like the feature being broken — which is how
  * this was found.
  *
+ * SCOPED TO ONE PROGRAM
+ * The seen-list is shared by every program, so "not achieved" only means
+ * something for ids the current program owns. Pass `owned` (see
+ * {@link milestoneIds}) and every other id is left exactly as it is — otherwise
+ * a DA graduate opening Graphic Design would have their DA records pruned, and
+ * be congratulated all over again on switching back.
+ *
  * @param {Milestone[]} achieved
  * @param {string[]} seen
+ * @param {Set<string>} [owned] ids this program can produce; omit to treat every id as owned
  * @returns {string[]|null} the pruned list, or null when nothing needs pruning
  */
-export function pruneCelebrated(achieved, seen) {
+export function pruneCelebrated(achieved, seen, owned) {
   const list = Array.isArray(seen) ? seen : []
   const achievedIds = new Set(achieved.map((m) => m.id))
+  const keep = (id) => achievedIds.has(id) || (owned instanceof Set && !owned.has(id))
   // null rather than an equal array, so callers can skip a pointless write —
   // this runs on every change to completed lessons.
-  if (list.every((id) => achievedIds.has(id))) return null
-  return list.filter((id) => achievedIds.has(id))
+  if (list.every(keep)) return null
+  return list.filter(keep)
 }

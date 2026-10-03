@@ -13,8 +13,9 @@
  * tallies only, never identities):
  *   - an app-open pageview
  *   - whether the app runs installed (standalone) or in a browser tab
- *   - once per device per day: the learner's current week number and
- *     pacing status (behind / on-track / ahead) as bare event names
+ *   - once per device per day: the learner's program (da / cc / gd),
+ *     current week number and pacing status (behind / on-track / ahead)
+ *     as bare event names
  * Tracking is skipped entirely for browsers signalling Do Not Track or
  * Global Privacy Control.
  */

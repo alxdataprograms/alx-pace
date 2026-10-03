@@ -7,7 +7,7 @@ import { useLang } from '../i18n/LanguageContext'
  * Understanding line, and any graded milestone attached to the row.
  * Lesson titles are the official ALX course names and stay untranslated.
  */
-export default function LessonRow({ lesson, checked, onToggle, highlight = false }) {
+export default function LessonRow({ lesson, checked, onToggle, highlight = false, meta = '' }) {
   const { t } = useLang()
   const graded = lesson.graded
 
@@ -33,6 +33,14 @@ export default function LessonRow({ lesson, checked, onToggle, highlight = false
       </button>
 
       <div className="min-w-0 flex-1">
+        {meta && (
+          <p
+            dir="ltr"
+            className="text-start text-[11px] font-semibold uppercase tracking-wide text-ink-mute dark:text-paper/60"
+          >
+            {meta}
+          </p>
+        )}
         <p
           dir="ltr"
           className={`text-start text-sm font-semibold leading-snug transition-colors ${
@@ -55,9 +63,12 @@ export default function LessonRow({ lesson, checked, onToggle, highlight = false
         {graded && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <GradedBadge type={lesson.gradedType} />
-            <span dir="ltr" className="min-w-0 text-xs font-medium text-ink-soft dark:text-paper/75">
-              {graded.title}
-            </span>
+            {/* A graded-only row's title already IS the assessment name. */}
+            {lesson.kind !== 'assessment' && (
+              <span dir="ltr" className="min-w-0 text-xs font-medium text-ink-soft dark:text-paper/75">
+                {graded.title}
+              </span>
+            )}
           </div>
         )}
       </div>

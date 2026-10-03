@@ -5,10 +5,10 @@ import { formatHumanDate } from '../lib/formatDate'
 import { useLang } from '../i18n/LanguageContext'
 
 /** Shown when the learner's start date is in the future. */
-export default function CountdownState({ pacing, firstWeek }) {
+export default function CountdownState({ pacing, firstWeek, schedule, programName }) {
   const { t, lang } = useLang()
   const days = pacing.daysUntilStart
-  const finish = plannedEndDate(pacing.startDate)
+  const finish = plannedEndDate(pacing.startDate, schedule.totalDays)
   return (
     <section className="alx-card border-cobalt/25 text-center">
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime">
@@ -22,7 +22,7 @@ export default function CountdownState({ pacing, firstWeek }) {
         <span className="text-cobalt-600 dark:text-lime">{t.beginsInDays(days)}</span>
       </h2>
       <p className="mx-auto mt-2 max-w-sm text-sm text-ink-soft dark:text-paper/75">
-        {t.countdownBody(sloganForWeek(1, lang))}
+        {t.countdownBody(sloganForWeek(1, lang), programName, schedule.totalWeeks)}
       </p>
 
       {finish && (

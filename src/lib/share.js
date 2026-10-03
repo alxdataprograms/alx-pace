@@ -162,6 +162,18 @@ export function shareToLinkedIn(text, options = {}) {
  */
 export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytics-data-program'
 
+/*
+  Creative Tech has no verified space link yet, so its learners land on the
+  community root rather than in the Data Analytics space, which would be the
+  wrong room. Swap in the programme's own /c/… path once it is known.
+*/
+export const COMMUNITY_ROOT_URL = 'https://community.alxafrica.com/'
+
+/** The space a learner of `programId` should post in. */
+export function communityUrl(programId = 'da') {
+  return programId === 'da' ? COMMUNITY_URL : COMMUNITY_ROOT_URL
+}
+
 /**
  * Open the community with the post on the clipboard.
  *
@@ -178,8 +190,8 @@ export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytic
  * and iOS Safari's popup blocker takes the call.
  */
 export function shareToCommunity(text, options = {}) {
-  const { open = (url) => window.open(url, '_blank', 'noopener') } = options
+  const { open = (url) => window.open(url, '_blank', 'noopener'), program = 'da' } = options
   const copying = copyToClipboard(text)
-  const opened = Boolean(open(COMMUNITY_URL))
+  const opened = Boolean(open(communityUrl(program)))
   return copying.then((copied) => ({ copied, opened }))
 }

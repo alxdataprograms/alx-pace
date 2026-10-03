@@ -1,4 +1,4 @@
-import { Award, ClipboardCheck, FlaskConical, GraduationCap } from 'lucide-react'
+import { Award, ClipboardCheck, FlaskConical, GraduationCap, ListChecks, Medal } from 'lucide-react'
 import { useLang } from '../i18n/LanguageContext'
 
 // Category colors mirror alxafrica.com's track tints (violet / green / amber /
@@ -18,6 +18,17 @@ const CONFIG = {
     labelKey: 'badgeTest',
     Icon: ClipboardCheck,
     className: 'bg-amber text-navy-900',
+  },
+  // Creative Tech: end-of-module quizzes and end-of-course mastery projects.
+  quiz: {
+    labelKey: 'badgeQuiz',
+    Icon: ListChecks,
+    className: 'bg-amber text-navy-900',
+  },
+  'mastery-project': {
+    labelKey: 'badgeMastery',
+    Icon: Medal,
+    className: 'bg-alxgreen text-navy-900',
   },
   graded: {
     labelKey: 'badgeGraded',

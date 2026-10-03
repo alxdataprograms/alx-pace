@@ -9,11 +9,11 @@ import { useLang } from '../i18n/LanguageContext'
  * the app is fully usable before any date exists, and nudges the learner to set
  * one to unlock pacing.
  */
-export default function StartDatePrompt({ onSetStartDate }) {
+export default function StartDatePrompt({ onSetStartDate, schedule, programName }) {
   const { t, lang } = useLang()
   const today = toISODateString(new Date())
   const [value, setValue] = useState(today)
-  const finish = plannedEndDate(value)
+  const finish = plannedEndDate(value, schedule.totalDays)
 
   return (
     <section className="alx-card border-cobalt/25 text-center">
@@ -21,7 +21,7 @@ export default function StartDatePrompt({ onSetStartDate }) {
         <Rocket size={28} strokeWidth={2.25} aria-hidden="true" />
       </div>
       <h2 className="text-lg font-bold">{t.promptTitle}</h2>
-      <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft dark:text-paper/75">{t.promptBody}</p>
+      <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft dark:text-paper/75">{t.promptBody(programName, schedule.totalWeeks)}</p>
 
       <div className="mx-auto mt-4 flex max-w-sm flex-col gap-2 sm:flex-row">
         <input

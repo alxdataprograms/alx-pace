@@ -67,3 +67,27 @@ describe('translations', () => {
     expect(blank).toEqual([])
   })
 })
+
+/*
+  The LinkedIn post names the program the learner actually finished. It was
+  written when Data Analytics was the only one, and a Graphic Design learner
+  announcing a Data Analytics module would be worse than no post at all.
+*/
+describe('the milestone post', () => {
+  const m = (program) => ({ program, title: 'X', index: 1, total: 4, weeks: 2, lessons: 7 })
+
+  it.each(langs)('%s names Creative Tech programs, not Data Analytics', (lang) => {
+    const t = translations[lang]
+    for (const id of ['cc', 'gd']) {
+      expect(t.postModuleDone(m(id))).not.toMatch(/Data Analytics|تحليل البيانات/)
+      expect(t.postProgrammeDone(m(id))).not.toMatch(/Data Analytics|تحليل البيانات/)
+    }
+  })
+
+  it('reads exactly as before for Data Analytics', () => {
+    expect(translations.en.postModuleDone(m('da'))).toBe(
+      'I have just finished X — module 1 of 4 in the ALX Data Analytics programme.',
+    )
+    expect(translations.ar.postProgrammeDone(m('da'))).toContain('برنامج ALX لتحليل البيانات')
+  })
+})

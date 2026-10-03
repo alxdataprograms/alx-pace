@@ -11,8 +11,12 @@ import {
   runHandoff,
   sanitizeHandoff,
 } from './handoff'
-import { SCHEDULE } from './schedule'
+import { SCHEDULES } from './schedule'
+import { migrateLegacyProgram } from './programs'
 import { translations } from '../i18n/translations'
+
+// The old address only ever paced Data Analytics, so that is what arrives.
+const SCHEDULE = SCHEDULES.da
 
 const LESSON_IDS = new Set(SCHEDULE.lessons.map((l) => l.id))
 const LANGS = new Set(Object.keys(translations))
@@ -205,6 +209,44 @@ describe('applyHandoff', () => {
     expect(JSON.parse(storage.getItem('completedLessons'))).toEqual([])
   })
 
+  describe('program on arrival', () => {
+    it('pins a learner bringing progress to Data Analytics', () => {
+      const storage = fakeStorage()
+      const result = applyHandoff(clean, storage)
+      expect(storage.getItem('program')).toBe('da')
+      expect(result.keys).toContain('program')
+    })
+
+    it('pins DA over the "not chosen yet" left by an earlier empty visit', () => {
+      // Opened the new address once (migration wrote ''), then followed the
+      // bridge. Without this, their DA ticks would sit behind the picker.
+      const storage = fakeStorage({ program: '' })
+      applyHandoff({ completedLessons: [SOME_LESSON] }, storage)
+      expect(storage.getItem('program')).toBe('da')
+    })
+
+    it('never overrides a program the learner already chose here', () => {
+      const storage = fakeStorage({ program: 'gd' })
+      applyHandoff(clean, storage)
+      expect(storage.getItem('program')).toBe('gd')
+      // The DA ticks still land — namespaced ids, so switching to DA shows them.
+      expect(JSON.parse(storage.getItem('completedLessons'))).toEqual([SOME_LESSON])
+    })
+
+    it('leaves the choice open when the handoff carried no progress', () => {
+      const storage = fakeStorage()
+      applyHandoff({ 'alx-theme': 'dark' }, storage)
+      expect(storage.getItem('program')).toBeNull()
+    })
+
+    it('survives the legacy migration that runs after it in main.jsx', () => {
+      const storage = fakeStorage()
+      applyHandoff({ completedLessons: [SOME_LESSON] }, storage)
+      migrateLegacyProgram(storage)
+      expect(storage.getItem('program')).toBe('da')
+    })
+  })
+
   it('marks itself done even when the handoff carried nothing new', () => {
     const storage = fakeStorage()
     applyHandoff({}, storage)
@@ -290,6 +332,27 @@ describe('runHandoff', () => {
     expect(result.applied).toBe(true)
     expect(storage.getItem('startDate')).toBe('2026-01-15')
     expect(replaced).toEqual(['/alx-pace/'])
+  })
+
+  /*
+    The arrival, end to end, in the order main.jsx runs it: handoff, then the
+    legacy-program migration. Run the other way round, the migration would see
+    empty storage, record "no program chosen", and show a DA learner the picker.
+  */
+  it('lands an arrival in Data Analytics, never at the program picker', () => {
+    const storage = fakeStorage()
+    runHandoff({
+      location: location(
+        `#alx-handoff=${encodeHandoff({ startDate: '2026-01-15', completedLessons: [SOME_LESSON] })}`,
+      ),
+      history: { replaceState: () => {} },
+      storage,
+      validLessonIds: LESSON_IDS,
+      validLangs: LANGS,
+    })
+    migrateLegacyProgram(storage)
+    expect(storage.getItem('program')).toBe('da')
+    expect(JSON.parse(storage.getItem('completedLessons'))).toEqual([SOME_LESSON])
   })
 
   it('strips the fragment even when the payload was garbage', () => {

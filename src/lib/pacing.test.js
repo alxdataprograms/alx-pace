@@ -6,7 +6,24 @@ import {
   computePacing,
   plannedEndDate,
   progressPercent,
+  uniformTimeline,
+  weekForDay,
 } from './pacing'
+
+// The 14-week Data Analytics shape; other programs bring their own timeline.
+const T14 = uniformTimeline(14)
+
+// A Creative-Tech-style timeline: a half week followed by a buffer that starts
+// mid-week (exactly what scheduleModel emits for "Week 2 (½ week)" / "Week 2.5").
+const HALF = {
+  totalDays: 18,
+  totalWeeks: 2.6,
+  weeks: [
+    { week: 1, startDay: 0, endDay: 7 },
+    { week: 2, startDay: 7, endDay: 11, isHalf: true },
+    { week: 2.5, startDay: 11, endDay: 18, isBuffer: true },
+  ],
+}
 
 const addDays = (date, n) => {
   const d = new Date(date)
@@ -53,21 +70,26 @@ describe('toISODateString', () => {
 })
 
 describe('computePacing', () => {
+  it('reports no-program when there is no timeline to pace against', () => {
+    const p = computePacing('2026-03-01', new Date(2026, 2, 5), null)
+    expect(p.status).toBe('no-program')
+  })
+
   it('reports no-start-date when there is no valid start', () => {
-    const p = computePacing('', new Date(2026, 0, 1))
+    const p = computePacing('', new Date(2026, 0, 1), T14)
     expect(p.status).toBe('no-start-date')
     expect(p.currentWeek).toBe(1)
   })
 
   it('reports a future countdown when the start is ahead', () => {
     const start = '2026-03-10'
-    const p = computePacing(start, new Date(2026, 2, 1))
+    const p = computePacing(start, new Date(2026, 2, 1), T14)
     expect(p.status).toBe('future')
     expect(p.daysUntilStart).toBe(9)
   })
 
   it('is week 1 on the start day itself', () => {
-    const p = computePacing('2026-03-01', new Date(2026, 2, 1))
+    const p = computePacing('2026-03-01', new Date(2026, 2, 1), T14)
     expect(p.status).toBe('active')
     expect(p.currentWeek).toBe(1)
     expect(p.elapsedDays).toBe(0)
@@ -75,36 +97,71 @@ describe('computePacing', () => {
 
   it('advances one week every 7 elapsed days', () => {
     const start = new Date(2026, 2, 1)
-    expect(computePacing('2026-03-01', addDays(start, 6)).currentWeek).toBe(1)
-    expect(computePacing('2026-03-01', addDays(start, 7)).currentWeek).toBe(2)
-    expect(computePacing('2026-03-01', addDays(start, 14)).currentWeek).toBe(3)
+    expect(computePacing('2026-03-01', addDays(start, 6), T14).currentWeek).toBe(1)
+    expect(computePacing('2026-03-01', addDays(start, 7), T14).currentWeek).toBe(2)
+    expect(computePacing('2026-03-01', addDays(start, 14), T14).currentWeek).toBe(3)
   })
 
   it('stays active through the last day of week 14 (elapsed 97)', () => {
     const start = new Date(2026, 2, 1)
-    const p = computePacing('2026-03-01', addDays(start, 97))
+    const p = computePacing('2026-03-01', addDays(start, 97), T14)
     expect(p.status).toBe('active')
     expect(p.currentWeek).toBe(14)
   })
 
   it('flips to completed once past week 14 (elapsed 98)', () => {
     const start = new Date(2026, 2, 1)
-    const p = computePacing('2026-03-01', addDays(start, 98))
+    const p = computePacing('2026-03-01', addDays(start, 98), T14)
     expect(p.status).toBe('completed')
     expect(p.currentWeek).toBe(14)
     expect(p.rawWeek).toBe(15)
+  })
+
+  it('walks half and mid-week buffer weeks by day range', () => {
+    const start = new Date(2026, 2, 1)
+    expect(computePacing('2026-03-01', addDays(start, 7), HALF).currentWeek).toBe(2)
+    expect(computePacing('2026-03-01', addDays(start, 10), HALF).currentWeek).toBe(2)
+    expect(computePacing('2026-03-01', addDays(start, 11), HALF).currentWeek).toBe(2.5)
+    expect(computePacing('2026-03-01', addDays(start, 17), HALF).status).toBe('active')
+    expect(computePacing('2026-03-01', addDays(start, 18), HALF).status).toBe('completed')
+  })
+
+  it('reports the program length, not a hard-coded 14 weeks', () => {
+    const p = computePacing('2026-03-01', new Date(2026, 2, 1), uniformTimeline(32))
+    expect(p.totalWeeks).toBe(32)
+    expect(p.daysRemaining).toBe(224)
+  })
+})
+
+describe('weekForDay', () => {
+  it('matches floor(day / 7) + 1 on a uniform timeline', () => {
+    for (const day of [0, 6, 7, 13, 50, 97]) {
+      expect(weekForDay(T14, day).week).toBe(Math.floor(day / 7) + 1)
+    }
+  })
+
+  it('clamps to the first and last weeks', () => {
+    expect(weekForDay(T14, -3).week).toBe(1)
+    expect(weekForDay(T14, 500).week).toBe(14)
   })
 })
 
 describe('plannedEndDate', () => {
   it('is 97 days after the start (last day of week 14)', () => {
     const start = new Date(2026, 2, 1)
-    const end = plannedEndDate('2026-03-01')
+    const end = plannedEndDate('2026-03-01', T14.totalDays)
     expect(toISODateString(end)).toBe(toISODateString(addDays(start, 97)))
   })
 
-  it('is null without a valid start', () => {
-    expect(plannedEndDate('')).toBeNull()
+  it('follows the program length (32 weeks → day 223)', () => {
+    const start = new Date(2026, 2, 1)
+    const end = plannedEndDate('2026-03-01', 224)
+    expect(toISODateString(end)).toBe(toISODateString(addDays(start, 223)))
+  })
+
+  it('is null without a valid start or program length', () => {
+    expect(plannedEndDate('', 98)).toBeNull()
+    expect(plannedEndDate('2026-03-01', 0)).toBeNull()
   })
 })
 

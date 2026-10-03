@@ -41,7 +41,8 @@ jobs:
       - name: Unit tests
         run: npm test
 
-      # Deterministic data gate: 14 weeks, 4 modules, forward-fill, stable ids.
+      # Deterministic data gate for every program (DA 14 wks, CC 22, GD 32):
+      # timeline, modules, buffer/half weeks, forward-fill, stable unique ids.
       - name: Verify curriculum parser
         run: npm run parser:check
 

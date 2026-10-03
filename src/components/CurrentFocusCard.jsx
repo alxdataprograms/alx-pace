@@ -1,17 +1,26 @@
-import { Target } from 'lucide-react'
+import { CheckCircle2, RefreshCcw, Target } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
+
+// How many open items a catch-up week lists at once; ticking one pulls the
+// next oldest in, so the card stays short however far behind a learner is.
+const CATCH_UP_LIMIT = 6
 
 /**
  * "This Week's Focus" — the exact Module, Week and lessons the learner should
  * be working on right now, with inline checkboxes.
+ *
+ * Buffer weeks (Creative Tech) have no new content, so the card turns into a
+ * catch-up list: the oldest still-open items from earlier weeks.
  */
-export default function CurrentFocusCard({ week, completedSet, onToggle }) {
+export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp = [] }) {
   const { t } = useLang()
   if (!week) return null
 
+  const isCatchUp = week.isBuffer && week.lessons.length === 0
   const done = week.lessons.filter((l) => completedSet.has(l.id)).length
   const total = week.lessons.length
+  const Icon = isCatchUp ? RefreshCcw : Target
 
   return (
     <section
@@ -21,11 +30,11 @@ export default function CurrentFocusCard({ week, completedSet, onToggle }) {
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">
           <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-lime text-navy-900">
-            <Target size={20} strokeWidth={2.5} aria-hidden="true" />
+            <Icon size={20} strokeWidth={2.5} aria-hidden="true" />
           </span>
           <div className="min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
-              {t.focusEyebrow}
+              {isCatchUp ? t.catchUpEyebrow : t.focusEyebrow}
             </p>
             <h2 className="truncate text-base font-bold leading-tight">
               <span dir="ltr">
@@ -34,26 +43,79 @@ export default function CurrentFocusCard({ week, completedSet, onToggle }) {
             </h2>
           </div>
         </div>
-        <span className="flex-none rounded-full bg-navy-900/5 px-2.5 py-1 text-xs font-bold tabular-nums dark:bg-white/10">
-          {done}/{total}
-        </span>
+        {!isCatchUp && (
+          <span className="flex-none rounded-full bg-navy-900/5 px-2.5 py-1 text-xs font-bold tabular-nums dark:bg-white/10">
+            {done}/{total}
+          </span>
+        )}
       </div>
 
-      <p dir="ltr" className="mb-3 text-start text-sm font-medium text-ink-soft dark:text-paper/75">
-        {week.moduleTitle}
-      </p>
+      {isCatchUp ? (
+        <CatchUpList items={catchUp} completedSet={completedSet} onToggle={onToggle} />
+      ) : (
+        <>
+          <p dir="ltr" className="mb-3 text-start text-sm font-medium text-ink-soft dark:text-paper/75">
+            {week.moduleTitle}
+          </p>
 
+          <ul className="-mx-1 space-y-0.5">
+            {week.lessons.map((lesson) => (
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                checked={completedSet.has(lesson.id)}
+                onToggle={onToggle}
+                highlight
+              />
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  )
+}
+
+function CatchUpList({ items, completedSet, onToggle }) {
+  const { t } = useLang()
+
+  if (items.length === 0) {
+    return (
+      <p className="flex items-start gap-2 rounded-xl bg-alxgreen/10 p-3 text-sm font-medium">
+        <CheckCircle2
+          size={18}
+          className="mt-0.5 flex-none text-alxgreen-700 dark:text-alxgreen"
+          aria-hidden="true"
+        />
+        <span>{t.catchUpAllClear}</span>
+      </p>
+    )
+  }
+
+  const shown = items.slice(0, CATCH_UP_LIMIT)
+  const more = items.length - shown.length
+
+  return (
+    <>
+      <p className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75">
+        {t.catchUpBody(items.length)}
+      </p>
       <ul className="-mx-1 space-y-0.5">
-        {week.lessons.map((lesson) => (
+        {shown.map((lesson) => (
           <LessonRow
             key={lesson.id}
             lesson={lesson}
             checked={completedSet.has(lesson.id)}
             onToggle={onToggle}
+            meta={`${lesson.weekLabel} · ${lesson.moduleCode}`}
             highlight
           />
         ))}
       </ul>
-    </section>
+      {more > 0 && (
+        <p className="mt-2 px-1 text-xs font-semibold text-cobalt-600 dark:text-lime">
+          {t.catchUpMore(more)}
+        </p>
+      )}
+    </>
   )
 }

@@ -5,6 +5,7 @@ import { toISODateString } from './pacing'
 // Minimal hand-built schedule so counts are fully controlled.
 const schedule = {
   totalLessons: 4,
+  totalDays: 21,
   lessons: [
     { id: 'a', week: 1 },
     { id: 'b', week: 1 },
@@ -71,6 +72,29 @@ describe('computePaceStatus', () => {
     expected.setDate(expected.getDate() + 24)
     expect(toISODateString(s.projectedFinish)).toBe(toISODateString(expected))
     expect(typeof s.finishDeltaDays).toBe('number')
+  })
+
+  it('lists the open earlier-week items oldest first and flags buffer weeks', () => {
+    const withBuffer = {
+      ...schedule,
+      weeks: [...schedule.weeks, { week: 4, isBuffer: true, lessons: [], gradedItems: [] }],
+    }
+    const s = computePaceStatus(
+      withBuffer,
+      new Set(['b']),
+      activePacing({ currentWeek: 4, elapsedDays: 21 }),
+      new Date(2026, 2, 22),
+    )
+    expect(s.isBuffer).toBe(true)
+    expect(s.behindItems.map((l) => l.id)).toEqual(['a', 'c', 'd'])
+    expect(s.behindCount).toBe(3)
+    expect(s.weekTotal).toBe(0)
+  })
+
+  it('targets the end of the program, not a fixed 14 weeks', () => {
+    const s = computePaceStatus(schedule, new Set(), activePacing(), new Date(2026, 2, 8))
+    // start 2026-03-01 + 21 days - 1 = 2026-03-21
+    expect(toISODateString(s.plannedEnd)).toBe('2026-03-21')
   })
 
   it('has no projection before the first lesson is completed', () => {

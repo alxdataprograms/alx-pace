@@ -50,9 +50,11 @@ export function trackAppOpen() {
 
 /**
  * Aggregate pacing snapshot — at most once per device per calendar day, so
- * the dashboard reads as "daily active learners at week N / status X".
+ * the dashboard reads as "daily active learners in program P / at week N /
+ * status X". DA keeps its original bare `week-N` event names so existing
+ * dashboards stay continuous; other programs prefix theirs (`cc-week-N`).
  */
-export function trackPacingDaily(paceStatus) {
+export function trackPacingDaily(paceStatus, program = 'da') {
   if (!enabled() || !paceStatus) return
   try {
     const today = new Date().toDateString()
@@ -61,6 +63,7 @@ export function trackPacingDaily(paceStatus) {
   } catch {
     return // storage unavailable — skip rather than over-count
   }
-  send(`week-${paceStatus.week}`)
+  send(`program-${program}`)
+  send(program === 'da' ? `week-${paceStatus.week}` : `${program}-week-${paceStatus.week}`)
   send(`status-${paceStatus.status}`)
 }

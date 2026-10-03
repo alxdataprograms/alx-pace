@@ -19,7 +19,23 @@ const arCount = (n, { one, two, few, many }) => {
   return `${n} ${many}`
 }
 
+/*
+  The program as it is named inside a LinkedIn post, per language. Data
+  Analytics reads exactly as it did before Creative Tech existed. French keeps
+  the English programme names, as it always has for Data Analytics; Arabic
+  attaches the "for" prefix (لـ) the DA sentence was written with.
+*/
+const POST_PROGRAM = {
+  en: { da: 'ALX Data Analytics', cc: 'ALX Content Creation', gd: 'ALX Graphic Design' },
+  fr: { da: 'ALX Data Analytics', cc: 'ALX Content Creation', gd: 'ALX Graphic Design' },
+  ar: { da: 'ALX لتحليل البيانات', cc: 'ALX لصناعة المحتوى', gd: 'ALX للتصميم الجرافيكي' },
+}
+const postProgram = (lang, m) => POST_PROGRAM[lang][m.program] ?? POST_PROGRAM[lang].da
+
 const frPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`
+
+// Arabic-Indic digits (١٤) for the week counts that used to be hard-coded.
+const arNum = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d])
 
 export const translations = {
   en: {
@@ -27,8 +43,24 @@ export const translations = {
     locale: 'en',
     langName: 'English',
 
-    tagline: 'Data Analytics · Self-Pace',
-    trackChip: '14-Week Track',
+    tagline: (program) => (program ? `${program} · Self-Pace` : 'Self-Pace Tracker'),
+    trackChip: (weeks) => `${weeks}-Week Track`,
+
+    programs: { da: 'Data Analytics', cc: 'Content Creation', gd: 'Graphic Design' },
+    creativeTech: 'Creative Tech',
+    pickerTitle: 'Which program are you in?',
+    pickerBody:
+      "Pick your ALX self-paced program and we'll pace its curriculum for you — week by week, no login needed.",
+    pickerTrackTitle: 'Which Creative Tech track?',
+    pickerTrackBody: 'Creative Tech has two self-paced tracks. Pick yours to load its weekly plan.',
+    programMeta: (weeks, modules) => `${weeks} weeks · ${modules} modules`,
+    creativeTechMeta: 'Content Creation or Graphic Design',
+    pickerSwitchNote: 'Your progress in each program is saved separately on this device.',
+    back: 'Back',
+    chooseProgram: 'Choose your program',
+    change: 'change',
+    changeProgram: 'Change your program',
+    selected: 'Selected',
 
     welcomeBack: () => `Welcome back, `,
     welcomeBackAfterName: `!`,
@@ -45,8 +77,8 @@ export const translations = {
     doHardThings: 'Do Hard Things',
 
     promptTitle: 'Set your course start date',
-    promptBody:
-      "Tell us when you started (or plan to start) and we'll pace the full 14-week Data Analytics track for you — week by week, no login needed.",
+    promptBody: (program, weeks) =>
+      `Tell us when you started (or plan to start) and we'll pace the full ${weeks}-week ${program} track for you — week by week, no login needed.`,
     startPacing: 'Start pacing',
     startedToday: 'I started today',
     courseStartDate: 'Course start date',
@@ -54,16 +86,16 @@ export const translations = {
     getReady: 'Get Ready',
     beginsIn: 'Course begins in',
     beginsInDays: (n) => `${n} ${n === 1 ? 'day' : 'days'}`,
-    countdownBody: (slogan) =>
-      `Your 14-week Data Analytics journey is queued up. ${slogan} — the countdown is part of the grind.`,
+    countdownBody: (slogan, program, weeks) =>
+      `Your ${weeks}-week ${program} journey is queued up. ${slogan} — the countdown is part of the grind.`,
     firstUp: (weekLabel) => `First up · ${weekLabel}`,
 
     completedTitle: 'Course Completed!',
     finishLineTitle: 'You Reached the Finish Line!',
-    completedBody:
-      'Every lesson checked off across all 14 weeks. That is what doing hard things looks like.',
-    finishLineBody:
-      'The 14-week timeline is complete. Wrap up any remaining items below to finish 100%.',
+    completedBody: (weeks) =>
+      `Every lesson checked off across all ${weeks} weeks. That is what doing hard things looks like.`,
+    finishLineBody: (weeks) =>
+      `The ${weeks}-week timeline is complete. Wrap up any remaining items below to finish 100%.`,
     curriculumComplete: 'Curriculum complete',
     gradedMilestonesStat: 'Graded milestones',
     lessonsComplete: (done, total) => `${done} of ${total} lessons complete`,
@@ -97,8 +129,20 @@ export const translations = {
     badgeProject: 'Integrated Project',
     badgeTest: 'Graded Test',
     badgeGraded: 'Graded',
+    badgeQuiz: 'Quiz',
+    badgeMastery: 'Mastery Project',
 
-    roadmapTitle: 'Full 14-Week Roadmap',
+    bufferChip: 'Buffer',
+    halfWeekChip: '½ week',
+    bufferRoadmapNote: 'Catch-up week — no new content',
+    bufferStatus: 'Catch-up week',
+    catchUpEyebrow: 'Catch-up Week',
+    catchUpBody: (n) =>
+      `No new content this week — use it to clear the ${n} ${n === 1 ? 'item' : 'items'} still open from earlier weeks.`,
+    catchUpAllClear: "You're all caught up! Rest, review, or get a head start on next week.",
+    catchUpMore: (n) => `+${n} more open — see the roadmap below`,
+
+    roadmapTitle: (weeks) => `Full ${weeks}-Week Roadmap`,
     weekRange: (a, b) => (a === b ? `Week ${a}` : `Weeks ${a}–${b}`),
     current: 'Current',
     doneCount: (done, total) => `${done}/${total} done`,
@@ -113,10 +157,11 @@ export const translations = {
     lightMode: 'Light mode',
     darkMode: 'Dark mode',
     switchTheme: (target) => `Switch to ${target} mode`,
-    resetConfirm: "Reset name, start date and all checked lessons? This can't be undone.",
+    resetConfirm: "Reset your program, name, start date and all checked lessons? This can't be undone.",
     resetYes: 'Yes, reset',
     resetButton: 'Reset Profile Data',
-    footerNote: 'ALX Data Analytics · Self-Pace Tracker · Your data stays on this device.',
+    footerNote: (program) =>
+      `ALX${program ? ` ${program}` : ''} · Self-Pace Tracker · Your data stays on this device.`,
 
     enableReminders: 'Enable weekly reminders',
     enabling: 'Enabling…',
@@ -153,9 +198,9 @@ export const translations = {
     // share that I have embarked on…", and that is what makes a campaign post
     // read as homework instead of as somebody saying something.
     postModuleDone: (m) =>
-      `I have just finished ${m.title} — module ${m.index} of ${m.total} in the ALX Data Analytics programme.`,
+      `I have just finished ${m.title} — module ${m.index} of ${m.total} in the ${postProgram('en', m)} programme.`,
     postProgrammeDone: (m) =>
-      `I have finished the ALX Data Analytics programme: ${m.weeks} weeks, ${m.lessons} lessons, all ${m.total} modules.`,
+      `I have finished the ${postProgram('en', m)} programme: ${m.weeks} weeks, ${m.lessons} lessons, all ${m.total} modules.`,
     dismiss: 'Dismiss',
 
     reminderTitle: (week, total) => `ALX Pace — Week ${week} of ${total}`,
@@ -165,6 +210,10 @@ export const translations = {
       `${n} graded ${n === 1 ? 'item' : 'items'} due this week — keep your pace.`,
     reminderOnTrack: (left) =>
       `You're on track — ${left} ${left === 1 ? 'lesson' : 'lessons'} left this week.`,
+    reminderBuffer: (n) =>
+      n > 0
+        ? `Catch-up week — ${n} ${n === 1 ? 'item' : 'items'} to clear.`
+        : "Catch-up week — you're all caught up.",
 
     edit: 'edit',
     targetFinish: (date) => `Finish by ${date}`,
@@ -214,8 +263,26 @@ export const translations = {
     locale: 'fr',
     langName: 'Français',
 
-    tagline: 'Data Analytics · À ton rythme',
-    trackChip: 'Parcours 14 semaines',
+    tagline: (program) => (program ? `${program} · À ton rythme` : 'Suivi à ton rythme'),
+    trackChip: (weeks) => `Parcours ${weeks} semaines`,
+
+    programs: { da: 'Data Analytics', cc: 'Création de contenu', gd: 'Design graphique' },
+    creativeTech: 'Creative Tech',
+    pickerTitle: 'Quel est ton programme ?',
+    pickerBody:
+      'Choisis ton programme ALX à ton rythme et nous rythmerons son parcours pour toi — semaine par semaine, sans compte.',
+    pickerTrackTitle: 'Quel parcours Creative Tech ?',
+    pickerTrackBody:
+      'Creative Tech propose deux parcours à ton rythme. Choisis le tien pour charger son plan hebdomadaire.',
+    programMeta: (weeks, modules) => `${weeks} semaines · ${modules} modules`,
+    creativeTechMeta: 'Création de contenu ou Design graphique',
+    pickerSwitchNote:
+      'Ta progression dans chaque programme est enregistrée séparément sur cet appareil.',
+    back: 'Retour',
+    chooseProgram: 'Choisis ton programme',
+    change: 'changer',
+    changeProgram: 'Changer de programme',
+    selected: 'Sélectionné',
 
     welcomeBack: () => `Bon retour, `,
     welcomeBackAfterName: ` !`,
@@ -232,8 +299,8 @@ export const translations = {
     doHardThings: 'Fais des choses difficiles',
 
     promptTitle: 'Définis ta date de début',
-    promptBody:
-      'Dis-nous quand tu as commencé (ou comptes commencer) et nous rythmerons pour toi les 14 semaines du parcours Data Analytics — semaine par semaine, sans compte.',
+    promptBody: (program, weeks) =>
+      `Dis-nous quand tu as commencé (ou comptes commencer) et nous rythmerons pour toi les ${weeks} semaines du parcours ${program} — semaine par semaine, sans compte.`,
     startPacing: 'Lancer le suivi',
     startedToday: "J'ai commencé aujourd'hui",
     courseStartDate: 'Date de début du cours',
@@ -241,16 +308,16 @@ export const translations = {
     getReady: 'Prépare-toi',
     beginsIn: 'Le cours commence dans',
     beginsInDays: (n) => frPlural(n, 'jour', 'jours'),
-    countdownBody: (slogan) =>
-      `Ton parcours Data Analytics de 14 semaines est prêt. ${slogan} — le compte à rebours fait partie de l'effort.`,
+    countdownBody: (slogan, program, weeks) =>
+      `Ton parcours ${program} de ${weeks} semaines est prêt. ${slogan} — le compte à rebours fait partie de l'effort.`,
     firstUp: (weekLabel) => `Pour commencer · ${weekLabel}`,
 
     completedTitle: 'Cours terminé !',
     finishLineTitle: "Tu as atteint la ligne d'arrivée !",
-    completedBody:
-      'Toutes les leçons des 14 semaines sont cochées. Voilà ce que ça donne de faire des choses difficiles.',
-    finishLineBody:
-      'Les 14 semaines sont écoulées. Termine les éléments restants ci-dessous pour atteindre 100 %.',
+    completedBody: (weeks) =>
+      `Toutes les leçons des ${weeks} semaines sont cochées. Voilà ce que ça donne de faire des choses difficiles.`,
+    finishLineBody: (weeks) =>
+      `Les ${weeks} semaines sont écoulées. Termine les éléments restants ci-dessous pour atteindre 100 %.`,
     curriculumComplete: 'Parcours terminé',
     gradedMilestonesStat: 'Évaluations notées',
     lessonsComplete: (done, total) => `${done} leçons terminées sur ${total}`,
@@ -283,8 +350,21 @@ export const translations = {
     badgeProject: 'Projet intégré',
     badgeTest: 'Test noté',
     badgeGraded: 'Noté',
+    badgeQuiz: 'Quiz',
+    badgeMastery: 'Projet de maîtrise',
 
-    roadmapTitle: 'Feuille de route — 14 semaines',
+    bufferChip: 'Rattrapage',
+    halfWeekChip: '½ semaine',
+    bufferRoadmapNote: 'Semaine de rattrapage — pas de nouveau contenu',
+    bufferStatus: 'Semaine de rattrapage',
+    catchUpEyebrow: 'Semaine de rattrapage',
+    catchUpBody: (n) =>
+      `Pas de nouveau contenu cette semaine — profites-en pour terminer ${frPlural(n, 'élément encore ouvert', 'éléments encore ouverts')} des semaines précédentes.`,
+    catchUpAllClear:
+      "Tu es à jour ! Repose-toi, révise ou prends de l'avance sur la semaine prochaine.",
+    catchUpMore: (n) => `+${n} encore ouvert(s) — voir la feuille de route ci-dessous`,
+
+    roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
     current: 'En cours',
     doneCount: (done, total) => `${done}/${total} faits`,
@@ -300,10 +380,11 @@ export const translations = {
     darkMode: 'Mode sombre',
     switchTheme: (target) => `Passer en ${target}`,
     resetConfirm:
-      'Réinitialiser le nom, la date de début et toutes les leçons cochées ? Action irréversible.',
+      'Réinitialiser le programme, le nom, la date de début et toutes les leçons cochées ? Action irréversible.',
     resetYes: 'Oui, réinitialiser',
     resetButton: 'Réinitialiser mes données',
-    footerNote: 'ALX Data Analytics · Suivi à ton rythme · Tes données restent sur cet appareil.',
+    footerNote: (program) =>
+      `ALX${program ? ` ${program}` : ''} · Suivi à ton rythme · Tes données restent sur cet appareil.`,
 
     enableReminders: 'Activer les rappels hebdomadaires',
     enabling: 'Activation…',
@@ -331,9 +412,9 @@ export const translations = {
     roadmapModuleDone: 'Terminé',
     roadmapProgrammeDone: 'Programme entièrement terminé',
     postModuleDone: (m) =>
-      `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ALX Data Analytics.`,
+      `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ${postProgram('fr', m)}.`,
     postProgrammeDone: (m) =>
-      `J’ai terminé le parcours ALX Data Analytics : ${m.weeks} semaines, ${m.lessons} leçons, les ${m.total} modules.`,
+      `J’ai terminé le parcours ${postProgram('fr', m)} : ${m.weeks} semaines, ${m.lessons} leçons, les ${m.total} modules.`,
     dismiss: 'Fermer',
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
@@ -343,6 +424,10 @@ export const translations = {
       `${frPlural(n, 'évaluation notée à rendre', 'évaluations notées à rendre')} cette semaine — garde le rythme.`,
     reminderOnTrack: (left) =>
       `Tu es dans le rythme — ${frPlural(left, 'leçon restante', 'leçons restantes')} cette semaine.`,
+    reminderBuffer: (n) =>
+      n > 0
+        ? `Semaine de rattrapage — ${frPlural(n, 'élément à terminer', 'éléments à terminer')}.`
+        : 'Semaine de rattrapage — tu es à jour.',
 
     edit: 'modifier',
     targetFinish: (date) => `Fin prévue : ${date}`,
@@ -393,8 +478,25 @@ export const translations = {
     locale: 'ar',
     langName: 'العربية',
 
-    tagline: 'تحليل البيانات · وتيرة ذاتية',
-    trackChip: 'مسار ١٤ أسبوعًا',
+    tagline: (program) => (program ? `${program} · وتيرة ذاتية` : 'متابعة بالوتيرة الذاتية'),
+    trackChip: (weeks) => `مسار ${arNum(weeks)} أسبوعًا`,
+
+    programs: { da: 'تحليل البيانات', cc: 'صناعة المحتوى', gd: 'التصميم الجرافيكي' },
+    creativeTech: 'التقنية الإبداعية',
+    pickerTitle: 'في أي برنامج أنت؟',
+    pickerBody:
+      'اختر برنامجك من ALX بالوتيرة الذاتية وسننظّم لك منهجه — أسبوعًا بأسبوع، دون تسجيل دخول.',
+    pickerTrackTitle: 'أي مسار في التقنية الإبداعية؟',
+    pickerTrackBody: 'تضمّ التقنية الإبداعية مسارين بالوتيرة الذاتية. اختر مسارك لتحميل خطته الأسبوعية.',
+    programMeta: (weeks, modules) =>
+      `${arNum(weeks)} أسبوعًا · ${arNum(modules)} ${modules >= 3 && modules <= 10 ? 'وحدات' : 'وحدة'}`,
+    creativeTechMeta: 'صناعة المحتوى أو التصميم الجرافيكي',
+    pickerSwitchNote: 'يُحفَظ تقدّمك في كل برنامج بشكل منفصل على هذا الجهاز.',
+    back: 'رجوع',
+    chooseProgram: 'اختر برنامجك',
+    change: 'تغيير',
+    changeProgram: 'تغيير البرنامج',
+    selected: 'مُختار',
 
     welcomeBack: () => `أهلاً بعودتك، `,
     welcomeBackAfterName: `!`,
@@ -411,8 +513,8 @@ export const translations = {
     doHardThings: 'افعل الأشياء الصعبة',
 
     promptTitle: 'حدّد تاريخ بداية الدورة',
-    promptBody:
-      'أخبرنا متى بدأت (أو متى تنوي البدء) وسننظّم لك مسار تحليل البيانات الكامل على ١٤ أسبوعًا — أسبوعًا بأسبوع، دون تسجيل دخول.',
+    promptBody: (program, weeks) =>
+      `أخبرنا متى بدأت (أو متى تنوي البدء) وسننظّم لك مسار ${program} الكامل على ${arNum(weeks)} أسبوعًا — أسبوعًا بأسبوع، دون تسجيل دخول.`,
     startPacing: 'ابدأ المتابعة',
     startedToday: 'بدأت اليوم',
     courseStartDate: 'تاريخ بداية الدورة',
@@ -420,14 +522,16 @@ export const translations = {
     getReady: 'استعدّ',
     beginsIn: 'تبدأ الدورة بعد',
     beginsInDays: (n) => arCount(n, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا' }),
-    countdownBody: (slogan) =>
-      `رحلتك في تحليل البيانات على مدى ١٤ أسبوعًا جاهزة. ${slogan} — العدّ التنازلي جزء من الاجتهاد.`,
+    countdownBody: (slogan, program, weeks) =>
+      `رحلتك في ${program} على مدى ${arNum(weeks)} أسبوعًا جاهزة. ${slogan} — العدّ التنازلي جزء من الاجتهاد.`,
     firstUp: (weekLabel) => `نبدأ بـ · ${weekLabel}`,
 
     completedTitle: 'أكملت الدورة!',
     finishLineTitle: 'وصلت إلى خط النهاية!',
-    completedBody: 'أنجزت كل دروس الأسابيع الأربعة عشر. هكذا يبدو فعل الأشياء الصعبة.',
-    finishLineBody: 'اكتملت مدة الأسابيع الأربعة عشر. أنهِ العناصر المتبقية أدناه لتصل إلى ١٠٠٪.',
+    completedBody: (weeks) =>
+      `أنجزت كل الدروس على مدى ${arNum(weeks)} أسبوعًا. هكذا يبدو فعل الأشياء الصعبة.`,
+    finishLineBody: (weeks) =>
+      `اكتملت مدة المسار البالغة ${arNum(weeks)} أسبوعًا. أنهِ العناصر المتبقية أدناه لتصل إلى ١٠٠٪.`,
     curriculumComplete: 'اكتمال المنهج',
     gradedMilestonesStat: 'التقييمات المحتسبة',
     lessonsComplete: (done, total) => `اكتمل ${done} من ${total} درسًا`,
@@ -461,8 +565,20 @@ export const translations = {
     badgeProject: 'مشروع متكامل',
     badgeTest: 'اختبار محتسب',
     badgeGraded: 'محتسب',
+    badgeQuiz: 'اختبار قصير',
+    badgeMastery: 'مشروع الإتقان',
 
-    roadmapTitle: 'خارطة الأسابيع الأربعة عشر',
+    bufferChip: 'استدراك',
+    halfWeekChip: 'نصف أسبوع',
+    bufferRoadmapNote: 'أسبوع استدراك — لا محتوى جديد',
+    bufferStatus: 'أسبوع استدراك',
+    catchUpEyebrow: 'أسبوع الاستدراك',
+    catchUpBody: (n) =>
+      `لا محتوى جديد هذا الأسبوع — استغلّه لإنهاء ما تبقّى مفتوحًا من الأسابيع السابقة (${n}).`,
+    catchUpAllClear: 'لا شيء متأخّر! استرح أو راجع أو ابدأ مبكرًا في الأسبوع القادم.',
+    catchUpMore: (n) => `+${n} أخرى مفتوحة — راجع الخارطة أدناه`,
+
+    roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${arNum(weeks)} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),
     current: 'الحالي',
     doneCount: (done, total) => `أُنجز ${done}/${total}`,
@@ -477,10 +593,11 @@ export const translations = {
     lightMode: 'الوضع الفاتح',
     darkMode: 'الوضع الداكن',
     switchTheme: (target) => `التبديل إلى ${target}`,
-    resetConfirm: 'إعادة تعيين الاسم وتاريخ البداية وكل الدروس المكتملة؟ لا يمكن التراجع.',
+    resetConfirm: 'إعادة تعيين البرنامج والاسم وتاريخ البداية وكل الدروس المكتملة؟ لا يمكن التراجع.',
     resetYes: 'نعم، أعد التعيين',
     resetButton: 'إعادة تعيين بياناتي',
-    footerNote: 'ALX لتحليل البيانات · متابعة بوتيرتك · بياناتك تبقى على هذا الجهاز.',
+    footerNote: (program) =>
+      `ALX${program ? ` · ${program}` : ''} · متابعة بوتيرتك · بياناتك تبقى على هذا الجهاز.`,
 
     enableReminders: 'تفعيل التذكيرات الأسبوعية',
     enabling: 'جارٍ التفعيل…',
@@ -506,9 +623,9 @@ export const translations = {
     roadmapModuleDone: 'مكتملة',
     roadmapProgrammeDone: 'اكتمل البرنامج بالكامل',
     postModuleDone: (m) =>
-      `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ALX لتحليل البيانات.`,
+      `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ${postProgram('ar', m)}.`,
     postProgrammeDone: (m) =>
-      `أنهيت برنامج ALX لتحليل البيانات: ${m.weeks} أسبوعاً، و${m.lessons} درساً، وكل الوحدات ${m.total}.`,
+      `أنهيت برنامج ${postProgram('ar', m)}: ${m.weeks} أسبوعاً، و${m.lessons} درساً، وكل الوحدات ${m.total}.`,
     dismiss: 'إغلاق',
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
@@ -518,6 +635,10 @@ export const translations = {
       `${arCount(n, { one: 'تقييم محتسب مستحق', two: 'تقييمان محتسبان مستحقان', few: 'تقييمات محتسبة مستحقة', many: 'تقييمًا محتسبًا مستحقًا' })} هذا الأسبوع — حافظ على وتيرتك.`,
     reminderOnTrack: (left) =>
       `أنت على المسار الصحيح — ${arCount(left, { one: 'درس واحد متبقٍ', two: 'درسان متبقيان', few: 'دروس متبقية', many: 'درسًا متبقيًا' })} هذا الأسبوع.`,
+    reminderBuffer: (n) =>
+      n > 0
+        ? `أسبوع استدراك — ${arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' })} للإنهاء.`
+        : 'أسبوع استدراك — لا شيء متأخّر.',
 
     edit: 'تعديل',
     targetFinish: (date) => `الانتهاء بحلول ${date}`,

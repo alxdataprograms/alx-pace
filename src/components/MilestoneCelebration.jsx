@@ -71,7 +71,7 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
     mentions pasting.
   */
   const shareCommunity = async () => {
-    const { copied } = await shareToCommunity(post)
+    const { copied } = await shareToCommunity(post, { program: milestone.program })
     setStatus(copied ? t.milestoneCommunityOpened : t.milestoneOpened)
   }
 

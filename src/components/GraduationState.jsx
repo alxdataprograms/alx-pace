@@ -1,8 +1,14 @@
 import { PartyPopper, Trophy } from 'lucide-react'
 import { useLang } from '../i18n/LanguageContext'
 
-/** Shown when the current date is past Week 14. */
-export default function GraduationState({ completedCount, totalLessons, gradedDone, totalGraded }) {
+/** Shown when the current date is past the program's final week. */
+export default function GraduationState({
+  completedCount,
+  totalLessons,
+  gradedDone,
+  totalGraded,
+  totalWeeks,
+}) {
   const { t } = useLang()
   const percent = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0
   const finished = completedCount >= totalLessons && totalLessons > 0
@@ -26,7 +32,7 @@ export default function GraduationState({ completedCount, totalLessons, gradedDo
           <PartyPopper className="inline h-6 w-6" aria-hidden="true" />
         </h2>
         <p className="mx-auto mt-2 max-w-sm text-sm text-white/80">
-          {finished ? t.completedBody : t.finishLineBody}
+          {finished ? t.completedBody(totalWeeks) : t.finishLineBody(totalWeeks)}
         </p>
 
         <div className="mt-5 grid grid-cols-2 gap-3">

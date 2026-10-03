@@ -35,7 +35,9 @@ export default function PaceStatusCard({ paceStatus, today = new Date() }) {
 
   const parts = [
     t.weekOf(paceStatus.week, paceStatus.totalWeeks),
-    t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal),
+    paceStatus.isBuffer
+      ? t.bufferStatus
+      : t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal),
   ]
   if (paceStatus.gradedLeft > 0) {
     parts.push(t.gradedStillDue(paceStatus.gradedLeft))

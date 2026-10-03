@@ -129,7 +129,7 @@ self.addEventListener('periodicsync', (event) => {
       const state = await readReminderState()
       const title = (state && state.title) || 'ALX Pace'
       const body =
-        ((state && state.body) || 'Your weekly Data Analytics check-in is ready.') +
+        ((state && state.body) || 'Your weekly self-pace check-in is ready.') +
         ' Tap to open your tracker.'
       await self.registration.showNotification(title, {
         ...NOTIFICATION_BASE,
