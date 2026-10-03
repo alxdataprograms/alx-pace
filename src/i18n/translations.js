@@ -131,6 +131,7 @@ export const translations = {
     badgeGraded: 'Graded',
     badgeQuiz: 'Quiz',
     badgeMastery: 'Mastery Project',
+    activityChip: 'Activity',
 
     bufferChip: 'Buffer',
     halfWeekChip: '½ week',
@@ -352,6 +353,7 @@ export const translations = {
     badgeGraded: 'Noté',
     badgeQuiz: 'Quiz',
     badgeMastery: 'Projet de maîtrise',
+    activityChip: 'Activité',
 
     bufferChip: 'Rattrapage',
     halfWeekChip: '½ semaine',
@@ -567,6 +569,7 @@ export const translations = {
     badgeGraded: 'محتسب',
     badgeQuiz: 'اختبار قصير',
     badgeMastery: 'مشروع الإتقان',
+    activityChip: 'نشاط',
 
     bufferChip: 'استدراك',
     halfWeekChip: 'نصف أسبوع',
