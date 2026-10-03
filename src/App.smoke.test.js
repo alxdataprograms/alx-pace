@@ -5,7 +5,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import App from './App'
 import { LanguageProvider } from './i18n/LanguageContext'
-import { SCHEDULE } from './lib/schedule'
+import { SCHEDULES } from './lib/schedule'
 import { translations } from './i18n/translations'
 
 /*
@@ -36,6 +36,7 @@ import { translations } from './i18n/translations'
   the ordering and impurity bugs this file exists to catch.
 */
 
+const SCHEDULE = SCHEDULES.da
 const DAY = 86400000
 const iso = (offsetDays) => new Date(Date.now() + offsetDays * DAY).toISOString().slice(0, 10)
 
@@ -46,6 +47,9 @@ let errors
 beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   window.localStorage.clear()
+  // A Data Analytics learner unless a test says otherwise. main.jsx's
+  // migration is what pins existing learners to DA; it does not run here.
+  window.localStorage.setItem('program', 'da')
   container = document.createElement('div')
   document.body.appendChild(container)
   // React reports render errors through console.error rather than by rethrowing
@@ -98,6 +102,42 @@ describe('the app mounts in every learner state', () => {
   it('renders after the fourteen weeks are over', () => {
     window.localStorage.setItem('startDate', iso(-14 * 7 - 3))
     expectHealthy(render())
+  })
+})
+
+describe('the app mounts in every program', () => {
+  it('renders the program picker before a program is chosen', () => {
+    window.localStorage.setItem('program', '')
+    expectHealthy(render())
+  })
+
+  it.each(['cc', 'gd'])('renders %s mid-programme', (id) => {
+    window.localStorage.setItem('program', id)
+    window.localStorage.setItem('startDate', iso(-40))
+    expectHealthy(render())
+  })
+
+  it('renders Graphic Design on a buffer week', () => {
+    // Day 90 is GD's Week 13.5 — no lessons of its own, only the catch-up list.
+    window.localStorage.setItem('program', 'gd')
+    window.localStorage.setItem('startDate', iso(-90))
+    expectHealthy(render())
+  })
+
+  it('celebrates finishing a Creative Tech module', () => {
+    const ccModuleOne = SCHEDULES.cc.modules[0].weeks.flatMap((w) => w.lessons).map((l) => l.id)
+    window.localStorage.setItem('program', 'cc')
+    window.localStorage.setItem('startDate', iso(-30))
+    window.localStorage.setItem('completedLessons', JSON.stringify(ccModuleOne))
+    // DA records in the shared list must neither suppress nor be pruned by CC.
+    window.localStorage.setItem('alx-celebrated', JSON.stringify(['module:DA-1', 'programme']))
+    const el = render()
+    expectHealthy(el)
+    expect(el.querySelector('[role="dialog"]')).not.toBeNull()
+    expect(JSON.parse(window.localStorage.getItem('alx-celebrated'))).toEqual([
+      'module:DA-1',
+      'programme',
+    ])
   })
 })
 

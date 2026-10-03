@@ -5,6 +5,7 @@ import { toISODateString } from './pacing'
 // Minimal hand-built schedule so counts are fully controlled.
 const schedule = {
   totalLessons: 4,
+  totalDays: 21,
   lessons: [
     { id: 'a', week: 1 },
     { id: 'b', week: 1 },
@@ -73,10 +74,69 @@ describe('computePaceStatus', () => {
     expect(typeof s.finishDeltaDays).toBe('number')
   })
 
+  it('lists the open earlier-week items oldest first and flags buffer weeks', () => {
+    const withBuffer = {
+      ...schedule,
+      weeks: [...schedule.weeks, { week: 4, isBuffer: true, lessons: [], gradedItems: [] }],
+    }
+    const s = computePaceStatus(
+      withBuffer,
+      new Set(['b']),
+      activePacing({ currentWeek: 4, elapsedDays: 21 }),
+      new Date(2026, 2, 22),
+    )
+    expect(s.isBuffer).toBe(true)
+    expect(s.behindItems.map((l) => l.id)).toEqual(['a', 'c', 'd'])
+    expect(s.behindCount).toBe(3)
+    expect(s.weekTotal).toBe(0)
+  })
+
+  it('targets the end of the program, not a fixed 14 weeks', () => {
+    const s = computePaceStatus(schedule, new Set(), activePacing(), new Date(2026, 2, 8))
+    // start 2026-03-01 + 21 days - 1 = 2026-03-21
+    expect(toISODateString(s.plannedEnd)).toBe('2026-03-21')
+  })
+
   it('has no projection before the first lesson is completed', () => {
     const s = computePaceStatus(schedule, new Set(), activePacing(), new Date(2026, 2, 8))
     expect(s.completedCount).toBe(0)
     expect(s.projectedFinish).toBeNull()
     expect(s.finishDeltaDays).toBeNull()
+  })
+
+  /*
+    The forecast waits for a week's worth of signal. Without this, one tick in a
+    373-item course after nine days projected a finish in 2032.
+  */
+  describe('forecast minimum', () => {
+    // 250 items over 22 weeks — Content Creation's shape. A week's worth is 12.
+    const big = {
+      totalLessons: 250,
+      totalWeeks: 22,
+      totalDays: 154,
+      lessons: Array.from({ length: 250 }, (_, i) => ({ id: `x${i}`, week: 1 + Math.floor(i / 12) })),
+      weeks: [{ week: 2, lessons: [], gradedItems: [] }],
+    }
+    const ids = (n) => new Set(Array.from({ length: n }, (_, i) => `x${i}`))
+    const nineDaysIn = activePacing({ currentWeek: 2, elapsedDays: 8 })
+
+    it('withholds the projection after a single tick', () => {
+      const s = computePaceStatus(big, ids(1), nineDaysIn, new Date(2026, 2, 9))
+      expect(s.projectedFinish).toBeNull()
+      expect(s.finishDeltaDays).toBeNull()
+      expect(s.forecastNeeds).toBe(11)
+    })
+
+    it('projects once a week of items is done', () => {
+      const s = computePaceStatus(big, ids(12), nineDaysIn, new Date(2026, 2, 9))
+      expect(s.forecastNeeds).toBe(0)
+      expect(s.projectedFinish).toBeInstanceOf(Date)
+    })
+
+    it('asks Data Analytics for two lessons — a week of its 27', () => {
+      const da = { ...big, totalLessons: 27, totalWeeks: 14 }
+      expect(computePaceStatus(da, ids(1), nineDaysIn).forecastNeeds).toBe(1)
+      expect(computePaceStatus(da, ids(2), nineDaysIn).forecastNeeds).toBe(0)
+    })
   })
 })

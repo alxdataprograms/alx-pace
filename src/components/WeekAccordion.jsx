@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, CircleDot, ListChecks, Share2 } from 'lucide-react'
+import { CheckCircle2, ChevronDown, CircleDot, Coffee, ListChecks, Share2 } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
 /**
  * Full curriculum browser: every module → week → lesson, collapsible, with the
- * learner's current week expanded and flagged by default.
+ * learner's current week expanded and flagged by default. Buffer weeks render
+ * as a compact, non-expandable "catch-up" row; half weeks get a "½ week" chip.
  */
 export default function WeekAccordion({
   schedule,
@@ -46,7 +47,9 @@ export default function WeekAccordion({
     <section aria-label={t.fullCurriculumAria} className="space-y-5">
       <div className="flex items-center gap-2 px-1">
         <ListChecks size={18} className="text-cobalt-600 dark:text-lime" aria-hidden="true" />
-        <h2 className="text-sm font-bold uppercase tracking-wide">{t.roadmapTitle}</h2>
+        <h2 className="text-sm font-bold uppercase tracking-wide">
+          {t.roadmapTitle(schedule.totalWeeks)}
+        </h2>
       </div>
 
       {programme && onShare ? (
@@ -57,7 +60,7 @@ export default function WeekAccordion({
           <ShareButton
             milestone={programme}
             label={t.roadmapShare}
-            aria={t.roadmapShareAria(programme.title)}
+            aria={t.roadmapShareAria(t.programs[programme.program] ?? programme.title)}
             onShare={onShare}
           />
         </div>
@@ -99,6 +102,43 @@ export default function WeekAccordion({
             const allDone = total > 0 && done === total
             const panelId = `week-panel-${week.week}`
 
+            if (week.isBuffer && total === 0) {
+              return (
+                <div
+                  key={week.week}
+                  className={`alx-card flex items-center gap-3 border-dashed !p-3.5 ${
+                    isCurrent ? 'ring-2 ring-lime' : ''
+                  }`}
+                >
+                  <span
+                    className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg text-xs font-bold ${
+                      isCurrent
+                        ? 'bg-lime text-navy-900'
+                        : 'bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75'
+                    }`}
+                  >
+                    {week.week}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <p className="truncate text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
+                      <span className="alx-chip flex-none bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75">
+                        <Coffee size={11} aria-hidden="true" /> {t.bufferChip}
+                      </span>
+                      {isCurrent && (
+                        <span className="alx-chip flex-none bg-lime-300 text-navy-900">
+                          <CircleDot size={11} aria-hidden="true" /> {t.current}
+                        </span>
+                      )}
+                    </div>
+                    <p className="truncate text-xs text-ink-soft dark:text-paper/70">
+                      {t.bufferRoadmapNote}
+                    </p>
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <div
                 key={week.week}
@@ -126,6 +166,11 @@ export default function WeekAccordion({
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
                       <p className="truncate text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
+                      {week.isHalf && (
+                        <span className="alx-chip flex-none bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime">
+                          {t.halfWeekChip}
+                        </span>
+                      )}
                       {isCurrent && (
                         <span className="alx-chip flex-none bg-lime-300 text-navy-900">
                           <CircleDot size={11} aria-hidden="true" /> {t.current}

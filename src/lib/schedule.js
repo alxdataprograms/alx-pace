@@ -1,19 +1,32 @@
-import scheduleCsv from '../data/schedule.csv?raw'
-import { buildScheduleFromCsv, TOTAL_WEEKS } from './scheduleModel'
+import daCsv from '../data/da-schedule.csv?raw'
+import ccCsv from '../data/cc-schedule.csv?raw'
+import gdCsv from '../data/gd-schedule.csv?raw'
+import { buildScheduleFromCsv } from './scheduleModel'
+import { PROGRAMS } from './programs'
 
 /**
- * The bundled curriculum model.
+ * The bundled curriculum models, one per program.
  *
- * The CSV is imported with Vite's `?raw` suffix, so it is compiled straight
+ * Each CSV is imported with Vite's `?raw` suffix, so it is compiled straight
  * into the bundle: no network fetch, no loading state, works offline, and the
- * learner never touches a file input. Built once at module load — the CSV is
- * static, so there is no reason to recompute per render.
+ * learner never touches a file input. Built once at module load — the CSVs
+ * are static, so there is no reason to recompute per render.
  */
-export { TOTAL_WEEKS }
+const CSV_BY_PROGRAM = { da: daCsv, cc: ccCsv, gd: gdCsv }
 
-export const SCHEDULE = buildScheduleFromCsv(scheduleCsv)
+export const SCHEDULES = Object.fromEntries(
+  Object.values(PROGRAMS).map((p) => [
+    p.id,
+    buildScheduleFromCsv(CSV_BY_PROGRAM[p.id], { layout: p.layout }),
+  ]),
+)
+
+/** The schedule for a program id, or null when no program is chosen. */
+export function getSchedule(programId) {
+  return SCHEDULES[programId] || null
+}
 
 /** Look up a single week object (or null if out of range). */
-export function getWeek(weekNumber) {
-  return SCHEDULE.weeks.find((w) => w.week === weekNumber) || null
+export function getWeek(schedule, weekNumber) {
+  return schedule?.weeks.find((w) => w.week === weekNumber) || null
 }

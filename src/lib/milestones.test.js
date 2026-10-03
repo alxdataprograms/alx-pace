@@ -7,10 +7,13 @@ import {
   achievedMilestones,
   buildPostText,
   CAMPAIGN_HASHTAG,
+  milestoneIds,
   nextToCelebrate,
+  postParts,
   pruneCelebrated,
 } from './milestones'
 import { buildScheduleFromCsv } from './scheduleModel'
+import { PROGRAMS } from './programs'
 
 /*
   Run against the REAL curriculum, not a fixture.
@@ -20,8 +23,14 @@ import { buildScheduleFromCsv } from './scheduleModel'
   merged cells, multi-line graded rows, uneven module sizes — did something
   else. This is the same reasoning as scripts/verify-parser.mjs.
 */
-const csv = readFileSync(fileURLToPath(new URL('../data/schedule.csv', import.meta.url)), 'utf8')
-const SCHEDULE = buildScheduleFromCsv(csv)
+const load = (id) =>
+  buildScheduleFromCsv(
+    readFileSync(fileURLToPath(new URL(`../data/${PROGRAMS[id].csv}`, import.meta.url)), 'utf8'),
+    { layout: PROGRAMS[id].layout },
+  )
+const SCHEDULE = load('da')
+const CC = load('cc')
+const GD = load('gd')
 
 const lessonsOf = (module) => module.weeks.flatMap((w) => w.lessons)
 const idsOf = (modules) => new Set(modules.flatMap(lessonsOf).map((l) => l.id))
@@ -231,5 +240,71 @@ describe('pruneCelebrated', () => {
     const pruned = pruneCelebrated(achieved, ['module:DA-1'])
     expect(pruned).toBeNull()
     expect(nextToCelebrate(achieved, ['module:DA-1'])).toBeNull()
+  })
+})
+
+/*
+  Every program shares ONE alx-celebrated array, the same way completedLessons
+  is shared. Two things follow, and both are tested against the real sheets.
+*/
+describe('across programs', () => {
+  const everything = (s) => new Set(s.lessons.map((l) => l.id))
+
+  it('celebrates a Creative Tech module', () => {
+    const got = achievedMilestones(CC, idsOf([CC.modules[0]]), 'cc')
+    expect(got.map((m) => m.id)).toEqual(['module:CC-1'])
+    expect(got[0].program).toBe('cc')
+    expect(got[0].total).toBe(CC.modules.length)
+  })
+
+  it('never produces the same milestone id in two programs', () => {
+    const da = milestoneIds(SCHEDULE, 'da')
+    const cc = milestoneIds(CC, 'cc')
+    const gd = milestoneIds(GD, 'gd')
+    const all = [...da, ...cc, ...gd]
+    expect(new Set(all).size).toBe(all.length)
+  })
+
+  it('keeps the bare "programme" id for Data Analytics, which is what DA learners already store', () => {
+    expect(achievedMilestones(SCHEDULE, everything(SCHEDULE), 'da').at(-1).id).toBe('programme')
+    expect(achievedMilestones(GD, everything(GD), 'gd').at(-1).id).toBe('programme:gd')
+  })
+
+  it('a DA graduate still gets the Creative Tech programme celebration', () => {
+    const achieved = achievedMilestones(CC, everything(CC), 'cc')
+    expect(nextToCelebrate(achieved, ['programme', 'module:DA-1'])?.id).toBe('programme:cc')
+  })
+
+  it("leaves another program's seen-records alone when pruning", () => {
+    // Looking at CC with nothing achieved must not wipe DA's records — or
+    // switching back to DA would congratulate the learner all over again.
+    const seen = ['module:DA-1', 'module:DA-2', 'programme', 'module:CC-1']
+    expect(pruneCelebrated([], seen, milestoneIds(CC, 'cc'))).toEqual([
+      'module:DA-1',
+      'module:DA-2',
+      'programme',
+    ])
+    expect(pruneCelebrated([], ['module:DA-1'], milestoneIds(CC, 'cc'))).toBeNull()
+  })
+
+  it('has no milestones before a program is chosen', () => {
+    expect(achievedMilestones(null, new Set())).toEqual([])
+    expect(milestoneIds(null, 'da').size).toBe(0)
+  })
+})
+
+/*
+  The post links to the learner's program page, so it previews as their
+  program — a crawler can only see the card of the exact URL in the post.
+*/
+describe('the post link', () => {
+  it.each([
+    ['da', SCHEDULE],
+    ['cc', CC],
+    ['gd', GD],
+  ])('points a %s post at that program’s share page', (program, schedule) => {
+    const m = achievedMilestones(schedule, idsOf([schedule.modules[0]]), program)[0]
+    const { url } = postParts(m, { moduleDone: () => '', programmeDone: () => '' })
+    expect(url).toBe(`https://alxdataprograms.github.io/alx-pace/share/${program}/`)
   })
 })

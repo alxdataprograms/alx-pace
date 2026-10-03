@@ -3,16 +3,26 @@ import { useLang } from '../i18n/LanguageContext'
 import { formatHumanDate } from '../lib/formatDate'
 
 /**
- * Personal pace + finish forecast: how many lessons/week the learner is
- * averaging, and — projected from that pace — the date they'll actually finish
- * versus the planned Week-14 target.
+ * Personal pace + finish forecast: how many lessons (or, in Creative Tech,
+ * items) a week the learner is averaging, and — projected from that pace — the
+ * date they'll actually finish versus the planned target.
  */
 export default function ForecastCard({ paceStatus }) {
   const { t, lang } = useLang()
   if (!paceStatus) return null
 
-  const { completedCount, pacePerWeek, projectedFinish, plannedEnd, finishDeltaDays } = paceStatus
-  const hasData = completedCount > 0 && projectedFinish
+  const {
+    completedCount,
+    pacePerWeek,
+    projectedFinish,
+    plannedEnd,
+    finishDeltaDays,
+    forecastNeeds,
+    unit,
+  } = paceStatus
+  // computePaceStatus withholds the projection until there is a week's worth
+  // of signal; until then the empty state counts down to it.
+  const hasData = Boolean(projectedFinish)
 
   const deltaTone =
     finishDeltaDays == null || Math.abs(finishDeltaDays) <= 2
@@ -33,7 +43,7 @@ export default function ForecastCard({ paceStatus }) {
       {hasData ? (
         <>
           <p className="mt-3 text-2xl font-bold text-ink dark:text-paper">
-            {t.paceValue(pacePerWeek)}
+            {t.paceValue(pacePerWeek, unit)}
           </p>
 
           <dl className="mt-3 space-y-2 text-sm">
@@ -63,7 +73,13 @@ export default function ForecastCard({ paceStatus }) {
         </>
       ) : (
         <div className="mt-3">
-          <p className="text-sm text-ink-soft dark:text-paper/75">{t.noPaceYet}</p>
+          <p className="text-sm text-ink-soft dark:text-paper/75">
+            {completedCount > 0
+              ? t.noPaceYetMore(forecastNeeds, unit)
+              : forecastNeeds > 1
+                ? t.noPaceYetCount(forecastNeeds, unit)
+                : t.noPaceYet(unit)}
+          </p>
           {plannedEnd && (
             <p className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-cobalt/10 px-2.5 py-1 text-xs font-semibold text-cobalt-600 dark:bg-lime/15 dark:text-lime">
               <Flag size={13} aria-hidden="true" />

@@ -1,6 +1,16 @@
 import { useEffect, useRef, useState } from 'react'
-import { CalendarCheck, CalendarDays, Check, Flame, Pencil, Rocket, X } from 'lucide-react'
+import {
+  CalendarCheck,
+  CalendarDays,
+  Check,
+  Flame,
+  GraduationCap,
+  Pencil,
+  Rocket,
+  X,
+} from 'lucide-react'
 import { sloganForWeek } from '../lib/slogans'
+import { PROGRAMS } from '../lib/programs'
 import { plannedEndDate, toISODateString } from '../lib/pacing'
 import { formatHumanDate } from '../lib/formatDate'
 import { useLang } from '../i18n/LanguageContext'
@@ -15,8 +25,8 @@ const PORTRAITS = [portrait1, portrait2, portrait3, portrait4, portrait5]
 
 /**
  * Top personalization widget styled after the alxafrica.com hero banner:
- * deep navy panel, lime accent, duotone learner portraits. Name and start
- * date are tap-to-edit without resetting progress.
+ * deep navy panel, lime accent, duotone learner portraits. Name, program and
+ * start date are tap-to-edit without resetting progress.
  *
  * Drafts are seeded when an editor OPENS (not synced from props), so an
  * external update — cross-tab sync, reset — can never clobber in-flight typing.
@@ -25,8 +35,12 @@ export default function PersonalizationWidget({
   learnerName,
   startDate,
   pacing,
+  schedule,
+  program,
+  programName,
   onUpdateName,
   onUpdateStartDate,
+  onChangeProgram,
 }) {
   const { t, lang } = useLang()
   const [editingName, setEditingName] = useState(false)
@@ -61,14 +75,19 @@ export default function PersonalizationWidget({
     setEditingDate(false)
   }
 
+  // Creative Tech tracks name their family too; Data Analytics is its own family.
+  const familyName = PROGRAMS[program]?.family === 'creative-tech' ? t.creativeTech : ''
+
   const week = pacing.currentWeek
-  const slogan = sloganForWeek(week, lang)
+  const slogan = sloganForWeek(week, lang, program)
   const showWeekLine = pacing.status === 'active'
 
   const todayIso = toISODateString(new Date())
   const isPlaceholderName = !learnerName?.trim()
   // Live-preview the finish date from whichever date is relevant right now.
-  const finishDate = plannedEndDate(editingDate ? dateDraft : startDate)
+  const finishDate = schedule
+    ? plannedEndDate(editingDate ? dateDraft : startDate, schedule.totalDays)
+    : null
 
   return (
     <section
@@ -157,8 +176,42 @@ export default function PersonalizationWidget({
           </div>
         )}
 
-        {/* Start date row */}
+        {/* Program row — opens the program picker */}
         <div className="mt-3 flex items-center gap-2 text-sm text-white/85">
+          <GraduationCap size={16} className="flex-none" aria-hidden="true" />
+          <button
+            type="button"
+            onClick={onChangeProgram}
+            className="group inline-flex min-h-[44px] items-center gap-1.5 rounded-md text-start hover:text-lime"
+          >
+            {programName && familyName ? (
+              /*
+                The family rides above the track as an eyebrow rather than
+                beside it: "Content Creation · Creative Tech" wrapped onto two
+                ragged lines at 390px, so the family used to be dropped.
+              */
+              <span className="flex flex-col py-1 leading-tight">
+                <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-white/70 group-hover:text-lime">
+                  {familyName}
+                </span>
+                <span className="font-semibold text-white group-hover:text-lime">{programName}</span>
+              </span>
+            ) : programName ? (
+              <span className="font-semibold text-white group-hover:text-lime">{programName}</span>
+            ) : (
+              <span className="font-semibold text-lime">{t.chooseProgram}</span>
+            )}
+            {programName && (
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold opacity-70 group-hover:opacity-100">
+                <Pencil size={13} aria-hidden="true" />
+                {t.change}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Start date row */}
+        <div className="flex items-center gap-2 text-sm text-white/85">
           <CalendarDays size={16} className="flex-none" aria-hidden="true" />
           {editingDate ? (
             <div className="flex flex-1 items-center gap-2">

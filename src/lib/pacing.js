@@ -1,5 +1,3 @@
-import { TOTAL_WEEKS } from './schedule'
-
 /**
  * Deterministic pacing engine — pure functions, no side effects, no clock reads
  * except the one `now` you pass in. This keeps it trivially testable and means
@@ -57,28 +55,78 @@ export function toISODateString(date) {
 }
 
 /**
- * Compute the learner's pacing status.
+ * A plain N-week timeline (week W = days (W-1)*7 .. W*7-1). Built schedules
+ * carry their own, richer timeline; this one is for tests and fallbacks.
+ */
+export function uniformTimeline(weekCount) {
+  const weeks = Array.from({ length: weekCount }, (_, i) => ({
+    week: i + 1,
+    startDay: i * 7,
+    endDay: (i + 1) * 7,
+  }))
+  return { weeks, totalDays: weekCount * 7, totalWeeks: weekCount }
+}
+
+/**
+ * The timeline week that contains `day` (0 = the start date itself), clamped
+ * to the first/last week. Works for fractional weeks ("Week 13.5") because it
+ * walks the precomputed day ranges instead of dividing by 7.
+ */
+export function weekForDay(timeline, day) {
+  const weeks = timeline?.weeks || []
+  for (let i = weeks.length - 1; i >= 0; i--) {
+    if (day >= weeks[i].startDay) return weeks[i]
+  }
+  return weeks[0] || null
+}
+
+/**
+ * Compute the learner's pacing status against a program timeline (any object
+ * with `weeks[{ week, startDay, endDay }]`, `totalDays` and `totalWeeks` — a
+ * built schedule qualifies).
  *
- * Implements the spec formula exactly:
+ * For a uniform timeline this is exactly the original spec formula:
  *   elapsedDays  = today - startDate
- *   currentWeek  = min(14, max(1, floor(elapsedDays / 7) + 1))
+ *   currentWeek  = min(N, max(1, floor(elapsedDays / 7) + 1))
+ * Programs with half and buffer weeks simply look the day up in their ranges.
  *
  * @param {string|Date|null} startDateInput  ISO string or Date
  * @param {Date} [now=new Date()]            injectable "today" for testing
+ * @param {{weeks: object[], totalDays: number, totalWeeks: number}|null} timeline
  * @returns {{
- *   status: 'no-start-date'|'future'|'active'|'completed',
+ *   status: 'no-program'|'no-start-date'|'future'|'active'|'completed',
  *   startDate: Date|null,
  *   elapsedDays: number,
  *   daysUntilStart: number,
  *   currentWeek: number,
  *   rawWeek: number,
  *   totalWeeks: number,
+ *   totalDays: number,
  *   daysRemaining: number,
  * }}
  */
-export function computePacing(startDateInput, now = new Date()) {
+export function computePacing(startDateInput, now = new Date(), timeline = null) {
   const startDate = startDateInput instanceof Date ? startDateInput : parseISODate(startDateInput)
   const today = atMidnight(now)
+
+  // Guardrail: no program chosen yet -> there is nothing to pace against.
+  if (!timeline || !timeline.weeks?.length) {
+    return {
+      status: 'no-program',
+      startDate,
+      elapsedDays: 0,
+      daysUntilStart: 0,
+      currentWeek: 1,
+      rawWeek: 1,
+      totalWeeks: 0,
+      totalDays: 0,
+      daysRemaining: 0,
+    }
+  }
+
+  const { totalDays, totalWeeks } = timeline
+  const firstWeek = timeline.weeks[0].week
+  const lastWeek = timeline.weeks[timeline.weeks.length - 1].week
 
   // Guardrail: no valid start date yet -> onboarding state.
   if (!startDate) {
@@ -87,10 +135,11 @@ export function computePacing(startDateInput, now = new Date()) {
       startDate: null,
       elapsedDays: 0,
       daysUntilStart: 0,
-      currentWeek: 1,
+      currentWeek: firstWeek,
       rawWeek: 1,
-      totalWeeks: TOTAL_WEEKS,
-      daysRemaining: TOTAL_WEEKS * 7,
+      totalWeeks,
+      totalDays,
+      daysRemaining: totalDays,
     }
   }
 
@@ -103,28 +152,27 @@ export function computePacing(startDateInput, now = new Date()) {
       startDate,
       elapsedDays,
       daysUntilStart: Math.abs(elapsedDays),
-      currentWeek: 1,
+      currentWeek: firstWeek,
       rawWeek: 0,
-      totalWeeks: TOTAL_WEEKS,
-      daysRemaining: TOTAL_WEEKS * 7,
+      totalWeeks,
+      totalDays,
+      daysRemaining: totalDays,
     }
   }
 
   const rawWeek = Math.floor(elapsedDays / 7) + 1
-  const currentWeek = Math.min(TOTAL_WEEKS, Math.max(1, rawWeek))
-  const totalCourseDays = TOTAL_WEEKS * 7
-  const daysRemaining = Math.max(0, totalCourseDays - elapsedDays)
 
   // Guardrail: past the final week -> graduation state.
-  if (rawWeek > TOTAL_WEEKS) {
+  if (elapsedDays >= totalDays) {
     return {
       status: 'completed',
       startDate,
       elapsedDays,
       daysUntilStart: 0,
-      currentWeek: TOTAL_WEEKS,
+      currentWeek: lastWeek,
       rawWeek,
-      totalWeeks: TOTAL_WEEKS,
+      totalWeeks,
+      totalDays,
       daysRemaining: 0,
     }
   }
@@ -134,22 +182,24 @@ export function computePacing(startDateInput, now = new Date()) {
     startDate,
     elapsedDays,
     daysUntilStart: 0,
-    currentWeek,
+    currentWeek: weekForDay(timeline, elapsedDays).week,
     rawWeek,
-    totalWeeks: TOTAL_WEEKS,
-    daysRemaining,
+    totalWeeks,
+    totalDays,
+    daysRemaining: Math.max(0, totalDays - elapsedDays),
   }
 }
 
 /**
- * The planned "done by" date: the last day of Week 14 (start + 97 days,
- * since day 1 is the start date itself). Null when no valid start date.
+ * The planned "done by" date: the last day of the program (start +
+ * totalDays - 1, since day 1 is the start date itself — 97 days for the
+ * 14-week DA track). Null without a valid start date or program.
  */
-export function plannedEndDate(startDateInput) {
+export function plannedEndDate(startDateInput, totalDays) {
   const start = startDateInput instanceof Date ? startDateInput : parseISODate(startDateInput)
-  if (!start) return null
+  if (!start || !totalDays) return null
   const end = atMidnight(start)
-  end.setDate(end.getDate() + TOTAL_WEEKS * 7 - 1)
+  end.setDate(end.getDate() + totalDays - 1)
   return end
 }
 

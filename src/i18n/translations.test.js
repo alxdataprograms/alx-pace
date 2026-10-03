@@ -67,3 +67,112 @@ describe('translations', () => {
     expect(blank).toEqual([])
   })
 })
+
+/*
+  The LinkedIn post names the program the learner actually finished. It was
+  written when Data Analytics was the only one, and a Graphic Design learner
+  announcing a Data Analytics module would be worse than no post at all.
+*/
+describe('the milestone post', () => {
+  const m = (program) => ({ program, title: 'X', index: 1, total: 4, weeks: 2, lessons: 7 })
+
+  it.each(langs)('%s names Creative Tech programs, not Data Analytics', (lang) => {
+    const t = translations[lang]
+    for (const id of ['cc', 'gd']) {
+      expect(t.postModuleDone(m(id))).not.toMatch(/Data Analytics|تحليل البيانات/)
+      expect(t.postProgrammeDone(m(id))).not.toMatch(/Data Analytics|تحليل البيانات/)
+    }
+  })
+
+  it('reads exactly as before for Data Analytics', () => {
+    expect(translations.en.postModuleDone(m('da'))).toBe(
+      'I have just finished X — module 1 of 4 in the ALX Data Analytics programme.',
+    )
+    expect(translations.ar.postProgrammeDone(m('da'))).toContain('برنامج ALX لتحليل البيانات')
+  })
+})
+
+/*
+  Counts name what was counted. A Creative Tech row may be a lesson, an activity
+  or a quiz, so "lessons" undercounts it; DA rows really are lessons and must
+  read exactly as they always have when no unit is passed.
+*/
+describe('count wording', () => {
+  const COUNTED = [
+    ['statusBehind', [3]],
+    ['statusAhead', [3]],
+    ['reminderBehind', [3, 1]],
+    ['reminderOnTrack', [3]],
+    ['paceValue', [3]],
+    ['noPaceYet', []],
+    ['lessonsComplete', [3, 9]],
+    ['completedBody', [22]],
+  ]
+
+  it.each(langs)('%s reads the same for DA with or without the unit', (lang) => {
+    const t = translations[lang]
+    for (const [key, args] of COUNTED) {
+      expect(t[key](...args, 'lesson'), `${lang}.${key}`).toBe(t[key](...args))
+    }
+  })
+
+  it.each(langs)('%s says something different for Creative Tech items', (lang) => {
+    const t = translations[lang]
+    for (const [key, args] of COUNTED) {
+      expect(t[key](...args, 'item'), `${lang}.${key}`).not.toBe(t[key](...args, 'lesson'))
+    }
+  })
+
+  it('keeps the English DA wording word for word', () => {
+    expect(translations.en.paceValue(2.5)).toBe('2.5 lessons/week')
+    expect(translations.en.paceValue(14.8, 'item')).toBe('14.8 items/week')
+  })
+})
+
+describe('the forecast countdown', () => {
+  it.each(langs)('%s counts down in the right unit', (lang) => {
+    const t = translations[lang]
+    expect(t.noPaceYetMore(11, 'item')).not.toBe(t.noPaceYetMore(11, 'lesson'))
+    expect(t.noPaceYetMore(1)).toBe(t.noPaceYetMore(1, 'lesson'))
+    expect(t.noPaceYetCount(12, 'item')).not.toBe(t.noPaceYetCount(12, 'lesson'))
+    expect(t.noPaceYetCount(2)).toBe(t.noPaceYetCount(2, 'lesson'))
+  })
+})
+
+/*
+  Arabic posts name every program the way the DA post always has: translated,
+  after "ALX". A Latin program name inside an RTL sentence is reordered
+  unpredictably by LinkedIn's bidi rendering, so none may appear.
+*/
+describe('the Arabic milestone post', () => {
+  const ar = translations.ar
+  const m = (program) => ({ program, title: 'X', index: 1, total: 4, weeks: 2, lessons: 7 })
+
+  it('translates every program name, as the DA post does', () => {
+    for (const id of ['da', 'cc', 'gd']) {
+      for (const text of [ar.postModuleDone(m(id)), ar.postProgrammeDone(m(id))]) {
+        expect(text).not.toMatch(/Data|Analytics|Content|Creation|Graphic|Design/)
+        expect(text).toContain(`برنامج ALX ل`)
+      }
+    }
+  })
+
+  it('keeps the DA sentence exactly as it was', () => {
+    expect(ar.postModuleDone(m('da'))).toBe(
+      'أنهيت للتو X — الوحدة 1 من 4 في برنامج ALX لتحليل البيانات.',
+    )
+  })
+})
+
+describe('Arabic agreement in the catch-up status', () => {
+  const ar = translations.ar
+
+  it('agrees with one, two, and three-or-more, for lessons and items alike', () => {
+    for (const unit of ['lesson', 'item']) {
+      expect(ar.statusBehind(1, unit)).toContain('ما زال مفتوحًا')
+      expect(ar.statusBehind(2, unit)).toContain('ما زالا مفتوحين')
+      expect(ar.statusBehind(5, unit)).toContain('ما زالت مفتوحة')
+      expect(ar.statusBehind(14, unit)).toContain('ما زالت مفتوحة')
+    }
+  })
+})

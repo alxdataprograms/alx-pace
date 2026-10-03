@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "ALX Data Analytics Self-Pace — Learner Pacing & Schedule Tracker (zero-login, mobile-first).",
+  "description": "ALX Self-Pace — Learner Pacing & Schedule Tracker for Data Analytics and Creative Tech (zero-login, mobile-first).",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,7 +11,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "parser:check": "node scripts/verify-parser.mjs"
+    "parser:check": "node scripts/verify-parser.mjs",
+    "share:cards": "node scripts/share-cards.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.417.0",

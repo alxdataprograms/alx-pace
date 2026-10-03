@@ -38,6 +38,11 @@
  * decoder below, so the two cannot drift apart unnoticed.
  */
 
+import { PROGRAM_KEY } from './programs'
+
+/** The program every learner at the old address was pacing. */
+export const HANDOFF_PROGRAM = 'da'
+
 /** Fragment key, e.g. #alx-handoff=eyJ2Ijox... */
 export const HANDOFF_PARAM = 'alx-handoff'
 
@@ -256,6 +261,24 @@ export function applyHandoff(clean, storage) {
       if (current === null || current === '') {
         storage.setItem(key, String(clean[key]))
         result.keys.push(key)
+      }
+    }
+
+    /*
+      Pin the arrival to Data Analytics — the only program the old address
+      ever paced. `program` is not in the payload because it never needs to
+      be: anyone carrying progress across is a DA learner. Written only when
+      no program has been chosen here (absent, or '' from an earlier empty
+      visit that showed the picker), the same "never overwrite" rule as
+      every other raw key. Without it, a learner who had opened the new
+      address once before following the bridge would be greeted by the
+      program picker with their DA ticks hidden behind it.
+    */
+    if ('startDate' in clean || 'completedLessons' in clean) {
+      const program = storage.getItem(PROGRAM_KEY)
+      if (program === null || program === '') {
+        storage.setItem(PROGRAM_KEY, HANDOFF_PROGRAM)
+        result.keys.push(PROGRAM_KEY)
       }
     }
 

@@ -1,8 +1,8 @@
 {
   "id": "./",
-  "name": "ALX Pace — Data Analytics Self-Pace Tracker",
+  "name": "ALX Pace — Self-Pace Tracker",
   "short_name": "ALX Pace",
-  "description": "Track your progress through the 14-week ALX Data Analytics Self-Pace curriculum. No login required.",
+  "description": "Pace your ALX self-paced program — Data Analytics, Content Creation or Graphic Design — week by week. No login required.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

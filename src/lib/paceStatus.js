@@ -3,10 +3,14 @@
  *
  * Definitions:
  *   - A lesson is DUE if it belongs to a week strictly before the current one
- *     (the current week is still in progress, so it is never "late").
- *   - behindCount = due lessons not yet completed.
+ *     (the current week is still in progress, so it is never "late"). Week
+ *     numbers compare numerically, so fractional weeks ("13.5") just work.
+ *   - behindItems = due lessons not yet completed (oldest first) — the
+ *     catch-up list a buffer week surfaces; behindCount is its length.
  *   - aheadCount  = completed lessons in weeks after the current one.
  *   - status: 'behind' wins over 'ahead' (catch-up first), else 'on-track'.
+ *   - forecastMin = one average week's worth of items (DA 2, CC 12, GD 12).
+ *     No finish date is projected until that much is done — see below.
  */
 import { atMidnight, plannedEndDate } from './pacing'
 
@@ -15,14 +19,15 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
 
   const week = pacing.currentWeek
 
-  let behindCount = 0
+  const behindItems = []
   let aheadCount = 0
   for (const lesson of schedule.lessons) {
     if (lesson.week == null) continue
     const done = completedSet.has(lesson.id)
-    if (lesson.week < week && !done) behindCount += 1
+    if (lesson.week < week && !done) behindItems.push(lesson)
     if (lesson.week > week && done) aheadCount += 1
   }
+  const behindCount = behindItems.length
 
   const thisWeek = schedule.weeks.find((w) => w.week === week) || null
   const weekTotal = thisWeek ? thisWeek.lessons.length : 0
@@ -38,10 +43,23 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
   const daysIn = Math.max(1, pacing.elapsedDays + 1)
   const pacePerWeek = Math.round((completedCount / (daysIn / 7)) * 10) / 10
 
-  const plannedEnd = plannedEndDate(pacing.startDate)
+  const plannedEnd = plannedEndDate(pacing.startDate, schedule.totalDays)
+
+  /*
+    A projection needs a minimum signal. Extrapolating a 373-item course from a
+    single tick produced finish dates years out ("1 of 250 after 9 days → 2032"),
+    which reads as a verdict on someone who has barely started. One average
+    week's worth of items is the smallest amount that says anything about a
+    pace; until then the card keeps its empty state and counts down to it.
+  */
+  const forecastMin = schedule.totalWeeks
+    ? Math.max(1, Math.ceil(schedule.totalLessons / schedule.totalWeeks))
+    : 1
+  const forecastNeeds = Math.max(0, forecastMin - completedCount)
+
   let projectedFinish = null
   let finishDeltaDays = null
-  if (completedCount > 0) {
+  if (completedCount > 0 && forecastNeeds === 0) {
     const perDay = completedCount / daysIn
     const daysLeft = Math.ceil(remaining / perDay)
     projectedFinish = atMidnight(now)
@@ -55,7 +73,12 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
     status: behindCount > 0 ? 'behind' : aheadCount > 0 ? 'ahead' : 'on-track',
     week,
     totalWeeks: pacing.totalWeeks,
+    // 'lesson' | 'item' — what the counts below are counting, for the copy.
+    unit: schedule.itemNoun ?? 'lesson',
+    // Buffer weeks carry no new content — the UI turns them into catch-up time.
+    isBuffer: Boolean(thisWeek?.isBuffer),
     behindCount,
+    behindItems,
     aheadCount,
     weekDone,
     weekTotal,
@@ -63,6 +86,8 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
     completedCount,
     remaining,
     pacePerWeek,
+    // How many more items until the finish forecast unlocks (0 = shown).
+    forecastNeeds,
     plannedEnd,
     projectedFinish,
     // Positive = projected to finish EARLY by that many days; negative = late.

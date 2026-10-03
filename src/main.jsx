@@ -4,7 +4,8 @@ import App from './App'
 import { LanguageProvider } from './i18n/LanguageContext'
 import { translations } from './i18n/translations'
 import { runHandoff } from './lib/handoff'
-import { SCHEDULE } from './lib/schedule'
+import { migrateLegacyProgram } from './lib/programs'
+import { SCHEDULES } from './lib/schedule'
 import './index.css'
 
 /*
@@ -21,11 +22,26 @@ try {
     location: window.location,
     history: window.history,
     storage: window.localStorage,
-    validLessonIds: new Set(SCHEDULE.lessons.map((l) => l.id)),
+    // The old address only ever paced Data Analytics, but validating against
+    // every shipped program costs nothing and keeps the check honest.
+    validLessonIds: new Set(Object.values(SCHEDULES).flatMap((s) => s.lessons.map((l) => l.id))),
     validLangs: new Set(Object.keys(translations)),
   })
 } catch {
   /* no storage — the app still runs, the learner re-enters their start date */
+}
+
+/*
+  AFTER the handoff, never before. Learners from the Data-Analytics-only era
+  keep their tracker exactly as it was (pinned to DA); new learners see the
+  program picker. Run first, it would find a handoff arrival's storage still
+  empty, record "no program chosen", and greet a DA learner with the picker.
+  Idempotent — once the key exists it is never touched again.
+*/
+try {
+  migrateLegacyProgram(window.localStorage)
+} catch {
+  /* storage blocked — the picker simply shows */
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(

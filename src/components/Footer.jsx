@@ -8,7 +8,7 @@ import { useLang } from '../i18n/LanguageContext'
  * Footer: language switcher, reminders opt-in, theme toggle, and a
  * discreet-but-accessible, confirm-guarded "Reset Profile Data".
  */
-export default function Footer({ theme, onToggleTheme, onReset }) {
+export default function Footer({ theme, onToggleTheme, onReset, programName = '' }) {
   const { t } = useLang()
   const [confirming, setConfirming] = useState(false)
   const targetMode = theme === 'dark' ? t.lightMode : t.darkMode
@@ -66,7 +66,7 @@ export default function Footer({ theme, onToggleTheme, onReset }) {
         </button>
       )}
 
-      <p className="text-[11px] text-ink-mute dark:text-paper/60">{t.footerNote}</p>
+      <p className="text-[11px] text-ink-mute dark:text-paper/60">{t.footerNote(programName)}</p>
     </footer>
   )
 }

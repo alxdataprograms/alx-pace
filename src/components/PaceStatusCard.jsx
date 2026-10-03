@@ -7,7 +7,7 @@ const VARIANTS = {
     Icon: AlarmClock,
     card: 'border-amber/40 bg-amber/10',
     chip: 'bg-amber text-navy-900',
-    headline: (t, s) => t.statusBehind(s.behindCount),
+    headline: (t, s) => t.statusBehind(s.behindCount, s.unit),
   },
   'on-track': {
     Icon: CircleCheckBig,
@@ -19,7 +19,7 @@ const VARIANTS = {
     Icon: Zap,
     card: 'border-alxgreen/30 bg-alxgreen/10',
     chip: 'bg-alxgreen text-navy-900',
-    headline: (t, s) => t.statusAhead(s.aheadCount),
+    headline: (t, s) => t.statusAhead(s.aheadCount, s.unit),
   },
 }
 
@@ -35,7 +35,9 @@ export default function PaceStatusCard({ paceStatus, today = new Date() }) {
 
   const parts = [
     t.weekOf(paceStatus.week, paceStatus.totalWeeks),
-    t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal),
+    paceStatus.isBuffer
+      ? t.bufferStatus
+      : t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal),
   ]
   if (paceStatus.gradedLeft > 0) {
     parts.push(t.gradedStillDue(paceStatus.gradedLeft))

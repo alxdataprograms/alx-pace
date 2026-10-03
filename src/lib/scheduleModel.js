@@ -4,21 +4,43 @@ import { parseCsv, forwardFill } from './csvParser.js'
  * Pure curriculum-model builder. Takes raw CSV text and returns the normalized
  * schedule. Kept free of any bundler-specific imports so it runs identically in
  * the browser build and in a plain Node verification script.
+ *
+ * Every program sheet shares the same five columns, in two layouts:
+ *
+ *   'cyu'      (Data Analytics)  Module | Week | Lessons | Check Your Understanding | Graded
+ *              One row = one lesson; its CYU line and graded milestone ride along.
+ *
+ *   'activity' (Creative Tech)   Module | Week | Lessons | Activity | Evaluation quiz
+ *              One row = exactly one item: a lesson, an activity, or a graded
+ *              quiz / mastery project. Buffer weeks carry a single
+ *              "Buffer / catch-up week" marker row and nothing to tick off.
  */
 
-export const TOTAL_WEEKS = 14
+export const DAYS_PER_WEEK = 7
 
-// CSV column layout (see src/data/schedule.csv header row).
+// CSV column layout (see the header row of any src/data/*-schedule.csv).
 const COL_MODULE = 0
 const COL_WEEK = 1
 const COL_LESSON = 2
-const COL_CYU = 3 // Check Your Understanding (Not Graded)
+const COL_SECONDARY = 3 // Check Your Understanding (DA) or Activity (Creative Tech)
 const COL_GRADED = 4 // Evaluation Quiz / Graded Test
 
-/** Pull the first integer out of a "Week 7" style label. */
+// The marker a Creative Tech sheet puts in a buffer week — not a task.
+const BUFFER_ROW = /^buffer\b/i
+
+/** Pull the week number out of a "Week 7" / "Week 13.5 (Buffer)" label. */
 function parseWeekNumber(label) {
-  const match = /(\d+)/.exec(label || '')
-  return match ? parseInt(match[1], 10) : null
+  const match = /(\d+(?:\.\d+)?)/.exec(label || '')
+  return match ? parseFloat(match[1]) : null
+}
+
+/** "Week 4 (Buffer)" is a catch-up week; "Week 13 (½ week)" lasts half a week. */
+function parseWeekQualifiers(label) {
+  const l = (label || '').toLowerCase()
+  return {
+    isBuffer: l.includes('buffer'),
+    isHalf: l.includes('½') || /\bhalf\b/.test(l),
+  }
 }
 
 /** Split "DA-1: Data and AI Literacy Foundation" into code + title. */
@@ -35,11 +57,13 @@ function parseModule(raw) {
 
 /**
  * Classify a graded/evaluation cell so the UI can badge it correctly.
- * @returns {'exam'|'integrated-project'|'graded-test'|'graded'|null}
+ * @returns {'mastery-project'|'quiz'|'exam'|'integrated-project'|'graded-test'|'graded'|null}
  */
 function classifyGraded(text) {
   if (!text) return null
   const t = text.toLowerCase()
+  if (t.includes('mastery project')) return 'mastery-project'
+  if (t.includes('quiz')) return 'quiz'
   if (t.includes('exam')) return 'exam'
   if (t.includes('integrated project')) return 'integrated-project'
   if (t.includes('graded test')) return 'graded-test'
@@ -77,9 +101,11 @@ function splitGraded(text) {
 /**
  * Build the normalized schedule from raw CSV text.
  * @param {string} csvText
+ * @param {{ layout?: 'cyu'|'activity' }} [options]
  */
-export function buildScheduleFromCsv(csvText) {
+export function buildScheduleFromCsv(csvText, { layout = 'cyu' } = {}) {
   const rawRows = parseCsv(csvText)
+  const activityLayout = layout === 'activity'
 
   // Find the header row deterministically instead of assuming a fixed offset —
   // guards against an extra/removed banner line at the top of the export.
@@ -94,19 +120,42 @@ export function buildScheduleFromCsv(csvText) {
   const filled = forwardFill(bodyRows, [COL_MODULE, COL_WEEK])
 
   const lessons = []
+  // Weeks are declared by rows, not by lessons: a buffer week has no lessons
+  // but still occupies its slot on the timeline.
+  const weekMap = new Map()
   const idCounts = new Map()
   let sequence = 0
 
   for (const row of filled) {
     const lessonText = (row[COL_LESSON] ?? '').trim()
-    const cyuText = (row[COL_CYU] ?? '').trim()
+    const secondaryText = (row[COL_SECONDARY] ?? '').trim()
     const gradedText = (row[COL_GRADED] ?? '').trim()
 
     // Skip the blank separator rows between modules — nothing to track.
-    if (!lessonText && !cyuText && !gradedText) continue
+    if (!lessonText && !secondaryText && !gradedText) continue
 
     const mod = parseModule(row[COL_MODULE])
-    const week = parseWeekNumber(row[COL_WEEK])
+    const weekLabel = (row[COL_WEEK] ?? '').trim()
+    const week = parseWeekNumber(weekLabel)
+
+    if (week != null && !weekMap.has(week)) {
+      weekMap.set(week, {
+        week,
+        weekLabel: weekLabel || `Week ${week}`,
+        ...parseWeekQualifiers(weekLabel),
+        moduleCode: mod.code,
+        moduleTitle: mod.title,
+        moduleFull: mod.full,
+        lessons: [],
+        gradedItems: [],
+      })
+    }
+
+    // A buffer marker only declares the week; there is nothing to tick off.
+    if (BUFFER_ROW.test(lessonText) && !secondaryText && !gradedText) continue
+
+    const cyuText = activityLayout ? '' : secondaryText
+    const activityText = activityLayout ? secondaryText : ''
     const gradedType = classifyGraded(gradedText)
     const gradedSplit = gradedText ? splitGraded(gradedText) : null
 
@@ -114,19 +163,22 @@ export function buildScheduleFromCsv(csvText) {
     // inserting or removing a CSV row cannot silently re-map another lesson's
     // saved completion state in localStorage. A numeric suffix disambiguates
     // exact-duplicate titles within the same week.
-    const titleForId = lessonText || (gradedSplit ? gradedSplit.title : cyuText)
+    const titleForId =
+      lessonText || activityText || (gradedSplit ? gradedSplit.title : cyuText)
     const baseId = `${slugify(mod.code)}-w${week ?? 0}-${slugify(titleForId)}`
     const dupCount = idCounts.get(baseId) || 0
     idCounts.set(baseId, dupCount + 1)
 
-    lessons.push({
+    const lesson = {
       id: dupCount === 0 ? baseId : `${baseId}-${dupCount + 1}`,
       sequence,
+      // 'lesson' | 'activity' | 'assessment' (a graded-only row).
+      kind: lessonText ? 'lesson' : activityText ? 'activity' : gradedText ? 'assessment' : 'lesson',
       moduleCode: mod.code,
       moduleTitle: mod.title,
       moduleFull: mod.full,
       week,
-      weekLabel: row[COL_WEEK] || (week ? `Week ${week}` : ''),
+      weekLabel: weekLabel || (week ? `Week ${week}` : ''),
       // The primary, checkable label for this row.
       title: titleForId,
       lesson: lessonText,
@@ -134,31 +186,35 @@ export function buildScheduleFromCsv(csvText) {
       graded: gradedSplit,
       gradedType,
       isGraded: Boolean(gradedText),
-    })
-    sequence += 1
-  }
-
-  // Group into weeks (1..N) preserving lesson order.
-  const weekMap = new Map()
-  for (const lesson of lessons) {
-    if (lesson.week == null) continue
-    if (!weekMap.has(lesson.week)) {
-      weekMap.set(lesson.week, {
-        week: lesson.week,
-        weekLabel: lesson.weekLabel,
-        moduleCode: lesson.moduleCode,
-        moduleTitle: lesson.moduleTitle,
-        moduleFull: lesson.moduleFull,
-        lessons: [],
-        gradedItems: [],
-      })
     }
-    const bucket = weekMap.get(lesson.week)
-    bucket.lessons.push(lesson)
-    if (lesson.isGraded) bucket.gradedItems.push(lesson)
+    lessons.push(lesson)
+    sequence += 1
+
+    const bucket = week != null ? weekMap.get(week) : null
+    if (bucket) {
+      bucket.lessons.push(lesson)
+      if (lesson.isGraded) bucket.gradedItems.push(lesson)
+    }
   }
 
   const weeks = Array.from(weekMap.values()).sort((a, b) => a.week - b.week)
+
+  // Day timeline. Week W begins (W - 1) × 7 days after the start date, so a
+  // "Week 13.5" begins half-way through week 13. A week that would begin at
+  // midday begins the next morning (ceil). Each week runs until the next one
+  // begins; the final week runs a full week (half, if marked "½ week").
+  weeks.forEach((wk, i) => {
+    wk.index = i
+    wk.startDay = Math.ceil((wk.week - 1) * DAYS_PER_WEEK)
+  })
+  weeks.forEach((wk, i) => {
+    const next = weeks[i + 1]
+    wk.endDay = next
+      ? next.startDay
+      : Math.ceil((wk.week - 1 + (wk.isHalf ? 0.5 : 1)) * DAYS_PER_WEEK)
+    wk.days = wk.endDay - wk.startDay
+  })
+  const totalDays = weeks.length ? weeks[weeks.length - 1].endDay : 0
 
   // Group weeks into modules, preserving first-seen order.
   const moduleMap = new Map()
@@ -179,17 +235,18 @@ export function buildScheduleFromCsv(csvText) {
     weekEnd: m.weeks[m.weeks.length - 1]?.week ?? null,
   }))
 
-  const maxWeek = weeks.length ? weeks[weeks.length - 1].week : TOTAL_WEEKS
-
   return {
     lessons,
     weeks,
     modules,
     totalLessons: lessons.length,
     totalGraded: lessons.filter((l) => l.isGraded).length,
-    // The curriculum spans 14 weeks by design; fall back to the data-derived
-    // maximum so the app never lies if the CSV is ever edited.
-    weekCount: Math.max(TOTAL_WEEKS, maxWeek),
-    maxWeek,
+    // Course length is derived from the data, never hard-coded, so the app
+    // cannot lie if a sheet is edited: DA = 98 days, CC = 154, GD = 224.
+    totalDays,
+    totalWeeks: Math.round((totalDays / DAYS_PER_WEEK) * 10) / 10,
+    // What a row is called in counts: every DA row is a lesson; a Creative
+    // Tech row may be a lesson, an activity or a quiz, so it is an "item".
+    itemNoun: activityLayout ? 'item' : 'lesson',
   }
 }

@@ -6,6 +6,8 @@ import {
   shareToLinkedIn,
   shareToCommunity,
   COMMUNITY_URL,
+  COMMUNITY_URLS,
+  communityUrl,
 } from './share'
 import { CAMPAIGN_HASHTAG } from './milestones'
 
@@ -218,6 +220,17 @@ describe('shareToCommunity', () => {
     // the default wrapper, same as the LinkedIn route.
     expect(open).toHaveBeenCalledWith(COMMUNITY_URL)
     expect(COMMUNITY_URL).toContain('/c/dp-data-analytics-data-program')
+  })
+
+  it('has a space for every program, and uses the DA space for all of them for now', async () => {
+    vi.stubGlobal('navigator', { clipboard: { writeText: vi.fn().mockResolvedValue(undefined) } })
+    expect(Object.keys(COMMUNITY_URLS).sort()).toEqual(['cc', 'da', 'gd'])
+    for (const program of ['da', 'cc', 'gd']) {
+      const open = vi.fn().mockReturnValue({})
+      await shareToCommunity('post', { open, program })
+      expect(open).toHaveBeenCalledWith(COMMUNITY_URLS[program])
+      expect(communityUrl(program)).toBe(COMMUNITY_URL)
+    }
   })
 
   it('copies the whole post, because there is nothing else to carry it', async () => {

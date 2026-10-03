@@ -162,6 +162,22 @@ export function shareToLinkedIn(text, options = {}) {
  */
 export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytics-data-program'
 
+/*
+  One space per program. Content Creation and Graphic Design use the Data
+  Analytics space until their own links arrive — the owner's call — so adding
+  one is a one-line change here.
+*/
+export const COMMUNITY_URLS = {
+  da: COMMUNITY_URL,
+  cc: COMMUNITY_URL,
+  gd: COMMUNITY_URL,
+}
+
+/** The space a learner of `programId` should post in. */
+export function communityUrl(programId = 'da') {
+  return COMMUNITY_URLS[programId] ?? COMMUNITY_URL
+}
+
 /**
  * Open the community with the post on the clipboard.
  *
@@ -178,8 +194,8 @@ export const COMMUNITY_URL = 'https://community.alxafrica.com/c/dp-data-analytic
  * and iOS Safari's popup blocker takes the call.
  */
 export function shareToCommunity(text, options = {}) {
-  const { open = (url) => window.open(url, '_blank', 'noopener') } = options
+  const { open = (url) => window.open(url, '_blank', 'noopener'), program = 'da' } = options
   const copying = copyToClipboard(text)
-  const opened = Boolean(open(COMMUNITY_URL))
+  const opened = Boolean(open(communityUrl(program)))
   return copying.then((copied) => ({ copied, opened }))
 }
