@@ -20,10 +20,30 @@
  */
 
 import { shareUrl } from './appUrl'
+import { DAYS_PER_WEEK } from './scheduleModel'
 
 const PROGRAM_TITLES = { da: 'Data Analytics', cc: 'Content Creation', gd: 'Graphic Design' }
 
-/** @typedef {{ id: string, kind: 'module'|'programme', program: string, code: string|null, title: string, weeks: number, index: number, total: number, lessons: number }} Milestone */
+/**
+ * `weeks` is whole or a half (3.5); `lessons` counts every row, which `unit`
+ * names; `masteryProject` is the module's capstone by name, or null.
+ * @typedef {{ id: string, kind: 'module'|'programme', program: string, code: string|null, title: string, weeks: number, index: number, total: number, lessons: number, unit: 'lesson'|'item', masteryProject: string|null }} Milestone
+ */
+
+/*
+  A MODULE LASTS AS LONG AS ITS DAYS, NOT ITS WEEK ENTRIES
+  Graphic Design's GD-4 holds Week 11, Week 12, Week 13 (½ week) and Week 13.5
+  (Buffer): four entries, three and a half weeks. Counting entries told a
+  learner "4 weeks" about a module the curriculum calls 3½.
+
+  The timeline starts every week on a whole day — a week labelled mid-week
+  begins the next morning — so a module holding a half week spans 24 or 25
+  days, not 24½. Every week in the sheets is whole or half (verify-parser
+  asserts it), so rounding to the nearest half week gives back the sheet's own
+  figure exactly.
+*/
+const weeksSpanned = (weeks) =>
+  Math.round((weeks.reduce((days, w) => days + w.days, 0) / DAYS_PER_WEEK) * 2) / 2
 
 /*
   MILESTONE IDS ARE SHARED ACROSS PROGRAMS, SO THEY MUST NOT COLLIDE
@@ -52,7 +72,7 @@ export function milestoneIds(schedule, programId = 'da') {
 /**
  * Every milestone the learner has now reached, in curriculum order.
  *
- * @param {{ modules: any[], lessons: any[], totalLessons: number } | null} schedule
+ * @param {{ modules: any[], lessons: any[], totalLessons: number, totalWeeks: number, itemNoun?: 'lesson'|'item' } | null} schedule
  * @param {Set<string>} completedSet
  * @param {string} [programId] which program `schedule` is — 'da' by default
  * @returns {Milestone[]}
@@ -74,12 +94,16 @@ export function achievedMilestones(schedule, completedSet, programId = 'da') {
         program: programId,
         code: module.code,
         title: module.title,
-        weeks: module.weeks.length,
+        weeks: weeksSpanned(module.weeks),
         lessons: lessons.length,
+        unit: schedule.itemNoun ?? 'lesson',
         // "module 3 of 4" is worth more in a post than the module code, and
         // both come from the schedule rather than being written down anywhere.
         index: i + 1,
         total: schedule.modules.length,
+        // Named in a Creative Tech post: the project is the part of a module
+        // a design or content learner can show an employer.
+        masteryProject: module.masteryProject ?? null,
       })
     }
   })
@@ -93,10 +117,17 @@ export function achievedMilestones(schedule, completedSet, programId = 'da') {
       // The localised program name is applied where the text is built; this
       // is only the English fallback, used for nothing a learner reads.
       title: PROGRAM_TITLES[programId] ?? PROGRAM_TITLES.da,
-      weeks: schedule.weeks?.length ?? 14,
+      // The programme's length, as the picker and the roadmap state it. Not
+      // weeks.length: Graphic Design's half week and the buffer that starts
+      // half-way through it are two entries, so counting them said 33, not 32.
+      weeks: schedule.totalWeeks,
+      // All of them, which in Creative Tech includes activities and quizzes —
+      // the unit makes the post say "items" there rather than "lessons".
       lessons: schedule.totalLessons,
+      unit: schedule.itemNoun ?? 'lesson',
       index: schedule.modules.length,
       total: schedule.modules.length,
+      masteryProject: null,
     })
   }
 
@@ -160,14 +191,59 @@ export function buildPostText(milestone, t) {
  *
  * Composed the other way round — buildPostText is built FROM this — so the text
  * that reaches LinkedIn and the text on screen cannot drift apart.
+ *
+ * `runs` is the body again, cut around its curriculum titles so the dialogue
+ * can isolate those as well (see titleRuns). Joined, it is exactly `body`.
  */
 export function postParts(milestone, t) {
+  const compose = milestone.kind === 'programme' ? t.programmeDone : t.moduleDone
   return {
-    body: milestone.kind === 'programme' ? t.programmeDone(milestone) : t.moduleDone(milestone),
+    body: compose(milestone),
+    runs: titleRuns(milestone, compose),
     // The learner's program page, so the link previews as their program.
     url: shareUrl(milestone.program),
     hashtag: CAMPAIGN_HASHTAG,
   }
+}
+
+/*
+  Private-use characters: no curriculum cell contains them, and they are
+  only ever composed into the display copy, never into the post.
+*/
+const TITLE_OPEN = '\uE000'
+const TITLE_CLOSE = '\uE001'
+const marked = (title) => (title ? `${TITLE_OPEN}${title}${TITLE_CLOSE}` : title)
+
+/**
+ * The body as runs of text, with the module and mastery-project titles marked
+ * `isolate`.
+ *
+ * Those titles stay in English in every language — they are the names learners
+ * match on the ALX platform — so in the Arabic sentence each is a Latin run,
+ * and a Latin run that begins or ends on punctuation is reordered by the
+ * bidirectional algorithm the way the hashtag was. Isolating them on screen
+ * changes nothing a learner can see today, and keeps it that way.
+ *
+ * WHY THE TITLES ARE MARKED RATHER THAN SEARCHED FOR
+ * GD-3 is "Poster Design & Visual Composition" and its mastery project is
+ * "Poster Design", so looking for the project's name in the sentence finds it
+ * inside the module's. Composing the body once more with each title wrapped in
+ * marks shows exactly where the translation put it.
+ */
+function titleRuns(milestone, compose) {
+  if (milestone.kind !== 'module') return [{ text: compose(milestone), isolate: false }]
+  const text = compose({
+    ...milestone,
+    title: marked(milestone.title),
+    masteryProject: marked(milestone.masteryProject),
+  })
+  const runs = []
+  text.split(TITLE_OPEN).forEach((part, i) => {
+    const [title, after] = i === 0 ? ['', part] : part.split(TITLE_CLOSE)
+    if (title) runs.push({ text: title, isolate: true })
+    if (after) runs.push({ text: after, isolate: false })
+  })
+  return runs
 }
 
 /**

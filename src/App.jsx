@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getWeek } from './lib/schedule'
 import { computePacing, progressPercent } from './lib/pacing'
 import { achievedMilestones, milestoneIds, nextToCelebrate, pruneCelebrated } from './lib/milestones'
@@ -14,6 +14,7 @@ import AlxLogo from './components/AlxLogo'
 import PaceStatusCard from './components/PaceStatusCard'
 import ForecastCard from './components/ForecastCard'
 import PersonalizationWidget from './components/PersonalizationWidget'
+import InAppBrowserHint from './components/InAppBrowserHint'
 import ProgramPicker from './components/ProgramPicker'
 import ProgressBar from './components/ProgressBar'
 import CurrentFocusCard from './components/CurrentFocusCard'
@@ -35,6 +36,7 @@ export default function App() {
     startDate,
     completedLessons,
     completedSet,
+    hasLearnerData,
     updateProgram,
     updateName,
     updateStartDate,
@@ -47,9 +49,58 @@ export default function App() {
   // learner taps "change" on the program row.
   const [pickingProgram, setPickingProgram] = useState(false)
   const showPicker = !schedule || pickingProgram
+
+  /*
+    Focus after a setup step.
+
+    The button a learner presses to choose a program or a start date goes
+    with its card: the picker gives way to the start-date card, and that to
+    the status card, the countdown or the graduation card. Focus fell to the
+    page body each time, which sends a screen-reader user back to the top of
+    the page after every decision. So a step hands focus, once, to the
+    heading of the card that takes its place. stepHeading is that heading:
+    the picker and those four cards each pass it to their own, and only one
+    of them is ever on screen. Nothing moves focus on load, or when a
+    countdown reaches its start day in a tab left open. (The picker's own
+    Creative Tech → track step is the picker's to handle.)
+  */
+  const stepHeading = useRef(null)
+  const stepTaken = useRef(false)
+  const takeStep = () => {
+    stepTaken.current = true
+  }
+
   const selectProgram = (id) => {
     updateProgram(id)
     setPickingProgram(false)
+    takeStep()
+  }
+  const setStartFromPrompt = (iso) => {
+    updateStartDate(iso)
+    takeStep()
+  }
+  // Reset starts the setup over, on the picker's question; the reset button
+  // itself is gone once there is nothing left to reset.
+  const resetAndRestart = () => {
+    resetProfile()
+    takeStep()
+  }
+  // The hero's "change" opens the picker on its heading. Cancel hands focus
+  // back to "change", which stays on screen.
+  const pickerOpener = useRef(null)
+  const openPicker = () => {
+    pickerOpener.current = document.activeElement
+    // Already open, nothing re-renders to spend a step on: go straight there.
+    if (pickingProgram) {
+      stepHeading.current?.focus()
+      return
+    }
+    setPickingProgram(true)
+    takeStep()
+  }
+  const cancelPicker = () => {
+    setPickingProgram(false)
+    if (pickerOpener.current?.isConnected) pickerOpener.current.focus()
   }
 
   const programName = program ? t.programs[program] : ''
@@ -79,6 +130,9 @@ export default function App() {
 
   const completedCount = completedLessons.length
   const percent = progressPercent(completedSet, totalLessons)
+  // The progress card's figures, also summed up in one line of the status card.
+  // Both get this one object, so the two can never disagree.
+  const progress = { completed: completedCount, total: totalLessons, percent }
   const gradedDone = useMemo(
     () =>
       schedule ? schedule.lessons.filter((l) => l.isGraded && completedSet.has(l.id)).length : 0,
@@ -86,6 +140,10 @@ export default function App() {
   )
 
   const { status } = pacing
+  // A start date is set: counting down to it, in a week, or past the last one.
+  const hasStartDate = status === 'future' || status === 'active' || status === 'completed'
+  // The course has begun, so one of its weeks is the current week.
+  const hasBegun = status === 'active' || status === 'completed'
 
   const paceStatus = useMemo(
     () => (schedule ? computePaceStatus(schedule, completedSet, pacing, today) : null),
@@ -159,6 +217,15 @@ export default function App() {
     dismissMilestone()
   }, [manualMilestone, milestone, dismissMilestone])
 
+  // See takeStep. Declared after shownMilestone, which it reads: a milestone
+  // dialogue that the step brought up (switching to a program with a module
+  // done but not yet celebrated) keeps the focus it took.
+  useEffect(() => {
+    if (!stepTaken.current) return
+    stepTaken.current = false
+    if (!shownMilestone) stepHeading.current?.focus()
+  })
+
   // Anonymous usage tallies (no-ops until GOATCOUNTER_SITE is configured).
   useEffect(() => {
     trackAppOpen()
@@ -196,10 +263,14 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 pb-6 pt-5 sm:px-5">
-      {/* Brand bar */}
+      {/*
+        Brand bar. The logo never shrinks: when the row ran short, flexbox
+        squeezed it (to 34px wide in French, from 55) before wrapping the
+        tagline beside it.
+      */}
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <AlxLogo className="h-7 w-auto text-ink dark:text-paper" />
+          <AlxLogo className="h-7 w-auto flex-none text-ink dark:text-paper" />
           <div className="border-s border-ink/15 ps-3 leading-none dark:border-white/20">
             <p className="text-sm font-bold tracking-tight">Pace</p>
             <p className="text-[11px] font-medium text-ink-mute dark:text-paper/70">
@@ -207,12 +278,23 @@ export default function App() {
             </p>
           </div>
         </div>
+        {/*
+          On one line from 360px, the common Android width, in every language;
+          the tagline beside it wraps instead. "Parcours 14 semaines" had
+          broken into a two-line lozenge even at 414px. Only on a 320px screen
+          may it still wrap: held to one line there, it left the tagline a
+          column so narrow that French ran to five lines.
+        */}
         {schedule && (
-          <span className="alx-chip bg-lime-300 text-navy-900">{t.trackChip(schedule.totalWeeks)}</span>
+          <span className="alx-chip bg-lime-300 text-navy-900 min-[360px]:whitespace-nowrap">
+            {t.trackChip(schedule.totalWeeks)}
+          </span>
         )}
       </header>
 
       <main className="animate-fade-up space-y-4">
+        {!program && <InAppBrowserHint />}
+
         <PersonalizationWidget
           learnerName={learnerName}
           startDate={startDate}
@@ -222,26 +304,61 @@ export default function App() {
           programName={programName}
           onUpdateName={updateName}
           onUpdateStartDate={updateStartDate}
-          onChangeProgram={() => setPickingProgram(true)}
+          onChangeProgram={openPicker}
         />
 
         {showPicker ? (
           <ProgramPicker
             program={program}
             onSelect={selectProgram}
-            onCancel={schedule ? () => setPickingProgram(false) : undefined}
+            onCancel={schedule ? cancelPicker : undefined}
+            headingRef={stepHeading}
           />
         ) : (
           <>
-            {/* Where-you're-at message: behind / on-track / ahead + daily quote */}
-            {status === 'active' && <PaceStatusCard paceStatus={paceStatus} today={today} />}
+            {/*
+              An active week puts the work before the stats: where you stand,
+              then this week's checklist, then progress, pace and the graded
+              card. With progress and pace above the checklist, the first
+              checkbox ended 1.3 screens down (y=1084 at 375×812), so the daily
+              "open the app, tick a lesson" began with a scroll; now it ends at
+              y=776, on the first screen. The status card keeps the percentage
+              up there in one line, and screen-reader users reach the checklist
+              two cards sooner.
+            */}
+            {status === 'active' && (
+              <>
+                {/* Where-you're-at: behind / on-track / ahead, a progress line, daily quote */}
+                <PaceStatusCard
+                  paceStatus={paceStatus}
+                  progress={progress}
+                  today={today}
+                  headingRef={stepHeading}
+                />
+                <CurrentFocusCard
+                  week={currentWeek}
+                  completedSet={completedSet}
+                  onToggle={toggleLesson}
+                  catchUp={paceStatus?.behindItems}
+                />
+                <ProgressBar {...progress} />
+                <ForecastCard paceStatus={paceStatus} />
+                {!currentWeek?.isBuffer && (
+                  <GradedMilestonesAlert week={currentWeek} completedSet={completedSet} />
+                )}
+              </>
+            )}
 
-            {/* State machine: onboarding → future → active → completed */}
+            {/*
+              State machine: onboarding → future → active → completed. The
+              states without a week to work on keep their own card first.
+            */}
             {status === 'no-start-date' && (
               <StartDatePrompt
-                onSetStartDate={updateStartDate}
+                onSetStartDate={setStartFromPrompt}
                 schedule={schedule}
                 programName={programName}
+                headingRef={stepHeading}
               />
             )}
 
@@ -252,6 +369,7 @@ export default function App() {
                 schedule={schedule}
                 program={program}
                 programName={programName}
+                headingRef={stepHeading}
               />
             )}
 
@@ -263,35 +381,30 @@ export default function App() {
                 totalGraded={schedule.totalGraded}
                 totalWeeks={schedule.totalWeeks}
                 unit={schedule.itemNoun}
+                headingRef={stepHeading}
               />
             )}
 
-            {/* Progress + focus are shown whenever there is a timeline to pace. */}
-            {(status === 'active' || status === 'completed' || status === 'no-start-date') && (
-              <ProgressBar completed={completedCount} total={totalLessons} percent={percent} />
+            {/* Without a week to work on, overall progress follows the state's own card. */}
+            {(status === 'completed' || status === 'no-start-date') && (
+              <ProgressBar {...progress} />
             )}
 
-            {status === 'active' && (
-              <>
-                <ForecastCard paceStatus={paceStatus} />
-                <CurrentFocusCard
-                  week={currentWeek}
-                  completedSet={completedSet}
-                  onToggle={toggleLesson}
-                  catchUp={paceStatus?.behindItems}
-                />
-                {!currentWeek?.isBuffer && (
-                  <GradedMilestonesAlert week={currentWeek} completedSet={completedSet} />
-                )}
-              </>
-            )}
+            {/*
+              No week is "Current" before the course begins. Pacing points at
+              Week 1 then, as the week to come, and passing that on badged it
+              "Current" and opened it under "Course begins in 10 days".
 
-            {/* Keyed by program so switching re-opens the new current week. */}
+              Keyed by program, so switching re-opens the new current week, and
+              by whether the course has begun, so a countdown that reaches its
+              start day in a tab left open opens Week 1 at midnight, as a fresh
+              visit would.
+            */}
             <WeekAccordion
-              key={program}
+              key={`${program}:${hasBegun ? 'begun' : 'not-begun'}`}
               schedule={schedule}
               completedSet={completedSet}
-              currentWeek={pacing.currentWeek}
+              currentWeek={hasBegun ? pacing.currentWeek : null}
               onToggle={toggleLesson}
               onSetWeek={setLessonsCompleted}
               achieved={achieved}
@@ -300,17 +413,34 @@ export default function App() {
           </>
         )}
 
+        {/*
+          The footer offers only what applies yet. Reminders wait for a start
+          date: before one there is no week to remind anyone about. Reset waits
+          for something to reset, and stays for as long as any of it exists.
+        */}
         <Footer
           theme={theme}
           onToggleTheme={toggleTheme}
-          onReset={resetProfile}
+          onReset={hasLearnerData ? resetAndRestart : undefined}
+          showReminders={hasStartDate}
           programName={programName}
         />
       </main>
 
-      {/* Last in the tree so it lays over everything without needing a portal. */}
+      {/*
+        Last in the tree so it lays over everything without needing a portal;
+        the dialogue makes its siblings, the page, inert while it is open.
+        Keyed by milestone, so one that follows another (closing a re-share
+        while another is pending) opens as a dialogue of its own: announced,
+        on its primary action, still handing focus back to the original
+        opener when it closes.
+      */}
       {shownMilestone ? (
-        <MilestoneCelebration milestone={shownMilestone} onDismiss={closeMilestone} />
+        <MilestoneCelebration
+          key={shownMilestone.id}
+          milestone={shownMilestone}
+          onDismiss={closeMilestone}
+        />
       ) : null}
     </div>
   )

@@ -48,14 +48,14 @@ runs after those gates pass on `main`.
 
 | Area | Behaviour |
 | --- | --- |
-| **Program picker** | First visit asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
+| **Program picker** | The first screen says what Pace is (*Free · No login · Saved on this phone*), then asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
 | **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
 | **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
-| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes. |
+| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. |
 | **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
 | **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
-| **Progress** | Overall % complete across every item in the program, plus per-week counts. |
-| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); the current week auto-expands. |
+| **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
+| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week auto-expands and is flagged *Current*. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
 
@@ -89,8 +89,8 @@ browser left off.
 
 ## 🔔 Weekly reminders
 
-Learners can opt in via **Enable weekly reminders** in the footer. Two delivery
-modes, best available wins:
+Learners can opt in via **Enable weekly reminders** in the footer, offered once
+they have set a start date. Two delivery modes, best available wins:
 
 1. **Local (zero infrastructure, on by default)** — Periodic Background Sync: the
    service worker wakes and shows the learner's latest status ("Week 3 — 2 graded
@@ -138,8 +138,8 @@ machine — no AI, no guessing, same bytes → same model every time.
 - **Build-time bundling:** the CSVs are imported with Vite's `?raw` suffix
   ([`src/lib/schedule.js`](src/lib/schedule.js)) so they are compiled straight into the
   bundle — the curriculum data needs no runtime `fetch` and is never missing or
-  stale. (The Poppins typeface loads from Google Fonts with a system-font
-  fallback, so the app remains fully functional without it.)
+  stale. The Poppins typeface is bundled too (`src/assets/fonts`, OFL), so
+  first paint waits on no third party and the app keeps its look offline.
 - **RFC 4180 parser** ([`src/lib/csvParser.js`](src/lib/csvParser.js)) handles the
   messy realities of a spreadsheet export: quoted cells containing commas and
   **newlines** (the Integrated Projects span two lines), escaped `""`, and mixed
@@ -163,8 +163,9 @@ machine — no AI, no guessing, same bytes → same model every time.
   **production parser** against all three CSVs in plain Node and asserts program
   length (14 / 22 / 32 weeks), module counts, a gap-free day timeline, buffer and
   half weeks, forward-fill integrity, multi-line cell parsing, graded
-  classification, one mastery project per Creative Tech module, and id uniqueness
-  within and across programs. Run it with `npm run parser:check`.
+  classification, one mastery project per Creative Tech module (in its final
+  content week, named as a module post quotes it), and id uniqueness within and
+  across programs. Run it with `npm run parser:check`.
 
 ### The pacing formula
 
@@ -319,13 +320,14 @@ src/
 ## Branding
 
 Design tokens sampled from the live **alxafrica.com** site (July 2026), typeface
-**Poppins** (via Google Fonts, with a system-sans fallback):
+**Poppins** (bundled under `src/assets/fonts`, with a system-sans fallback for
+scripts it does not cover, such as Arabic):
 
 | Token | Hex | Use |
 | --- | --- | --- |
 | Deep Navy | `#03134F` / `#020B33` | hero banner, dark-mode surfaces |
 | Cobalt | `#0452F0` (`#0345C9` for small text) | primary brand blue, CTAs, focus ring |
-| Lime | `#C4E878` / `#DAF2A7` | signature accent, chips, current-week highlight |
+| Lime | `#C4E878` / `#DAF2A7` | signature accent, chips, current-week highlight, focus ring on navy |
 | Violet | `#5F3DC4` | graded-milestone alerts, exams |
 | Green | `#02B75E` | integrated projects, completed weeks |
 | Amber | `#EAB308` | graded tests |
@@ -337,7 +339,11 @@ official assets from alxafrica.com (this is an internal ALX learner tool).
 
 Built for **375px+** smartphone browsers: 44px minimum tap targets, safe-area
 insets, WCAG-AA text contrast in both themes, `prefers-reduced-motion` support,
-and a theme-aware focus ring.
+and a theme-aware focus ring: cobalt on light surfaces, lime on navy ones (the
+hero is navy in both themes; mark such a surface `on-navy`). Native controls
+follow the app's theme, not the phone's. Each setup step hands focus to the
+next card's heading, and the milestone dialogue keeps focus inside it and hands
+it back when it closes.
 
 ---
 

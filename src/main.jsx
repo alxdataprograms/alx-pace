@@ -4,6 +4,7 @@ import App from './App'
 import { LanguageProvider } from './i18n/LanguageContext'
 import { translations } from './i18n/translations'
 import { runHandoff } from './lib/handoff'
+import { captureInstallPrompt } from './lib/install'
 import { migrateLegacyProgram } from './lib/programs'
 import { SCHEDULES } from './lib/schedule'
 import './index.css'
@@ -43,6 +44,13 @@ try {
 } catch {
   /* storage blocked — the picker simply shows */
 }
+
+/*
+  Before the first render too: Chromium fires its one install prompt whenever
+  it decides the page is installable, which can precede the footer that offers
+  the button. Held in src/lib/install.js until the learner asks for it.
+*/
+captureInstallPrompt(window)
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

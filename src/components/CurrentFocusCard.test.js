@@ -56,6 +56,8 @@ function render(props) {
 
 const boxes = () => [...container.querySelectorAll('[role="checkbox"]')]
 const click = (el) => act(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+/** A box's accessible name: the lesson title its aria-labelledby points at. */
+const nameOf = (box) => document.getElementById(box.getAttribute('aria-labelledby'))?.textContent
 
 describe('the catch-up list', () => {
   const gd = SCHEDULES.gd
@@ -65,7 +67,8 @@ describe('the catch-up list', () => {
   it('keeps a ticked item on screen, struck through, so it can be unticked in place', () => {
     render({ week: buffer, pool })
     const first = boxes()[0]
-    const label = first.getAttribute('aria-label')
+    const name = nameOf(first)
+    expect(name).toBe(pool[0].title)
     click(first)
 
     const again = boxes()[0]
@@ -75,7 +78,19 @@ describe('the catch-up list', () => {
 
     click(again)
     expect(boxes()[0].getAttribute('aria-checked')).toBe('false')
-    expect(boxes()[0].getAttribute('aria-label')).toBe(label)
+    expect(nameOf(boxes()[0])).toBe(name)
+  })
+
+  it('keeps an item ticked by tapping its title in place, the same as by its box', () => {
+    render({ week: buffer, pool })
+    const title = document.getElementById(boxes()[0].getAttribute('aria-labelledby'))
+    click(title)
+    expect(boxes()[0].getAttribute('aria-checked')).toBe('true')
+    expect(nameOf(boxes()[0])).toBe(pool[0].title)
+
+    click(title)
+    expect(boxes()[0].getAttribute('aria-checked')).toBe('false')
+    expect(nameOf(boxes()[0])).toBe(pool[0].title)
   })
 
   it('still pulls the next open item in, so six stay open to work on', () => {

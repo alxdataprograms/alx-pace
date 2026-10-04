@@ -22,30 +22,66 @@ import { shareToCommunity, shareToLinkedIn } from '../lib/share'
 export function MilestoneCelebration({ milestone, onDismiss }) {
   const { t, lang } = useLang()
   const [status, setStatus] = useState(null)
+  const overlay = useRef(null)
   const dialog = useRef(null)
   const shareButton = useRef(null)
 
   /*
     `post` is what gets copied and sent to LinkedIn — one string, hashtag and
-    all. `body` is only for display, because the hashtag has to be rendered as
-    an isolated LTR run to survive Arabic. The two must not drift, so the body
-    is derived from the post rather than built a second way.
+    all. The parts are only for display, because the hashtag, the URL and the
+    English curriculum titles each have to be rendered as an isolated LTR run
+    to survive Arabic. The two must not drift, so the parts come from the same
+    translation as the post rather than being built a second way.
   */
   const strings = { moduleDone: t.postModuleDone, programmeDone: t.postProgrammeDone }
   const post = buildPostText(milestone, strings)
-  const { body, url, hashtag } = postParts(milestone, strings)
+  const { runs, url, hashtag } = postParts(milestone, strings)
 
   /*
-    Escape closes it, and focus starts on the primary action.
+    Focus starts on the primary action, and on closing goes back to whatever
+    had it before: the roadmap's Share button, or the lesson whose tick
+    finished the module. Closing used to drop it on the page body, which sends
+    a keyboard or screen-reader user back to the top of the page.
 
-    Without the key handler this is a box that traps someone who reached it by
-    keyboard — the dialogue covers the page and the only way out would be a
-    mouse.
+    While it is open the page behind is inert, so neither Tab nor a screen
+    reader's reading cursor can wander into what it covers: the third Tab used
+    to leave the dialogue for the page underneath.
+
+    Once per dialogue, on mount: this effect used to re-run whenever
+    onDismiss changed (a tick in another tab does that), and each re-run
+    pulled focus back to the share button mid-dialogue.
   */
   useEffect(() => {
+    // Never the dialogue's own share button: StrictMode runs this twice in
+    // development, and when nothing had focus before, the second run finds
+    // that button focused.
+    const previous = document.activeElement
+    const opener = overlay.current.contains(previous) ? null : previous
     shareButton.current?.focus()
+    const behind = [...overlay.current.parentElement.children].filter(
+      (el) => el !== overlay.current && !el.hasAttribute('inert'),
+    )
+    for (const el of behind) el.setAttribute('inert', '')
+    return () => {
+      // Lifted first: an inert element cannot take focus back.
+      for (const el of behind) el.removeAttribute('inert')
+      if (opener instanceof HTMLElement && opener !== document.body && opener.isConnected) {
+        opener.focus()
+      }
+    }
+  }, [])
+
+  /*
+    Escape closes it. Without that this is a box that traps someone who
+    reached it by keyboard — the dialogue covers the page and the only way out
+    would be a mouse. Tab and Shift+Tab wrap around its own controls: with the
+    page inert, the browser would otherwise carry focus past the last one,
+    out to its own toolbar.
+  */
+  useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape') onDismiss()
+      else if (e.key === 'Tab') wrapTab(e, dialog.current)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -79,6 +115,7 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
 
   return (
     <div
+      ref={overlay}
       className="fixed inset-0 z-50 flex items-end justify-center bg-navy-900/70 p-4 backdrop-blur-sm sm:items-center"
       onClick={(e) => {
         // Only the backdrop itself, never a click that started on the card.
@@ -107,11 +144,16 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
                 : t.milestoneModuleSub(milestone)}
             </p>
           </div>
+          {/*
+            44×44, the app's tap target; it was 34×34. The negative margin
+            (half of 44 less the 18px icon) leaves the X drawn exactly where
+            it was, so only the area that answers a tap grows.
+          */}
           <button
             type="button"
             onClick={onDismiss}
             aria-label={t.milestoneDismiss}
-            className="-m-2 shrink-0 p-2 text-ink-soft/60 hover:text-ink-soft dark:text-paper/50 dark:hover:text-paper/80"
+            className="tap-target -m-[13px] flex shrink-0 items-center justify-center rounded-full text-ink-soft/60 hover:text-ink-soft dark:text-paper/50 dark:hover:text-paper/80"
           >
             <X size={18} aria-hidden="true" />
           </button>
@@ -136,7 +178,21 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
           dir={t.dir}
           className="mt-3 whitespace-pre-line rounded-lg bg-navy-900/5 p-4 text-sm leading-relaxed text-ink dark:bg-white/5 dark:text-paper"
         >
-          {body}
+          {/*
+            The module and mastery-project titles stay in English in every
+            language, so each is isolated as an LTR run too, as the roadmap
+            already does with module titles. See titleRuns in
+            src/lib/milestones.js.
+          */}
+          {runs.map((run, i) =>
+            run.isolate ? (
+              <bdi key={i} dir="ltr">
+                {run.text}
+              </bdi>
+            ) : (
+              run.text
+            ),
+          )}
           {'\n\n'}
           {/*
             The URL and the hashtag are each isolated as their own LTR run, and
@@ -203,4 +259,25 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
       </div>
     </div>
   )
+}
+
+// What Tab can reach inside the dialogue. Only buttons today; the rest is
+// here so a link or a field added later is not skipped by the wrap.
+const TABBABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+
+/** Keeps Tab and Shift+Tab inside `box`, wrapping from one end to the other. */
+function wrapTab(e, box) {
+  const stops = box ? [...box.querySelectorAll(TABBABLE)] : []
+  if (stops.length === 0) return
+  const first = stops[0]
+  const last = stops[stops.length - 1]
+  const at = document.activeElement
+  const outside = !box.contains(at)
+  if (e.shiftKey && (at === first || outside)) {
+    e.preventDefault()
+    last.focus()
+  } else if (!e.shiftKey && (at === last || outside)) {
+    e.preventDefault()
+    first.focus()
+  }
 }

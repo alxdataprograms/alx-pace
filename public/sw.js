@@ -5,9 +5,9 @@
  *  - App shell ('./'): network-first, cached copy as offline fallback — new
  *    deploys are picked up on the next online visit.
  *  - Same-origin static assets (Vite emits content-hashed filenames, so they
- *    are immutable): cache-first.
- *  - Cross-origin requests (Google Fonts): untouched — the app falls back to
- *    system fonts offline.
+ *    are immutable): cache-first. That includes the bundled Poppins files,
+ *    so the app keeps its typeface offline.
+ *  - Cross-origin requests: untouched.
  *
  * Also handles reminders:
  *  - 'periodicsync': shows the last status message the app mirrored into

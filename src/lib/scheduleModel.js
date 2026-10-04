@@ -99,6 +99,16 @@ function splitGraded(text) {
 }
 
 /**
+ * A mastery project's own name: "Mastery Project: Poster Design" → "Poster
+ * Design", which is how a module post names it. Every Creative Tech sheet
+ * writes the cell that way (scripts/verify-parser.mjs asserts it); a cell
+ * written any other way is kept whole rather than guessed at.
+ */
+function masteryProjectName(gradedTitle) {
+  return gradedTitle.replace(/^mastery project\s*:\s*/i, '').trim() || gradedTitle
+}
+
+/**
  * Build the normalized schedule from raw CSV text.
  * @param {string} csvText
  * @param {{ layout?: 'cyu'|'activity' }} [options]
@@ -229,11 +239,19 @@ export function buildScheduleFromCsv(csvText, { layout = 'cyu' } = {}) {
     }
     moduleMap.get(wk.moduleCode).weeks.push(wk)
   }
-  const modules = Array.from(moduleMap.values()).map((m) => ({
-    ...m,
-    weekStart: m.weeks[0]?.week ?? null,
-    weekEnd: m.weeks[m.weeks.length - 1]?.week ?? null,
-  }))
+  const modules = Array.from(moduleMap.values()).map((m) => {
+    // Each Creative Tech module has exactly one mastery project; Data Analytics
+    // modules have none, and carry null.
+    const mastery = m.weeks
+      .flatMap((w) => w.lessons)
+      .find((l) => l.gradedType === 'mastery-project')
+    return {
+      ...m,
+      weekStart: m.weeks[0]?.week ?? null,
+      weekEnd: m.weeks[m.weeks.length - 1]?.week ?? null,
+      masteryProject: mastery ? masteryProjectName(mastery.graded.title) : null,
+    }
+  })
 
   return {
     lessons,

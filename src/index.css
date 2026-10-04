@@ -2,9 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Poppins, shipped with the app instead of fetched from Google Fonts.
+
+  Fetched, it put a third-party request in front of every first paint: with
+  the stylesheet three seconds slow, the cached app sat blank for three
+  seconds, and offline it fell back to the system font and lost the
+  alxafrica.com look entirely. Bundled, Vite content-hashes the files and the
+  service worker keeps them cache-first like any other asset.
+
+  Only the four weights the app uses (font-normal, -medium, -semibold, -bold),
+  and the same two subsets Google served, split by unicode-range so the
+  browser downloads latin-ext only for a page that needs it — a name such as
+  "Ṣeun" — and never for one that does not. Poppins has no Arabic glyphs, and
+  no dot-below vowels (ẹ, ọ); those fall through to the system font glyph by
+  glyph, exactly as they did with Google's copy.
+  Licence: src/assets/fonts/OFL.txt.
+*/
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-400.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-500.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-600.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-700.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308,
+    U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-ext-400.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-ext-500.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-ext-600.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./assets/fonts/poppins-latin-ext-700.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F,
+    U+A720-A7FF;
+}
+
 @layer base {
+  /*
+    Native controls follow the app's theme, not the phone's. This was
+    "light dark", which let the OS choose: on a phone in dark mode, with the
+    app in its default light theme, the date field drew its calendar icon for
+    a dark field, light on the app's white one, and the icon vanished.
+  */
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   html {
@@ -42,6 +146,23 @@
   }
 
   html.dark :focus-visible {
+    outline-color: #c4e878;
+  }
+
+  /*
+    Navy surfaces stay navy in the light theme too (the hero, the graduation
+    card), so they carry their own scope. In it the ring is lime, as it is
+    everywhere in dark mode: cobalt measured 2.87:1 against navy-900, under
+    that floor. :where() keeps the rule no stronger than the plain ring
+    above, so a field that draws its own focus border (outline-none) still
+    does. Native controls take the dark scheme, so the hero's date editor
+    draws its calendar icon light on the navy field.
+  */
+  .on-navy {
+    color-scheme: dark;
+  }
+
+  :where(.on-navy) :focus-visible {
     outline-color: #c4e878;
   }
 

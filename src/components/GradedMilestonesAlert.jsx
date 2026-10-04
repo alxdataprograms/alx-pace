@@ -1,10 +1,15 @@
-import { AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Award, CheckCircle2 } from 'lucide-react'
 import GradedBadge from './GradedBadge'
+import { DONE_TEXT } from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
 /**
  * Prominently surfaces any Evaluation Quizzes / Graded Tests / Integrated
  * Projects due during the current week.
+ *
+ * Prominent, not alarming. Every Data Analytics week has graded items, so this
+ * card is routine; its header carries the generic graded badge's own icon
+ * rather than the warning triangle it once had, which read like an error.
  */
 export default function GradedMilestonesAlert({ week, completedSet }) {
   const { t } = useLang()
@@ -31,7 +36,7 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
     >
       <div className="mb-3 flex items-center gap-2">
         <span className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-violet text-white">
-          <AlertTriangle size={18} strokeWidth={2.5} aria-hidden="true" />
+          <Award size={18} strokeWidth={2.5} aria-hidden="true" />
         </span>
         <div>
           <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
@@ -47,30 +52,41 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
         {items.map((lesson) => {
           const done = completedSet.has(lesson.id)
           return (
-            <li
-              key={lesson.id}
-              className="flex items-start gap-2.5 rounded-xl bg-white/80 p-2.5 dark:bg-navy-950/50"
-            >
-              <GradedBadge type={lesson.gradedType} className="mt-0.5 flex-none" />
-              <div className="min-w-0 flex-1">
-                <p
-                  dir="ltr"
-                  className={`text-start text-sm font-semibold leading-snug ${done ? 'line-through opacity-60' : ''}`}
-                >
-                  {lesson.graded?.title || lesson.title}
-                </p>
-                {lesson.graded?.subtitle && (
-                  <p dir="ltr" className="mt-0.5 text-start text-xs text-ink-soft dark:text-paper/70">
-                    {lesson.graded.subtitle}
-                  </p>
+            <li key={lesson.id} className="rounded-xl bg-white/80 p-2.5 dark:bg-navy-950/50">
+              {/*
+                The badge heads the item on a line of its own, with the done
+                check at its far end, so the title under it gets the card's
+                full width. Beside the badge, Data Analytics' Integrated
+                Project titles were squeezed into a column about 120px wide:
+                6–8 lines at 375px, up to 11 at 320px.
+              */}
+              <div className="flex items-center justify-between gap-2.5">
+                <GradedBadge type={lesson.gradedType} />
+                {done && (
+                  <CheckCircle2
+                    size={18}
+                    className="flex-none text-alxgreen-700 dark:text-alxgreen"
+                    aria-label={t.completed}
+                  />
                 )}
               </div>
-              {done && (
-                <CheckCircle2
-                  size={18}
-                  className="mt-0.5 flex-none text-alxgreen-700 dark:text-alxgreen"
-                  aria-label={t.completed}
-                />
+              <p
+                dir="ltr"
+                className={`mt-1.5 text-start text-sm font-semibold leading-snug ${
+                  done ? `${DONE_TEXT} line-through` : ''
+                }`}
+              >
+                {lesson.graded?.title || lesson.title}
+              </p>
+              {lesson.graded?.subtitle && (
+                <p
+                  dir="ltr"
+                  className={`mt-0.5 text-start text-xs ${
+                    done ? DONE_TEXT : 'text-ink-soft dark:text-paper/70'
+                  }`}
+                >
+                  {lesson.graded.subtitle}
+                </p>
               )}
             </li>
           )

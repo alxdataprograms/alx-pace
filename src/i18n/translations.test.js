@@ -164,6 +164,39 @@ describe('the Arabic milestone post', () => {
   })
 })
 
+/*
+  The hero's week line cheers the slogan with "!" — except where the slogan
+  already ends its sentence. "Learn. Build. Repeat." had read
+  "Learn. Build. Repeat.!", in every language and in Data Analytics too.
+*/
+describe('the week slogan line', () => {
+  it.each(langs)('%s never stacks a mark on a slogan that already ends its sentence', (lang) => {
+    const t = translations[lang]
+    for (const slogan of [...t.slogans, ...t.slogansCreative]) {
+      const line = t.weekSlogan(5, slogan)
+      expect(line).not.toMatch(/[.!?؟]\s*[!?؟]$/)
+      // Either the slogan ends the line untouched, or it gained the cheer.
+      expect(line.endsWith(slogan) || line.endsWith('!')).toBe(true)
+    }
+  })
+
+  it('lets "Learn. Build. Repeat." keep its own full stop', () => {
+    expect(translations.en.weekSlogan(13.5, 'Learn. Build. Repeat.')).toBe('Week 13.5 — Learn. Build. Repeat.')
+    expect(translations.fr.weekSlogan(5, 'Apprendre. Créer. Recommencer.')).toBe(
+      'Semaine 5 — Apprendre. Créer. Recommencer.',
+    )
+    expect(translations.ar.weekSlogan(5, 'تعلّم. ابنِ. كرّر.')).toBe('الأسبوع 5 — تعلّم. ابنِ. كرّر.')
+  })
+
+  it('still cheers every other slogan exactly as before', () => {
+    expect(translations.en.weekSlogan(1, 'Do Hard Things')).toBe('Week 1 — Do Hard Things!')
+    expect(translations.fr.weekSlogan(1, 'Fais des choses difficiles')).toBe(
+      'Semaine 1 — Fais des choses difficiles !',
+    )
+    expect(translations.ar.weekSlogan(1, 'افعل الأشياء الصعبة')).toBe('الأسبوع 1 — افعل الأشياء الصعبة!')
+  })
+})
+
 describe('Arabic agreement in the catch-up status', () => {
   const ar = translations.ar
 
@@ -174,5 +207,87 @@ describe('Arabic agreement in the catch-up status', () => {
       expect(ar.statusBehind(5, unit)).toContain('ما زالت مفتوحة')
       expect(ar.statusBehind(14, unit)).toContain('ما زالت مفتوحة')
     }
+  })
+})
+
+/*
+  French writes a count below two in the singular. Several strings hard-coded
+  the plural, so the first tick read "1 éléments terminés sur 27", and a week
+  in the roadmap "1/1 faits".
+*/
+describe('French counts', () => {
+  const fr = translations.fr
+
+  it('take the singular below two, the plural from two', () => {
+    expect(fr.itemsComplete(1, 27)).toBe('1 élément terminé sur 27')
+    expect(fr.itemsComplete(0, 27)).toBe('0 élément terminé sur 27')
+    expect(fr.itemsComplete(11, 27)).toBe('11 éléments terminés sur 27')
+    expect(fr.lessonsComplete(1, 27)).toBe('1 leçon terminée sur 27')
+    expect(fr.lessonsComplete(1, 250, 'item')).toBe('1 élément terminé sur 250')
+    expect(fr.lessonsComplete(27, 27)).toBe('27 leçons terminées sur 27')
+    expect(fr.doneCount(1, 1)).toBe('1/1 fait')
+    expect(fr.doneCount(3, 5)).toBe('3/5 faits')
+    expect(fr.paceValue(1.5)).toBe('1.5 leçon/semaine')
+    expect(fr.paceValue(3.1, 'item')).toBe('3.1 éléments/semaine')
+    expect(fr.catchUpMore(1)).toMatch(/^\+1 encore ouvert —/)
+    expect(fr.catchUpMore(8)).toMatch(/^\+8 encore ouverts —/)
+    expect(fr.reminderBehind(3, 1)).toMatch(/· 1 évaluation cette semaine\.$/)
+    expect(fr.reminderBehind(3, 2)).toMatch(/· 2 évaluations cette semaine\.$/)
+    expect(fr.milestonesDue(1, 'Week 5')).toContain('elle compte pour ta note')
+    expect(fr.milestonesDue(2, 'Week 4')).toContain('elles comptent pour ta note')
+  })
+
+  it('never hedges with "(s)"', () => {
+    for (const [key, value] of Object.entries(fr)) {
+      if (typeof value !== 'function') continue
+      for (const n of [0, 1, 2, 14]) {
+        expect(String(value(n, n, 'item')), `fr.${key}(${n})`).not.toContain('(s)')
+      }
+    }
+  })
+})
+
+/*
+  The Arabic UI writes numbers one way: Western digits (0-9). It mixed them on
+  a single card ("مسار ١٤ أسبوعًا" beside "10 أيام"), because week counts were
+  converted to Arabic-Indic digits and nothing else was.
+*/
+describe('Arabic digits', () => {
+  const ar = translations.ar
+  const arabicIndic = /[٠-٩۰-۹]/
+  // Every shape a template is called with: counts, a unit, or a milestone.
+  const milestone = { program: 'gd', title: 'X', index: 3, total: 10, weeks: 3.5, lessons: 373, unit: 'item' }
+
+  it('are Western in every string and template', () => {
+    for (const [key, value] of Object.entries(ar)) {
+      const outputs =
+        typeof value === 'function'
+          ? [value(14, 32, 'item'), value(milestone), value('X', 'Y', 22)]
+          : [value].flat()
+      for (const out of outputs) {
+        expect(String(out), `ar.${key}`).not.toMatch(arabicIndic)
+      }
+    }
+  })
+
+  it('reach dates too, whatever the browser would pick for plain "ar"', () => {
+    // Plain 'ar' leaves the digits to the runtime's locale data: Arabic-Indic
+    // in some browsers, Western in others (and in this Node). The locale names
+    // the numbering system outright, so no browser is left to choose.
+    expect(new Intl.Locale(ar.locale).numberingSystem).toBe('latn')
+    expect(new Intl.DateTimeFormat(ar.locale).resolvedOptions().numberingSystem).toBe('latn')
+  })
+})
+
+describe('the hero', () => {
+  it.each(langs)('%s says "Starts" for a date ahead, and "Started" for one gone by', (lang) => {
+    const t = translations[lang]
+    expect(t.starts('X')).not.toBe(t.started('X'))
+  })
+
+  it.each(langs)('%s introduces the app in three short points', (lang) => {
+    const t = translations[lang]
+    expect(t.introChips).toHaveLength(3)
+    for (const chip of t.introChips) expect(chip.trim()).not.toBe('')
   })
 })

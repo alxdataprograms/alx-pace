@@ -81,11 +81,49 @@ function creativeTechChecks(model, { bufferWeeks, halfWeeks }) {
   check('activity rows never pose as Check Your Understanding', model.lessons.every((l) => l.checkYourUnderstanding === null))
   check('every graded row is a quiz or mastery project', model.lessons.filter((l) => l.isGraded).every((l) => ['quiz', 'mastery-project'].includes(l.gradedType)))
 
-  // Each course (module) closes with exactly one mastery project.
+  // Each course (module) has exactly one mastery project.
   const masteryPerModule = model.modules.map(
     (m) => model.lessons.filter((l) => l.moduleCode === m.code && l.gradedType === 'mastery-project').length,
   )
   check('each module has exactly one mastery project', masteryPerModule.every((n) => n === 1), list(masteryPerModule))
+
+  /*
+    What a module post says about it: "…including my mastery project: Poster
+    Design." Checked against the sheets rather than assumed.
+
+    The project sits in its module's final content week, but it is NOT always
+    the module's last row — CC-5 lists a quiz after it. So a module post may
+    claim the project only because a module counts as finished once every row
+    is ticked, never because of where the project falls.
+
+    The cell reads "Mastery Project: <name>" and the model keeps the name.
+    That name ends the Arabic post as a Latin run, which the bidirectional
+    algorithm leaves alone only while it begins and ends on a letter or digit.
+  */
+  const masteryOf = (m) => m.weeks.flatMap((w) => w.lessons).find((l) => l.gradedType === 'mastery-project')
+  const lastContentWeek = (m) => m.weeks.filter((w) => !w.isBuffer).at(-1)
+  const misplaced = model.modules.filter((m) => masteryOf(m)?.week !== lastContentWeek(m)?.week)
+  const notLastRow = model.modules.filter((m) => m.weeks.flatMap((w) => w.lessons).at(-1) !== masteryOf(m))
+  check(
+    "each mastery project falls in its module's final content week",
+    misplaced.length === 0,
+    misplaced.length
+      ? list(misplaced.map((m) => m.code))
+      : notLastRow.length
+        ? `but not always the last row: ${list(notLastRow.map((m) => m.code))}`
+        : 'and is every module’s last row',
+  )
+  const badCells = model.modules.filter((m) => {
+    const cell = masteryOf(m)?.graded
+    return !cell || cell.lines.length !== 1 || !/^Mastery Project: \S/.test(cell.title)
+  })
+  check('each mastery project is written "Mastery Project: <name>"', badCells.length === 0, list(badCells.map((m) => m.code)))
+  const badNames = model.modules.filter((m) => !/^[\p{L}\p{N}](.*[\p{L}\p{N}])?$/u.test(m.masteryProject ?? ''))
+  check(
+    'each module names its mastery project, starting and ending on a letter or digit',
+    badNames.length === 0,
+    badNames.length ? list(badNames.map((m) => m.code)) : model.modules.map((m) => m.masteryProject).join(' | '),
+  )
 }
 
 function summary(model) {
@@ -131,6 +169,8 @@ function summary(model) {
   check('some graded tests detected', model.lessons.some((l) => l.gradedType === 'graded-test'))
   check('every DA row is a lesson', model.lessons.every((l) => l.kind === 'lesson'))
   check('no buffer weeks in DA', model.weeks.every((w) => !w.isBuffer))
+  // A DA module post names no mastery project, so it reads as it always has.
+  check('no DA module has a mastery project', model.modules.every((m) => m.masteryProject === null))
 
   // The Week-12 source paste artifact (duplicated project title) stays fixed.
   const w12 = model.weeks.find((w) => w.week === 12)
