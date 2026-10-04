@@ -8,6 +8,7 @@ import { LanguageProvider } from '../i18n/LanguageContext'
 import { translations } from '../i18n/translations'
 import { withKept } from '../hooks/useKeptInPlace'
 import { SCHEDULES, contentWeeksAfter } from '../lib/schedule'
+import { formatShortDate } from '../lib/formatDate'
 
 /*
   Behaviour, not markup: what a learner can still reach after ticking.
@@ -63,6 +64,16 @@ const boxes = () => [...container.querySelectorAll('[role="checkbox"]')]
 const click = (el) => act(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 /** A box's accessible name: the lesson title its aria-labelledby points at. */
 const nameOf = (box) => document.getElementById(box.getAttribute('aria-labelledby'))?.textContent
+/**
+ * What a learner sees and a screen reader reads: an element's text without
+ * its aria-hidden parts, among them the wordings a changing text holds its
+ * size with (SteadyText).
+ */
+const visible = (el) => {
+  const copy = el.cloneNode(true)
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent
+}
 
 describe('the catch-up list', () => {
   const gd = SCHEDULES.gd
@@ -107,10 +118,11 @@ describe('the catch-up list', () => {
 
   it('shows the all-clear AND the last ticks once nothing is left open', () => {
     render({ week: buffer, pool: pool.slice(0, 2) })
+    expect(visible(container)).not.toMatch(/all caught up/i)
     click(boxes()[0])
     click(boxes()[1])
     expect(boxes()).toHaveLength(2)
-    expect(container.textContent).toMatch(/all caught up/i)
+    expect(visible(container)).toMatch(/all caught up/i)
   })
 })
 
@@ -236,15 +248,226 @@ describe('catch up first, in an ordinary week', () => {
     expect(boxes()).toHaveLength(3 + 30)
   })
 
-  it('leaves a catch-up week’s own list as it was, labelled from the sheet', () => {
+  it('stays out of a catch-up week, whose whole card is the catch-up list', () => {
     window.localStorage.setItem('alx-lang', 'ar')
+    const t = translations.ar
     const gd = SCHEDULES.gd
     const buffer = gd.weeks.find((w) => w.week === 13.5)
     const pool = gd.lessons.filter((l) => l.week < 13.5).slice(0, 10)
     render({ week: buffer, pool })
-    expect(headings()).toEqual([])
+    expect(headings()).not.toContain(t.catchUpFirst)
+    expect(headings()).not.toContain(t.thisWeek)
     expect(boxes()).toHaveLength(6)
-    expect(metaOf(boxes()[0]).textContent).toBe(`${pool[0].weekLabel} · ${pool[0].moduleCode}`)
+  })
+
+  /*
+    Creative Tech sets whole weeks aside for catching up, and they sat as
+    dashed rows deep in the roadmap while a learner 51 items behind read only
+    the count. The section now ends by naming the next of them, under the
+    count of the rest: where a learner meets the size of the backlog, and
+    without growing the status card above.
+  */
+  describe('the next catch-up week', () => {
+    const cc = SCHEDULES.cc
+    const week6 = cc.weeks.find((w) => w.week === 6)
+    const ccOverdue = cc.lessons.filter((l) => l.week < 6)
+    const nextCatchUp = { week: 10, date: new Date(2026, 9, 27) }
+    const renderCc = (pool = ccOverdue) =>
+      render({ week: week6, pool, unit: 'item', nextCatchUp })
+    const line = () =>
+      [...section().querySelectorAll('p')].find((p) => p.querySelector('.lucide-calendar-clock'))
+
+    it.each(Object.keys(translations))('says which and from when, in %s', (lang) => {
+      window.localStorage.setItem('alx-lang', lang)
+      const t = translations[lang]
+      renderCc()
+      const date = formatShortDate(nextCatchUp.date, lang)
+      expect(line().textContent).toBe(t.nextCatchUpWeek(10, date))
+    })
+
+    it('reads "Next catch-up week: Week 10, from Oct 27" under the count of the rest', () => {
+      renderCc()
+      expect(line().textContent.replace(/\u00a0/g, ' ')).toBe(
+        'Next catch-up week: Week 10, from Oct 27',
+      )
+      const more = [...section().querySelectorAll('p')].find(
+        (p) => p.textContent === en.catchUpFirstMore(ccOverdue.length - 3, 'item'),
+      )
+      expect(more.compareDocumentPosition(line()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
+    it('gives way to the all-clear with the last overdue item, the rows staying put', () => {
+      renderCc(ccOverdue.slice(0, 2))
+      expect(line()).toBeDefined()
+      const [first, second] = boxesIn(section())
+      click(first)
+      expect(line()).toBeDefined()
+      click(second)
+      expect(line()).toBeUndefined()
+      expect(boxesIn(section())).toEqual([first, second])
+      expect(section().querySelector('[role="status"]').textContent).toBe(en.catchUpFirstDone)
+    })
+
+    it('is not there without a catch-up week ahead, so never in Data Analytics', () => {
+      render({ week: week7, pool: overdue })
+      expect(section().querySelector('.lucide-calendar-clock')).toBeNull()
+      expect(section().textContent).not.toContain('Next catch-up week')
+    })
+  })
+})
+
+/*
+  A catch-up week's list, grouped by week.
+
+  Every row repeated its week above its title, "WEEK 12 · GD-4", in the
+  sheet's English whatever the learner's language, and the list ended on plain
+  text, "+8 more open — see the roadmap below". Now one heading per week names
+  it in the learner's language with how many of its items are open, and a 44px
+  "Show all 14" opens the whole list where it is.
+*/
+describe('a catch-up week’s list, grouped by week', () => {
+  const en = translations.en
+  const gd = SCHEDULES.gd
+  const buffer = gd.weeks.find((w) => w.week === 13.5)
+  // Weeks 12 (10 items) and 13 (4) open: what Week 13.5 asks to clear.
+  const pool = gd.lessons.filter((l) => l.week === 12 || l.week === 13)
+  const week12 = pool.filter((l) => l.week === 12)
+
+  const headings = () => [...container.querySelectorAll('h3')].map(visible)
+  const heading = (n) => container.querySelectorAll('h3')[n]
+  const toggle = () => container.querySelector('button[aria-expanded]')
+  const open = () => boxes().filter((b) => b.getAttribute('aria-checked') === 'false')
+
+  it.each(Object.keys(translations))(
+    'heads each week’s rows with the week and how many of its items are open, in %s',
+    (lang) => {
+      window.localStorage.setItem('alx-lang', lang)
+      const t = translations[lang]
+      render({ week: buffer, pool })
+      const expected = `${t.weekRange(12, 12)} · GD-4\u00a0— ${t.catchUpWeekOpen(10)}`
+      expect(headings()).toEqual([expected])
+      // The module code keeps its own direction, so Arabic cannot turn it round.
+      expect(heading(0).querySelector('[dir="ltr"]').textContent).toBe('GD-4')
+    },
+  )
+
+  it('reads "Week 12 · GD-4 — 10 open", and no longer labels every row from the sheet', () => {
+    render({ week: buffer, pool })
+    expect(headings()[0].replace(/\u00a0/g, ' ')).toBe('Week 12 · GD-4 — 10 open')
+    expect(boxes()).toHaveLength(6)
+    // The rows carry their titles alone: the week line above each is gone.
+    for (const box of boxes()) {
+      const title = document.getElementById(box.getAttribute('aria-labelledby'))
+      expect(title.previousElementSibling, nameOf(box)).toBeNull()
+      expect(box.closest('li').textContent, nameOf(box)).not.toContain('GD-4')
+    }
+  })
+
+  it('keeps a tick in place under its week, and counts the week down to "all done"', () => {
+    render({ week: buffer, pool })
+    const first = boxes()[0]
+    click(first)
+    expect(boxes()[0]).toBe(first)
+    expect(first.getAttribute('aria-checked')).toBe('true')
+    expect(headings()[0]).toContain(en.catchUpWeekOpen(9))
+    // The next oldest joins below, so six stay open.
+    expect(open()).toHaveLength(6)
+
+    while (week12.some((l) => open().map(nameOf).includes(l.title))) {
+      click(open().find((b) => week12.some((l) => l.title === nameOf(b))))
+    }
+    expect(headings()[0]).toContain(en.catchUpWeekOpen(0))
+    expect(en.catchUpWeekOpen(0)).toBe('all done')
+    // Week 13's own heading has joined, with its rows.
+    expect(headings()[1]).toContain(en.catchUpWeekOpen(4))
+  })
+
+  it('opens in full from a 44px "Show all 14", in place, and closes again', () => {
+    render({ week: buffer, pool })
+    const button = toggle()
+    expect(button.textContent).toBe(en.catchUpShowAll(14))
+    expect(button.textContent).toBe('Show all 14')
+    expect(button.className).toContain('min-h-[44px]')
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    // It controls the list it sits under.
+    const list = document.getElementById(button.getAttribute('aria-controls'))
+    expect(list.contains(boxes()[0])).toBe(true)
+    const shownFirst = boxes()
+
+    click(button)
+    expect(toggle()).toBe(button)
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+    expect(button.textContent).toBe(en.catchUpShowFewer)
+    expect(boxes()).toHaveLength(14)
+    // In place: the six it showed are the six it starts with, still first.
+    expect(boxes().slice(0, 6)).toEqual(shownFirst)
+    expect(headings().map((h) => h.split('\u00a0')[0])).toEqual([
+      `${en.weekRange(12, 12)} · GD-4`,
+      `${en.weekRange(13, 13)} · GD-4`,
+    ])
+    expect(boxes().every((b) => list.contains(b))).toBe(true)
+
+    click(button)
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(button.textContent).toBe(en.catchUpShowAll(14))
+    expect(boxes()).toEqual(shownFirst)
+  })
+
+  it('keeps a row ticked in the open list when it closes, struck through where it was', () => {
+    render({ week: buffer, pool })
+    click(toggle())
+    const later = boxes()[12] // Week 13's third item
+    click(later)
+    click(toggle())
+    expect(boxes()).toHaveLength(7)
+    expect(boxes()[6]).toBe(later)
+    expect(later.getAttribute('aria-checked')).toBe('true')
+    expect(toggle().textContent).toBe(en.catchUpShowAll(13))
+  })
+
+  it('brings "Show fewer" back on screen when closing the list lifts it above the top', () => {
+    const scrolled = []
+    Element.prototype.scrollIntoView = function scrollIntoView(options) {
+      scrolled.push([this, options])
+    }
+    try {
+      render({ week: buffer, pool })
+      const button = toggle()
+      click(button)
+      // Still on screen after closing: nothing scrolls.
+      click(button)
+      expect(scrolled).toEqual([])
+
+      // Lifted above the top of the screen: back up to its bottom edge.
+      click(button)
+      button.getBoundingClientRect = () => ({ top: -900, bottom: -856, height: 44 })
+      click(button)
+      expect(scrolled).toEqual([[button, { block: 'end' }]])
+    } finally {
+      delete Element.prototype.scrollIntoView
+    }
+  })
+
+  it('offers no button while everything open fits in the list', () => {
+    render({ week: buffer, pool: pool.slice(0, 6) })
+    expect(toggle()).toBeNull()
+    expect(boxes()).toHaveLength(6)
+  })
+
+  it('holds its sizes as the counts drop, every wording they can come to held, unread', () => {
+    render({ week: buffer, pool })
+    const held = (el) =>
+      [...el.querySelectorAll('.invisible[aria-hidden="true"]')].map((s) => s.textContent)
+    const intro = container.querySelector('section > p')
+    const introHeld = [en.catchUpBody(14), en.catchUpBody(2), en.catchUpBody(1), en.catchUpAllClear]
+    const countHeld = [10, 2, 1, 0].map((n) => en.catchUpWeekOpen(n))
+    expect(held(intro)).toEqual(introHeld)
+    expect(held(heading(0))).toEqual(countHeld)
+
+    click(boxes()[0])
+    expect(visible(intro)).toBe(en.catchUpBody(13))
+    expect(held(intro)).toEqual(introHeld)
+    expect(held(heading(0))).toEqual(countHeld)
   })
 })
 

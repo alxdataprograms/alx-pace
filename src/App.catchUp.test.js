@@ -180,7 +180,7 @@ describe('"Catch up now" in the status card', () => {
     expect(heading(en.thisWeek)).toBeUndefined()
   })
 
-  it('leaves a catch-up week as it was: its whole card is the catch-up list already', () => {
+  it('is not offered in a catch-up week: its whole card is the catch-up list already', () => {
     // Day 90 is Graphic Design's Week 13.5; Weeks 12 and 13 are still open.
     const gd = SCHEDULES.gd
     render({
@@ -189,7 +189,8 @@ describe('"Catch up now" in the status card', () => {
       completedLessons: JSON.stringify(gd.lessons.filter((l) => l.week < 12).map((l) => l.id)),
       'alx-celebrated': allCelebrated,
     })
-    expect(region(en.pacingStatusAria).textContent).toContain(en.statusBehind(14, 'item'))
+    // The card plans the week instead (App.catchUpWeek.test.js).
+    expect(region(en.pacingStatusAria).textContent).toContain(en.statusCatchUpWeek(14, 5, 3))
     expect(buttonNamed(en.catchUpNow)).toBeUndefined()
     expect(heading(en.catchUpFirst)).toBeUndefined()
   })

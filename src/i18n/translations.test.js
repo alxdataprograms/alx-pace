@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 
 import { translations } from './translations'
+import { formatShortDate } from '../lib/formatDate'
 
 /*
   Every user-facing string exists in all three languages, and has the same shape
@@ -274,8 +275,12 @@ describe('French counts', () => {
     expect(fr.doneCount(3, 5)).toBe('3/5 faits')
     expect(fr.paceValue(1.5)).toBe('1.5 leçon/semaine')
     expect(fr.paceValue(3.1, 'item')).toBe('3.1 éléments/semaine')
-    expect(fr.catchUpMore(1)).toMatch(/^\+1 encore ouvert —/)
-    expect(fr.catchUpMore(8)).toMatch(/^\+8 encore ouverts —/)
+    expect(fr.statusCatchUpWeek(1, 1, 0)).toBe(
+      'Semaine de rattrapage\u00a0: 1\u00a0élément à terminer\u00a0· 1\u00a0jour\u00a0restant',
+    )
+    expect(fr.statusCatchUpWeek(8, 5, 2)).toContain(
+      '8\u00a0éléments à terminer\u00a0· 5\u00a0jours\u00a0restants',
+    )
     expect(fr.reminderBehind(3, 1)).toMatch(/· 1 évaluation cette semaine\.$/)
     expect(fr.reminderBehind(3, 2)).toMatch(/· 2 évaluations cette semaine\.$/)
     expect(fr.milestonesDue(1, 'Week 5')).toContain('elle compte pour ta note')
@@ -519,5 +524,91 @@ describe('the next checkpoint and the module of the week', () => {
     const t = translations[lang]
     const sub = t.milestoneModuleSub({ index: 3, total: 10, weeks: 2 })
     expect(sub.startsWith(t.moduleOf(3, 10))).toBe(true)
+  })
+})
+
+/*
+  A Creative Tech catch-up week. The status card plans the open items over the
+  days left ("Catch-up week: 14 items to clear · 5 days left (about 3 a day)"),
+  the list heads each week it draws on ("Week 12 · GD-4 — 10 open"), and
+  "Catch up first" names the next catch-up week. Counts agree as each language
+  counts, and each stays whole on its line: the status runs to two or three
+  lines, and Arabic had broken "5 أيام" from its "متبقية".
+*/
+describe('the catch-up week’s copy', () => {
+  const { en, fr, ar } = translations
+  const plain = (text) => text.replace(/\u00a0/g, ' ')
+
+  it('reads plainly in English', () => {
+    expect(plain(en.statusCatchUpWeek(14, 5, 3))).toBe(
+      'Catch-up week: 14 items to clear · 5 days left (about 3 a day)',
+    )
+    expect(plain(en.statusCatchUpWeek(1, 5, 0))).toBe(
+      'Catch-up week: 1 item to clear · 5 days left',
+    )
+    expect(plain(en.statusCatchUpWeek(14, 1, 0))).toBe(
+      'Catch-up week: 14 items to clear · 1 day left',
+    )
+    expect(en.statusCatchUpWeekClear).toBe("Catch-up week: you're all caught up.")
+    expect(en.catchUpWeekOpen(10)).toBe('10 open')
+    expect(en.catchUpWeekOpen(0)).toBe('all done')
+    expect(en.catchUpShowAll(14)).toBe('Show all 14')
+    expect(en.catchUpShowFewer).toBe('Show fewer')
+    expect(plain(en.nextCatchUpWeek(10, 'Oct 27'))).toBe('Next catch-up week: Week 10, from Oct 27')
+  })
+
+  it('agrees in French', () => {
+    expect(plain(fr.statusCatchUpWeek(14, 5, 3))).toBe(
+      'Semaine de rattrapage : 14 éléments à terminer · 5 jours restants (environ 3 par jour)',
+    )
+    expect(plain(fr.statusCatchUpWeek(1, 1, 0))).toBe(
+      'Semaine de rattrapage : 1 élément à terminer · 1 jour restant',
+    )
+    expect(plain(fr.statusCatchUpWeekClear)).toBe('Semaine de rattrapage : tu es à jour.')
+    expect(fr.catchUpWeekOpen(1)).toBe('1 à rattraper')
+    expect(fr.catchUpWeekOpen(10)).toBe('10 à rattraper')
+    // A week cleared agrees with "semaine".
+    expect(fr.catchUpWeekOpen(0)).toBe('rattrapée')
+    expect(fr.catchUpShowAll(14)).toBe('Tout afficher (14)')
+    expect(plain(fr.nextCatchUpWeek(10, '27 oct.'))).toBe(
+      'Prochaine semaine de rattrapage : semaine 10, à partir du 27 oct.',
+    )
+  })
+
+  it('counts as Arabic does: one, two, a few, many', () => {
+    const items = (n) => plain(ar.statusCatchUpWeek(n, 5, 0)).split(' للإنهاء')[0]
+    expect(items(1)).toBe('أسبوع استدراك: عنصر واحد')
+    expect(items(2)).toBe('أسبوع استدراك: عنصران')
+    expect(items(5)).toBe('أسبوع استدراك: 5 عناصر')
+    expect(items(14)).toBe('أسبوع استدراك: 14 عنصرًا')
+    const days = (d) => plain(ar.statusCatchUpWeek(3, d, 0)).split('· ')[1]
+    expect(days(1)).toBe('يوم واحد متبقٍ')
+    expect(days(2)).toBe('يومان متبقيان')
+    expect(days(5)).toBe('5 أيام متبقية')
+    expect(plain(ar.statusCatchUpWeek(14, 5, 3))).toMatch(/ \(نحو 3 في اليوم\)$/)
+    expect(ar.statusCatchUpWeekClear).toBe('أسبوع استدراك: لا شيء متأخّر.')
+
+    expect(ar.catchUpWeekOpen(1)).toBe('عنصر واحد مفتوح')
+    expect(ar.catchUpWeekOpen(2)).toBe('عنصران مفتوحان')
+    expect(ar.catchUpWeekOpen(10)).toBe('10 عناصر مفتوحة')
+    expect(ar.catchUpWeekOpen(13)).toBe('13 عنصرًا مفتوحًا')
+    expect(ar.catchUpWeekOpen(0)).toBe('مكتمل')
+    expect(plain(ar.nextCatchUpWeek(13.5, '13 أكتوبر'))).toBe(
+      'أسبوع الاستدراك القادم: الأسبوع 13.5، بدءًا من 13 أكتوبر',
+    )
+  })
+
+  it.each(langs)('%s keeps each count whole, and the "·" off the start of a line', (lang) => {
+    const t = translations[lang]
+    for (const [n, d, per] of [[14, 5, 3], [1, 2, 0], [2, 7, 1]]) {
+      const status = t.statusCatchUpWeek(n, d, per)
+      // No break between a number and the words it counts.
+      expect(status, `${lang} ${n}/${d}`).not.toMatch(/\d /)
+      expect(status, `${lang} ${n}/${d}`).toMatch(/\u00a0· /)
+    }
+    // The week with its number, the date in one piece.
+    const next = t.nextCatchUpWeek(10, formatShortDate(new Date(2026, 9, 27), lang))
+    expect(next).toMatch(/\u00a010[,،] /)
+    expect(next).not.toMatch(/\d /)
   })
 })

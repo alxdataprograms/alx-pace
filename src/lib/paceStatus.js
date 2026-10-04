@@ -13,8 +13,13 @@
  *     the schedule by that same rule — see forecastFrom below.
  *   - paceMin = one average week's worth of items (DA 2, CC 12, GD 12). The
  *     items-a-week figure waits until that much is done — see below.
+ *   - daysLeft = this week's days still to come, today included. A catch-up
+ *     week's status card plans the items still open over them (perDayToClear).
+ *   - nextCatchUp = the first catch-up week after this one and the date it
+ *     begins, which "Catch up first" names to a learner who is behind. Null
+ *     where none lies ahead, so always in Data Analytics.
  */
-import { plannedEndDate } from './pacing'
+import { dateOfDay, plannedEndDate } from './pacing'
 
 export function computePaceStatus(schedule, completedSet, pacing) {
   if (pacing.status !== 'active') return null
@@ -69,6 +74,11 @@ export function computePaceStatus(schedule, completedSet, pacing) {
     projectedFinish.setDate(projectedFinish.getDate() + finishShiftDays)
   }
 
+  // The week runs [startDay, endDay) of the day timeline, and an active
+  // learner's day falls inside it, so at least today is left.
+  const daysLeft = thisWeek ? thisWeek.endDay - pacing.elapsedDays : 0
+  const nextBuffer = schedule.weeks.find((w) => w.isBuffer && w.week > week)
+
   return {
     status: behindCount > 0 ? 'behind' : aheadCount > 0 ? 'ahead' : 'on-track',
     week,
@@ -100,7 +110,24 @@ export function computePaceStatus(schedule, completedSet, pacing) {
     finishShiftDays,
     // The planned end moved by those days; null once everything is done.
     projectedFinish,
+    // This week's days still to come, today included: a 7-day week has 7 on
+    // its first day and 1 on its last.
+    daysLeft,
+    // The first catch-up week after this one: { week, date it begins } | null.
+    nextCatchUp: nextBuffer
+      ? { week: nextBuffer.week, date: dateOfDay(pacing.startDate, nextBuffer.startDay) }
+      : null,
   }
+}
+
+/**
+ * A catch-up week's daily share: the items a day that clear `open` items in
+ * the `daysLeft` days left, rounded up, so keeping to it clears them in time
+ * (14 in 5 days: 3 a day). 0 where the figure would only repeat a count: a
+ * single item left ("about 1 a day"), or a single day ("about 14 a day").
+ */
+export function perDayToClear(open, daysLeft) {
+  return open > 1 && daysLeft > 1 ? Math.ceil(open / daysLeft) : 0
 }
 
 /*

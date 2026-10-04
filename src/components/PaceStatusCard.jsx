@@ -1,6 +1,16 @@
 import { useState } from 'react'
-import { AlarmClock, ArrowDown, CheckCircle2, CircleCheckBig, Quote, Zap } from 'lucide-react'
+import {
+  AlarmClock,
+  ArrowDown,
+  CheckCircle2,
+  CircleCheckBig,
+  Quote,
+  RefreshCcw,
+  Zap,
+} from 'lucide-react'
+import SteadyText, { widestCounts } from './SteadyText'
 import { quoteForDate } from '../lib/quotes'
+import { perDayToClear } from '../lib/paceStatus'
 import { useLang } from '../i18n/LanguageContext'
 
 const VARIANTS = {
@@ -22,6 +32,19 @@ const VARIANTS = {
     chip: 'bg-alxgreen text-navy-900',
     headline: (t, s) => t.statusAhead(s.aheadCount, s.unit),
   },
+  /*
+    A Creative Tech catch-up week. The curriculum sets the week aside for the
+    items still open, so they are the week's plan, not an alarm: the amber
+    alarm clock had greeted a learner with "Catch-up nudge: 14 items…" in the
+    one week built for catching up. The focus card's catch-up icon on its lime
+    chip, on the calm card of "Right on pace"; the lime border stays the
+    checklist's alone. The headline is CatchUpWeekHeadline's.
+  */
+  'catch-up': {
+    Icon: RefreshCcw,
+    card: 'border-cobalt/25 bg-tint dark:bg-white/5',
+    chip: 'bg-lime text-navy-900',
+  },
 }
 
 /**
@@ -38,7 +61,7 @@ const VARIANTS = {
  *
  * `onCatchUp` takes a learner who is behind to the "Catch up first" section
  * that opens the checklist below. A catch-up week has no such section: its
- * whole card is that list already, so the nudge there stays as it was.
+ * whole card is that list already, so this card plans the week instead.
  */
 export default function PaceStatusCard({
   paceStatus,
@@ -50,6 +73,9 @@ export default function PaceStatusCard({
   const { t, lang } = useLang()
   const offerCatchUp =
     Boolean(onCatchUp) && paceStatus?.status === 'behind' && !paceStatus.isBuffer
+  // What a catch-up week had open on arrival: the longest its headline gets
+  // this visit (see CatchUpWeekHeadline). App keys the card by week.
+  const [openOnArrival] = useState(paceStatus?.behindCount ?? 0)
 
   /*
     Once offered, the button's row stays for the rest of the visit. Ticking the
@@ -63,15 +89,15 @@ export default function PaceStatusCard({
   if (offerCatchUp && !offeredCatchUp) setOfferedCatchUp(true)
 
   if (!paceStatus) return null
-  const v = VARIANTS[paceStatus.status]
+  const v = VARIANTS[paceStatus.isBuffer ? 'catch-up' : paceStatus.status]
   const { Icon } = v
 
-  const parts = [
-    t.weekOf(paceStatus.week, paceStatus.totalWeeks),
-    paceStatus.isBuffer
-      ? t.bufferStatus
-      : t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal),
-  ]
+  // A catch-up week's headline says so already, and the week has nothing of
+  // its own to count done.
+  const parts = [t.weekOf(paceStatus.week, paceStatus.totalWeeks)]
+  if (!paceStatus.isBuffer) {
+    parts.push(t.doneThisWeek(paceStatus.weekDone, paceStatus.weekTotal))
+  }
   if (paceStatus.gradedLeft > 0) {
     parts.push(t.gradedStillDue(paceStatus.gradedLeft))
   }
@@ -85,7 +111,15 @@ export default function PaceStatusCard({
         {/* flex-1 so the progress line's bar can take the width the text leaves. */}
         <div className="min-w-0 flex-1">
           <p ref={headingRef} tabIndex={-1} className="text-sm font-bold leading-snug">
-            {v.headline(t, paceStatus)}
+            {paceStatus.isBuffer ? (
+              <CatchUpWeekHeadline
+                open={paceStatus.behindCount}
+                openOnArrival={openOnArrival}
+                daysLeft={paceStatus.daysLeft}
+              />
+            ) : (
+              v.headline(t, paceStatus)
+            )}
           </p>
           <p className="mt-0.5 text-xs font-medium text-ink-soft dark:text-paper/75">
             {parts.join(' · ')}
@@ -125,6 +159,24 @@ export default function PaceStatusCard({
       </p>
     </section>
   )
+}
+
+/*
+  A catch-up week's headline: "Catch-up week: 14 items to clear · 5 days left
+  (about 3 a day)", the open items as a plan for the days the week has left,
+  today included. "Catch-up week: you're all caught up." once nothing is open,
+  ahead or not: in this week, being clear is the news.
+
+  It changes with every tick in the catch-up list below, so it holds the size
+  of the longest wording it can come to (SteadyText) and the list never moves
+  under the learner's finger: the count on arrival, or one or two in Arabic,
+  which writes them out ("عنصر واحد"), or the all-clear.
+*/
+function CatchUpWeekHeadline({ open, openOnArrival, daysLeft }) {
+  const { t } = useLang()
+  const say = (n) =>
+    n > 0 ? t.statusCatchUpWeek(n, daysLeft, perDayToClear(n, daysLeft)) : t.statusCatchUpWeekClear
+  return <SteadyText texts={widestCounts(openOnArrival).map(say)}>{say(open)}</SteadyText>
 }
 
 /*

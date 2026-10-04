@@ -1,14 +1,25 @@
-import { useId, useState } from 'react'
-import { CheckCircle2, ChevronDown, Flag, RefreshCcw, Target, Zap } from 'lucide-react'
+import { useId, useLayoutEffect, useRef, useState } from 'react'
+import {
+  CalendarClock,
+  CheckCircle2,
+  ChevronDown,
+  Flag,
+  RefreshCcw,
+  Target,
+  Zap,
+} from 'lucide-react'
 import LessonRow from './LessonRow'
+import SteadyText, { widestCounts } from './SteadyText'
 import { useLang } from '../i18n/LanguageContext'
 import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
 import { nextCheckpoint } from '../lib/schedule'
+import { formatShortDate } from '../lib/formatDate'
 
 // How many open items a catch-up week lists at once; ticking one pulls the
-// next oldest in, so the card stays short however far behind a learner is.
-// A ticked item stays in place (struck through) until the card remounts, so
-// an accidental tick can be undone right where it happened.
+// next oldest in, so the card stays short however far behind a learner is,
+// and "Show all" opens the rest in place. A ticked item stays in place (struck
+// through) until the card remounts, so an accidental tick can be undone right
+// where it happened.
 const CATCH_UP_LIMIT = 6
 
 // An ordinary week lists fewer, because this week's own lessons follow them:
@@ -34,13 +45,15 @@ const LONG_WEEK = 8
  * be working on right now, with inline checkboxes.
  *
  * Buffer weeks (Creative Tech) have no new content, so the card turns into a
- * catch-up list: the oldest still-open items from earlier weeks.
+ * catch-up list: the oldest still-open items from earlier weeks, under the
+ * week each comes from.
  *
  * In any other week, a learner with items still open from earlier weeks
  * (`catchUp`, oldest first) meets the oldest of them first, in a "Catch up
  * first" section above this week's lessons. `catchUpRef` marks that section's
  * heading, which the status card's "Catch up now" moves to (see App). `unit`
- * is what the counts count ('lesson' | 'item').
+ * is what the counts count ('lesson' | 'item'). `nextCatchUp` ({ week, date },
+ * Creative Tech only) is the catch-up week ahead, which that section names.
  *
  * Once this week is done, a learner with nothing overdue gets the next thing
  * to tick: "Get ahead" lists the first open items of `upcoming`, the later
@@ -57,6 +70,7 @@ export default function CurrentFocusCard({
   catchUpRef,
   unit,
   upcoming = [],
+  nextCatchUp = null,
 }) {
   const { t } = useLang()
   if (!week) return null
@@ -121,6 +135,7 @@ export default function CurrentFocusCard({
             onToggle={onToggle}
             headingRef={catchUpRef}
             unit={unit}
+            nextCatchUp={nextCatchUp}
           />
 
           {/* Keyed per week too: whether it shows is decided on arrival. */}
@@ -335,25 +350,80 @@ function windowOf(items, limit, kept) {
   }
 }
 
-/** The catch-up lists: windowOf the oldest open items, with their own kept rows. */
+/**
+ * The catch-up lists: windowOf the oldest open items, with their own kept rows,
+ * which survive a change of `limit` ("Show all").
+ */
 function useCatchUp(items, limit, onToggle) {
   const [kept, keep] = useKeptInPlace(onToggle)
   return { ...windowOf(items, limit, kept), keep }
 }
 
+/**
+ * A catch-up week's list: the oldest items still open from earlier weeks,
+ * under the week each comes from.
+ *
+ * WHY
+ * Every row repeated its week above its title, "WEEK 12 · GD-4", in the
+ * sheet's English whatever the learner's language, and the list ended on plain
+ * text, "+8 more open — see the roadmap below", pointing at weeks the roadmap
+ * kept closed. Now one heading per week names it in the learner's language,
+ * with how many of its items are open, "Week 12 · GD-4 — 10 open", and a 44px
+ * "Show all 14" opens the whole list where it is ("Show fewer" closes it).
+ *
+ * A tick stays in place, struck through, under its week, open in full or not
+ * (useKeptInPlace), and the week's count drops with it.
+ */
 function CatchUpList({ items, completedSet, onToggle }) {
   const { t } = useLang()
-  const { shown, more, keep } = useCatchUp(items, CATCH_UP_LIMIT, onToggle)
+  const [showAll, setShowAll] = useState(false)
+  const { shown, keep } = useCatchUp(items, showAll ? items.length : CATCH_UP_LIMIT, onToggle)
+  const listId = useId()
+  const showAllButton = useRef(null)
+  const closing = useRef(false)
+  // What was open on arrival, in all and week by week: the most the counts
+  // here can say this visit, which sets the size they hold (SteadyText).
+  const [onArrival] = useState(() => ({
+    all: items.length,
+    week: items.reduce((m, l) => m.set(l.week, (m.get(l.week) ?? 0) + 1), new Map()),
+  }))
+  const openIn = (week) => items.filter((l) => l.week === week).length
+
+  /*
+    "Show fewer" sits under the open list, so closing it lifts the button by
+    every row it hides, above the top of the screen when the list was long.
+    Then it comes back into view at the bottom edge, the rows still listed
+    above it: it keeps the focus, and the learner their place. The scroll
+    follows the page's scroll-behavior, instant for anyone who asked for
+    reduced motion.
+  */
+  useLayoutEffect(() => {
+    if (!closing.current) return
+    closing.current = false
+    const button = showAllButton.current
+    if (button && button.getBoundingClientRect().top < 0) button.scrollIntoView({ block: 'end' })
+  })
 
   if (shown.length === 0) return <AllClear text={t.catchUpAllClear} />
 
   /*
     Ticking the last open item swaps the intro for the all-clear in the SAME
-    paragraph, so the rows under the learner's finger do not move. A visually
-    hidden live region announces it; the visible copy is hidden from assistive
-    tech meanwhile, so it is not read twice.
+    paragraph, which holds the size of the longer of the two, so the rows
+    under the learner's finger do not move: the all-clear had been a line
+    shorter in French, and at 320px in English, and pulled every row up. A
+    visually hidden live region announces it; the visible copy is hidden from
+    assistive tech meanwhile, so it is not read twice.
   */
   const cleared = items.length === 0
+  const intro = (n) => (n > 0 ? t.catchUpBody(n) : t.catchUpAllClear)
+
+  // The rows, in curriculum order, under the week each comes from.
+  const groups = []
+  for (const lesson of shown) {
+    const group = groups[groups.length - 1]
+    if (group?.week === lesson.week) group.lessons.push(lesson)
+    else groups.push({ week: lesson.week, moduleCode: lesson.moduleCode, lessons: [lesson] })
+  }
 
   return (
     <>
@@ -361,27 +431,82 @@ function CatchUpList({ items, completedSet, onToggle }) {
         className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75"
         aria-hidden={cleared || undefined}
       >
-        {cleared ? t.catchUpAllClear : t.catchUpBody(items.length)}
+        <SteadyText texts={widestCounts(onArrival.all).map(intro)}>
+          {intro(items.length)}
+        </SteadyText>
       </p>
       <p role="status" aria-live="polite" className="sr-only">
         {cleared ? t.catchUpAllClear : ''}
       </p>
-      <ul className="-mx-1 space-y-0.5">
-        {shown.map((lesson) => (
-          <LessonRow
-            key={lesson.id}
-            lesson={lesson}
-            checked={completedSet.has(lesson.id)}
-            onToggle={() => keep(lesson)}
-            meta={`${lesson.weekLabel} · ${lesson.moduleCode}`}
-            highlight
-          />
+      <div id={listId} className="space-y-3">
+        {groups.map((group) => (
+          <div key={group.week}>
+            {/*
+              Breaks only after the dash, as "Get ahead" breaks after its own
+              words: never inside "Week 12 · GD-4", or inside "10 open". The
+              count holds its widest width, so a heading that wraps at "10 à
+              rattraper" does not fit on one line at "rattrapée" and pull the
+              rows below up by a line, or the other way round.
+            */}
+            <h3 className="mb-1 px-1.5 text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
+              <span className="whitespace-nowrap">
+                {t.weekRange(group.week, group.week)} · <span dir="ltr">{group.moduleCode}</span>
+              </span>
+              {'\u00a0'}—{' '}
+              <span className="whitespace-nowrap">
+                <SteadyText
+                  inline
+                  texts={widestCounts(onArrival.week.get(group.week) ?? 0).map((n) =>
+                    t.catchUpWeekOpen(n),
+                  )}
+                >
+                  {t.catchUpWeekOpen(openIn(group.week))}
+                </SteadyText>
+              </span>
+            </h3>
+            <ul className="-mx-1 space-y-0.5">
+              {group.lessons.map((lesson) => (
+                <LessonRow
+                  key={lesson.id}
+                  lesson={lesson}
+                  checked={completedSet.has(lesson.id)}
+                  onToggle={() => keep(lesson)}
+                  highlight
+                />
+              ))}
+            </ul>
+          </div>
         ))}
-      </ul>
-      {more > 0 && (
-        <p className="mt-2 px-1 text-xs font-semibold text-cobalt-600 dark:text-lime">
-          {t.catchUpMore(more)}
-        </p>
+      </div>
+      {/*
+        There while more is open than the first six, whether the list is open
+        in full or not, so it can close what it opened. Ticking the open items
+        down to six takes it away: its place is below every row, so nothing
+        moves, and the ticking finger is on a row, not on it.
+      */}
+      {items.length > CATCH_UP_LIMIT && (
+        <button
+          ref={showAllButton}
+          type="button"
+          onClick={() => {
+            closing.current = showAll
+            setShowAll((v) => !v)
+          }}
+          aria-expanded={showAll}
+          aria-controls={listId}
+          className="mt-2 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 text-start text-xs font-semibold text-cobalt-600 hover:bg-navy-900/[0.04] dark:text-lime dark:hover:bg-white/[0.05]"
+        >
+          <span className="flex-1">
+            {showAll ? t.catchUpShowFewer : t.catchUpShowAll(items.length)}
+          </span>
+          <ChevronDown
+            size={16}
+            className={`flex-none transition-transform motion-reduce:transition-none ${
+              showAll ? 'rotate-180' : ''
+            }`}
+            aria-hidden="true"
+          />
+        </button>
       )}
     </>
   )
@@ -409,9 +534,18 @@ function CatchUpList({ items, completedSet, onToggle }) {
  * overdue item here keeps the section until the next visit: the rows stay
  * under the learner's finger, and the all-clear appears below them in a
  * polite live region, where it moves nothing.
+ *
+ * In Creative Tech, where the curriculum sets whole weeks aside for catching
+ * up, the section ends by naming the next of them (`nextCatchUp`): "Next
+ * catch-up week: Week 10, from Oct 27". That week sat as a dashed row deep in
+ * the roadmap, while a learner 51 items behind read only the count. The line
+ * goes here, under "+48 more overdue", where a learner meets the size of the
+ * backlog, rather than in the status card above: that card stays the
+ * one-glance answer it was, at its height, so nothing above the first overdue
+ * item moves. It leaves with the last overdue item, for the all-clear.
  */
-function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit }) {
-  const { t } = useLang()
+function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCatchUp }) {
+  const { t, lang } = useLang()
   const { shown, more, keep } = useCatchUp(items, CATCH_UP_FIRST_LIMIT, onToggle)
 
   if (shown.length === 0) return null
@@ -451,6 +585,14 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit }) {
         {more > 0 && (
           <p className="mt-1 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber">
             {t.catchUpFirstMore(more, unit)}
+          </p>
+        )}
+        {nextCatchUp && !cleared && (
+          <p className="mt-1 flex items-start gap-1.5 px-2.5 text-xs font-medium text-ink-soft dark:text-paper/75">
+            <CalendarClock size={14} className="mt-px flex-none" aria-hidden="true" />
+            <span>
+              {t.nextCatchUpWeek(nextCatchUp.week, formatShortDate(nextCatchUp.date, lang))}
+            </span>
           </p>
         )}
         {/* Always in the DOM, so the all-clear is announced when it appears. */}

@@ -391,6 +391,7 @@ export default function App() {
                   catchUpRef={catchUpHeading}
                   unit={paceStatus?.unit}
                   upcoming={upcomingWeeks}
+                  nextCatchUp={paceStatus?.nextCatchUp}
                 />
                 <ProgressBar {...progress} currentModule={weekModule} />
                 <ForecastCard paceStatus={paceStatus} />

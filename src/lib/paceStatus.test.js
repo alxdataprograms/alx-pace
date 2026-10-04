@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePaceStatus } from './paceStatus'
+import { computePaceStatus, perDayToClear } from './paceStatus'
 import { computePacing, toISODateString } from './pacing'
 import { SCHEDULES } from './schedule'
 
@@ -320,5 +320,82 @@ describe('the finish forecast', () => {
       }
     }
     expect(wrong).toEqual([])
+  })
+})
+
+/*
+  Creative Tech's catch-up weeks, on the real schedules.
+
+  In a catch-up week the status card sounded the alarm, "Catch-up nudge: 14
+  items from earlier weeks still open", in the one week built for catching up.
+  It now plans them over the days the week has left, today included; and a
+  learner behind in an ordinary week is told when the next catch-up week
+  begins. Both read the day timeline, so a catch-up week that begins mid-week
+  (Graphic Design's 13.5) counts as it falls.
+*/
+describe('catch-up weeks', () => {
+  const START = new Date(2026, 2, 2)
+  /** The status of `program`, `day` days in, with these ticked. */
+  const at = (program, day, done = []) => {
+    const sch = SCHEDULES[program]
+    const now = new Date(START)
+    now.setDate(now.getDate() + day)
+    return computePaceStatus(sch, new Set(done), computePacing(START, now, sch))
+  }
+  const upTo = (program, week) =>
+    SCHEDULES[program].lessons.filter((l) => l.week < week).map((l) => l.id)
+  /** START, `days` later, as an ISO date. */
+  const dayOf = (days) => {
+    const d = new Date(START)
+    d.setDate(d.getDate() + days)
+    return toISODateString(d)
+  }
+
+  it('counts the days a catch-up week has left, today included', () => {
+    // Graphic Design's Week 13.5 runs from day 88 to day 94.
+    for (const [day, left] of [[88, 7], [90, 5], [94, 1]]) {
+      const s = at('gd', day, upTo('gd', 12))
+      expect(s.isBuffer, `day ${day}`).toBe(true)
+      expect(s.daysLeft, `day ${day}`).toBe(left)
+    }
+    // Weeks 12 and 13 still open: 10 and 4 items.
+    expect(at('gd', 90, upTo('gd', 12)).behindCount).toBe(14)
+  })
+
+  it('counts them in an ordinary week too, half weeks included', () => {
+    // Week 13 is half a week, days 84 to 87.
+    expect(at('gd', 84).daysLeft).toBe(4)
+    expect(at('da', 45).daysLeft).toBe(4) // Week 7: days 42–48
+  })
+
+  it('shares the open items out over those days, rounded up', () => {
+    expect(perDayToClear(14, 5)).toBe(3)
+    expect(perDayToClear(10, 5)).toBe(2)
+    expect(perDayToClear(3, 5)).toBe(1)
+    expect(perDayToClear(36, 4)).toBe(9)
+    expect(perDayToClear(14, 7)).toBe(2)
+  })
+
+  it('leaves the share out where it would only repeat a count', () => {
+    expect(perDayToClear(1, 5)).toBe(0) // "1 item … (about 1 a day)"
+    expect(perDayToClear(14, 1)).toBe(0) // "1 day left (about 14 a day)"
+    expect(perDayToClear(0, 5)).toBe(0)
+  })
+
+  it('names the next catch-up week, and the day it begins', () => {
+    const next = (s) => [s.nextCatchUp.week, toISODateString(s.nextCatchUp.date)]
+    // Content Creation's Week 6 (day 40): Week 10 begins on day 63.
+    expect(next(at('cc', 40))).toEqual([10, dayOf(63)])
+    // Graphic Design's Week 11 (day 72): Week 13.5 begins mid-week, on day 88.
+    expect(next(at('gd', 72))).toEqual([13.5, dayOf(88)])
+    // In a catch-up week, the one after it.
+    expect(at('gd', 90).nextCatchUp.week).toBe(17.5)
+  })
+
+  it('has none ahead in Data Analytics, or after the last one', () => {
+    expect(at('da', 45).nextCatchUp).toBeNull()
+    // Content Creation ends on its catch-up week 22; Graphic Design on Week 32.
+    expect(at('cc', 150).nextCatchUp).toBeNull()
+    expect(at('gd', 220).nextCatchUp).toBeNull()
   })
 })

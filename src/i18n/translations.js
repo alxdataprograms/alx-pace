@@ -64,6 +64,15 @@ const frWord = (n, singular, plural) => (n < 2 ? singular : plural)
 const frPlural = (n, singular, plural) => `${n} ${frWord(n, singular, plural)}`
 
 /*
+  A phrase held on one line: a count with its words ("5 jours restants", "5
+  أيام متبقية") or a date ("27 أكتوبر"). The catch-up week's status runs to two
+  or three lines, and Arabic broke its days left in two, "5 أيام" at the end
+  of one line and "متبقية" on the next; the next catch-up week's date broke
+  the same way.
+*/
+const unbroken = (text) => String(text).replace(/ /g, '\u00a0')
+
+/*
   The hero's week line closes the slogan with an exclamation mark, unless the
   slogan already ends its own sentence: "Learn. Build. Repeat." had been
   showing as "Learn. Build. Repeat.!".
@@ -166,6 +175,14 @@ export const translations = {
     statusOnTrack: 'Right on pace — keep the streak alive.',
     statusAhead: (n, unit) =>
       `You're ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} ahead of schedule. Excellent.`,
+    // A catch-up week's status: time set aside for the open items, so a plan
+    // for the days left rather than a nudge. `perDay` is 0 where it would only
+    // repeat a count (see perDayToClear). No-break spaces hold each count to
+    // its noun and the daily share together, and end a line on the "·" rather
+    // than start the next with it.
+    statusCatchUpWeek: (n, days, perDay) =>
+      `Catch-up week: ${n}\u00a0${n === 1 ? 'item' : 'items'} to clear\u00a0· ${days}\u00a0${days === 1 ? 'day' : 'days'}\u00a0left${perDay ? ` (about\u00a0${perDay}\u00a0a\u00a0day)` : ''}`,
+    statusCatchUpWeekClear: "Catch-up week: you're all caught up.",
     weekOf: (week, total) => `Week ${week} of ${total}`,
     doneThisWeek: (done, total) => `${done}/${total} done this week`,
     gradedStillDue: (n) => `${n} graded ${n === 1 ? 'item' : 'items'} still due`,
@@ -208,18 +225,25 @@ export const translations = {
     bufferChip: 'Buffer',
     halfWeekChip: '½ week',
     bufferRoadmapNote: 'Catch-up week — no new content',
-    bufferStatus: 'Catch-up week',
     catchUpEyebrow: 'Catch-up Week',
     catchUpBody: (n) =>
       `No new content this week — use it to clear the ${n} ${n === 1 ? 'item' : 'items'} still open from earlier weeks.`,
     catchUpAllClear: "You're all caught up! Rest, review, or get a head start on next week.",
-    catchUpMore: (n) => `+${n} more open — see the roadmap below`,
+    // A catch-up week's list, grouped under each week it draws on ("Week 12 ·
+    // GD-4 — 10 open"), opens in full from a button below it.
+    catchUpWeekOpen: (n) => (n === 0 ? 'all done' : `${n} open`),
+    catchUpShowAll: (n) => `Show all ${n}`,
+    catchUpShowFewer: 'Show fewer',
     // An ordinary week for a learner who is behind: the oldest open items from
     // earlier weeks head the checklist, above this week's own. The status
     // card's button goes there.
     catchUpFirst: 'Catch up first',
     catchUpFirstMore: (n) => `+${n} more overdue — see the roadmap below`,
     catchUpFirstDone: "You're all caught up! On to this week.",
+    // Creative Tech sets whole weeks aside for catching up; the next one is
+    // named under "Catch up first". The date is day and month (formatShortDate),
+    // kept on one line like the week's number.
+    nextCatchUpWeek: (week, date) => `Next catch-up week: Week\u00a0${week}, from ${unbroken(date)}`,
     thisWeek: 'This week',
     catchUpNow: 'Catch up now',
     // Where the button was, once nothing is overdue any more (this visit only).
@@ -475,6 +499,10 @@ export const translations = {
     statusOnTrack: 'Parfaitement dans le rythme — continue sur ta lancée.',
     statusAhead: (n, unit) =>
       `Tu as ${pick(unit, frPlural(n, "leçon d'avance", "leçons d'avance"), frPlural(n, "élément d'avance", "éléments d'avance"))}. Excellent.`,
+    // "À terminer", as the catch-up week's reminder says it.
+    statusCatchUpWeek: (n, days, perDay) =>
+      `Semaine de rattrapage\u00a0: ${unbroken(frPlural(n, 'élément', 'éléments'))} à terminer\u00a0· ${unbroken(frPlural(days, 'jour restant', 'jours restants'))}${perDay ? ` (environ\u00a0${perDay}\u00a0par\u00a0jour)` : ''}`,
+    statusCatchUpWeekClear: 'Semaine de rattrapage\u00a0: tu es à jour.',
     weekOf: (week, total) => `Semaine ${week} sur ${total}`,
     doneThisWeek: (done, total) => `${done}/${total} cette semaine`,
     gradedStillDue: (n) => `${frPlural(n, 'évaluation à rendre', 'évaluations à rendre')}`,
@@ -512,18 +540,22 @@ export const translations = {
     bufferChip: 'Rattrapage',
     halfWeekChip: '½ semaine',
     bufferRoadmapNote: 'Semaine de rattrapage — pas de nouveau contenu',
-    bufferStatus: 'Semaine de rattrapage',
     catchUpEyebrow: 'Semaine de rattrapage',
     catchUpBody: (n) =>
       `Pas de nouveau contenu cette semaine — profites-en pour terminer ${frPlural(n, 'élément encore ouvert', 'éléments encore ouverts')} des semaines précédentes.`,
     catchUpAllClear:
       "Tu es à jour ! Repose-toi, révise ou prends de l'avance sur la semaine prochaine.",
-    catchUpMore: (n) =>
-      `+${n} encore ${frWord(n, 'ouvert', 'ouverts')} — voir la feuille de route ci-dessous`,
+    // "À rattraper" needs no agreement; a week cleared is "rattrapée", like
+    // the "semaine" it describes.
+    catchUpWeekOpen: (n) => (n === 0 ? 'rattrapée' : `${n} à rattraper`),
+    catchUpShowAll: (n) => `Tout afficher (${n})`,
+    catchUpShowFewer: 'Afficher moins',
     catchUpFirst: 'À rattraper d’abord',
     catchUpFirstMore: (n) =>
       `+${n} ${frWord(n, 'autre', 'autres')} en retard — voir la feuille de route ci-dessous`,
     catchUpFirstDone: 'Tu es à jour\u202f! Place à cette semaine.',
+    nextCatchUpWeek: (week, date) =>
+      `Prochaine semaine de rattrapage\u00a0: semaine\u00a0${week}, à partir du ${unbroken(date)}`,
     thisWeek: 'Cette semaine',
     catchUpNow: 'Rattraper maintenant',
     caughtUp: 'Tout est rattrapé',
@@ -757,6 +789,11 @@ export const translations = {
     statusOnTrack: 'أنت على الوتيرة الصحيحة — واصل التقدّم.',
     statusAhead: (n, unit) =>
       `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} عن الجدول. ممتاز.`,
+    // "N items to finish", as the catch-up week's reminder says it; the days
+    // left agree as the lessons left do in reminderOnTrack.
+    statusCatchUpWeek: (n, days, perDay) =>
+      `أسبوع استدراك: ${unbroken(arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} للإنهاء\u00a0· ${unbroken(arCount(days, { one: 'يوم واحد متبقٍ', two: 'يومان متبقيان', few: 'أيام متبقية', many: 'يومًا متبقيًا' }))}${perDay ? ` (نحو\u00a0${perDay}\u00a0في\u00a0اليوم)` : ''}`,
+    statusCatchUpWeekClear: 'أسبوع استدراك: لا شيء متأخّر.',
     weekOf: (week, total) => `الأسبوع ${week} من ${total}`,
     doneThisWeek: (done, total) => `أُنجز ${done}/${total} هذا الأسبوع`,
     gradedStillDue: (n) =>
@@ -795,18 +832,26 @@ export const translations = {
     bufferChip: 'استدراك',
     halfWeekChip: 'نصف أسبوع',
     bufferRoadmapNote: 'أسبوع استدراك — لا محتوى جديد',
-    bufferStatus: 'أسبوع استدراك',
     catchUpEyebrow: 'أسبوع الاستدراك',
     catchUpBody: (n) =>
       `لا محتوى جديد هذا الأسبوع — استغلّه لإنهاء ما تبقّى مفتوحًا من الأسابيع السابقة (${n}).`,
     catchUpAllClear: 'لا شيء متأخّر! استرح أو راجع أو ابدأ مبكرًا في الأسبوع القادم.',
-    catchUpMore: (n) => `+${n} أخرى مفتوحة — راجع الخارطة أدناه`,
+    // Counted with its noun, which "open" agrees with, as overdueChip does; a
+    // week cleared is "complete", masculine like الأسبوع.
+    catchUpWeekOpen: (n) =>
+      n === 0
+        ? 'مكتمل'
+        : arCount(n, { one: 'عنصر واحد مفتوح', two: 'عنصران مفتوحان', few: 'عناصر مفتوحة', many: 'عنصرًا مفتوحًا' }),
+    catchUpShowAll: (n) => `عرض الكل (${n})`,
+    catchUpShowFewer: 'عرض أقل',
     catchUpFirst: 'الاستدراك أولًا',
     // Counted with its noun, which the adjectives after it agree with: "درس آخر
     // متأخر", "درسان آخران متأخران", "6 دروس أخرى متأخرة", "14 درسًا آخر متأخرًا".
     catchUpFirstMore: (n, unit) =>
       `${arCount(n, pick(unit, { one: 'درس آخر متأخر', two: 'درسان آخران متأخران', few: 'دروس أخرى متأخرة', many: 'درسًا آخر متأخرًا' }, { one: 'عنصر آخر متأخر', two: 'عنصران آخران متأخران', few: 'عناصر أخرى متأخرة', many: 'عنصرًا آخر متأخرًا' }))} — راجع الخارطة أدناه`,
     catchUpFirstDone: 'لا شيء متأخّر! تابع مع هذا الأسبوع.',
+    nextCatchUpWeek: (week, date) =>
+      `أسبوع الاستدراك القادم: الأسبوع\u00a0${week}، بدءًا من ${unbroken(date)}`,
     thisWeek: 'هذا الأسبوع',
     catchUpNow: 'استدرك الآن',
     caughtUp: 'لا شيء متأخّر',

@@ -4,6 +4,7 @@ import {
   daysBetween,
   toISODateString,
   computePacing,
+  dateOfDay,
   plannedEndDate,
   progressPercent,
   uniformTimeline,
@@ -143,6 +144,21 @@ describe('weekForDay', () => {
   it('clamps to the first and last weeks', () => {
     expect(weekForDay(T14, -3).week).toBe(1)
     expect(weekForDay(T14, 500).week).toBe(14)
+  })
+})
+
+describe('dateOfDay', () => {
+  it('counts from the start date itself, day 0, to local midnight', () => {
+    expect(toISODateString(dateOfDay('2026-03-01', 0))).toBe('2026-03-01')
+    expect(toISODateString(dateOfDay('2026-03-01', 63))).toBe('2026-05-03')
+    // A start date with a time of day still lands on midnight.
+    const d = dateOfDay(new Date(2026, 2, 1, 18, 30), 88)
+    expect([toISODateString(d), d.getHours(), d.getMinutes()]).toEqual(['2026-05-28', 0, 0])
+  })
+
+  it('is null without a valid start date', () => {
+    expect(dateOfDay('', 5)).toBeNull()
+    expect(dateOfDay('2026-02-31', 5)).toBeNull()
   })
 })
 
