@@ -34,8 +34,14 @@ export default function ProgressBar({ completed, total, percent }) {
         aria-valuemax={100}
         aria-label={t.progressAria(percent)}
       >
+        {/*
+          The fill grows from the start edge, the right in Arabic, so its
+          gradient turns round there too. Left to right in both, Arabic's
+          bright lime end sat at the right, where the bar begins, and the
+          edge that moves as a learner progresses was the dark one.
+        */}
         <div
-          className="h-full rounded-full bg-gradient-to-r from-cobalt to-lime transition-[width] duration-500 ease-out"
+          className="h-full rounded-full bg-gradient-to-r from-cobalt to-lime transition-[width] duration-500 ease-out rtl:bg-gradient-to-l"
           style={{ width: `${percent}%` }}
         />
       </div>

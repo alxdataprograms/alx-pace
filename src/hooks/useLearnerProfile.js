@@ -59,6 +59,17 @@ export function useLearnerProfile() {
 
   const completedSet = useMemo(() => new Set(completedLessons), [completedLessons])
 
+  /*
+    Whether "Reset" has anything to clear: a program, a name, a start date, or
+    ticks in ANY program (completedLessons above holds the active program's
+    only, and none at all before one is chosen). The footer offers reset only
+    then, so a first visit is not offered to reset nothing, and must offer it
+    whenever any of this exists, or a learner could not clear their own data.
+  */
+  const hasLearnerData =
+    Boolean(program || learnerName || startDate) ||
+    (Array.isArray(completedRaw) && completedRaw.length > 0)
+
   const toggleLesson = useCallback(
     (id) => {
       if (!validIds.has(id)) return
@@ -120,6 +131,7 @@ export function useLearnerProfile() {
     startDate,
     completedLessons,
     completedSet,
+    hasLearnerData,
     updateProgram,
     updateName,
     updateStartDate,

@@ -7,6 +7,9 @@ import { useLang } from '../i18n/LanguageContext'
  * Full curriculum browser: every module → week → lesson, collapsible, with the
  * learner's current week expanded and flagged by default. Buffer weeks render
  * as a compact, non-expandable "catch-up" row; half weeks get a "½ week" chip.
+ *
+ * `currentWeek` is null until the course begins: then every week starts
+ * closed, and none is flagged.
  */
 export default function WeekAccordion({
   schedule,
@@ -32,7 +35,7 @@ export default function WeekAccordion({
   const shareable = new Map(achieved.map((m) => [m.code ?? 'programme', m]))
   const programme = shareable.get('programme')
   const { t } = useLang()
-  const [openWeeks, setOpenWeeks] = useState(() => new Set([currentWeek]))
+  const [openWeeks, setOpenWeeks] = useState(() => new Set(currentWeek == null ? [] : [currentWeek]))
 
   const toggleWeek = (weekNumber) => {
     setOpenWeeks((prev) => {

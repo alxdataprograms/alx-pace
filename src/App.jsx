@@ -35,6 +35,7 @@ export default function App() {
     startDate,
     completedLessons,
     completedSet,
+    hasLearnerData,
     updateProgram,
     updateName,
     updateStartDate,
@@ -89,6 +90,10 @@ export default function App() {
   )
 
   const { status } = pacing
+  // A start date is set: counting down to it, in a week, or past the last one.
+  const hasStartDate = status === 'future' || status === 'active' || status === 'completed'
+  // The course has begun, so one of its weeks is the current week.
+  const hasBegun = status === 'active' || status === 'completed'
 
   const paceStatus = useMemo(
     () => (schedule ? computePaceStatus(schedule, completedSet, pacing, today) : null),
@@ -199,10 +204,14 @@ export default function App() {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-lg flex-col px-4 pb-6 pt-5 sm:px-5">
-      {/* Brand bar */}
+      {/*
+        Brand bar. The logo never shrinks: when the row ran short, flexbox
+        squeezed it (to 34px wide in French, from 55) before wrapping the
+        tagline beside it.
+      */}
       <header className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <AlxLogo className="h-7 w-auto text-ink dark:text-paper" />
+          <AlxLogo className="h-7 w-auto flex-none text-ink dark:text-paper" />
           <div className="border-s border-ink/15 ps-3 leading-none dark:border-white/20">
             <p className="text-sm font-bold tracking-tight">Pace</p>
             <p className="text-[11px] font-medium text-ink-mute dark:text-paper/70">
@@ -210,8 +219,17 @@ export default function App() {
             </p>
           </div>
         </div>
+        {/*
+          On one line from 360px, the common Android width, in every language;
+          the tagline beside it wraps instead. "Parcours 14 semaines" had
+          broken into a two-line lozenge even at 414px. Only on a 320px screen
+          may it still wrap: held to one line there, it left the tagline a
+          column so narrow that French ran to five lines.
+        */}
         {schedule && (
-          <span className="alx-chip bg-lime-300 text-navy-900">{t.trackChip(schedule.totalWeeks)}</span>
+          <span className="alx-chip bg-lime-300 text-navy-900 min-[360px]:whitespace-nowrap">
+            {t.trackChip(schedule.totalWeeks)}
+          </span>
         )}
       </header>
 
@@ -302,12 +320,21 @@ export default function App() {
               <ProgressBar {...progress} />
             )}
 
-            {/* Keyed by program so switching re-opens the new current week. */}
+            {/*
+              No week is "Current" before the course begins. Pacing points at
+              Week 1 then, as the week to come, and passing that on badged it
+              "Current" and opened it under "Course begins in 10 days".
+
+              Keyed by program, so switching re-opens the new current week, and
+              by whether the course has begun, so a countdown that reaches its
+              start day in a tab left open opens Week 1 at midnight, as a fresh
+              visit would.
+            */}
             <WeekAccordion
-              key={program}
+              key={`${program}:${hasBegun ? 'begun' : 'not-begun'}`}
               schedule={schedule}
               completedSet={completedSet}
-              currentWeek={pacing.currentWeek}
+              currentWeek={hasBegun ? pacing.currentWeek : null}
               onToggle={toggleLesson}
               onSetWeek={setLessonsCompleted}
               achieved={achieved}
@@ -316,10 +343,16 @@ export default function App() {
           </>
         )}
 
+        {/*
+          The footer offers only what applies yet. Reminders wait for a start
+          date: before one there is no week to remind anyone about. Reset waits
+          for something to reset, and stays for as long as any of it exists.
+        */}
         <Footer
           theme={theme}
           onToggleTheme={toggleTheme}
-          onReset={resetProfile}
+          onReset={hasLearnerData ? resetProfile : undefined}
+          showReminders={hasStartDate}
           programName={programName}
         />
       </main>

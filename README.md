@@ -48,14 +48,14 @@ runs after those gates pass on `main`.
 
 | Area | Behaviour |
 | --- | --- |
-| **Program picker** | First visit asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
+| **Program picker** | The first screen says what Pace is (*Free · No login · Saved on this phone*), then asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
 | **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
 | **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
 | **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. |
 | **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
 | **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
 | **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
-| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); the current week auto-expands. |
+| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week auto-expands and is flagged *Current*. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
 
@@ -89,8 +89,8 @@ browser left off.
 
 ## 🔔 Weekly reminders
 
-Learners can opt in via **Enable weekly reminders** in the footer. Two delivery
-modes, best available wins:
+Learners can opt in via **Enable weekly reminders** in the footer, offered once
+they have set a start date. Two delivery modes, best available wins:
 
 1. **Local (zero infrastructure, on by default)** — Periodic Background Sync: the
    service worker wakes and shows the learner's latest status ("Week 3 — 2 graded

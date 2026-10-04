@@ -47,10 +47,14 @@ const pick = (unit, lesson, item) => (unit === 'item' ? item : lesson)
 const arStillOpen = (n) =>
   n === 1 ? 'ما زال مفتوحًا' : n === 2 ? 'ما زالا مفتوحين' : 'ما زالت مفتوحة'
 
-const frPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`
-
-// Arabic-Indic digits (١٤) for the week counts that used to be hard-coded.
-const arNum = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d])
+/*
+  French puts a count below two in the singular ("0 élément", "1 élément", a
+  pace of "1.5 leçon/semaine") and two and up in the plural. Strings that
+  hard-coded the plural read "1 éléments terminés sur 27" at a learner's very
+  first tick.
+*/
+const frWord = (n, singular, plural) => (n < 2 ? singular : plural)
+const frPlural = (n, singular, plural) => `${n} ${frWord(n, singular, plural)}`
 
 /*
   The hero's week line closes the slogan with an exclamation mark, unless the
@@ -72,7 +76,9 @@ export const translations = {
     locale: 'en',
     langName: 'English',
 
-    tagline: (program) => (program ? `${program} · Self-Pace` : 'Self-Pace Tracker'),
+    // An invisible word joiner after the hyphen: the brand bar's tagline wraps
+    // beside the track chip, and broke as "Self-" / "Pace".
+    tagline: (program) => (program ? `${program} · Self-\u2060Pace` : 'Self-Pace Tracker'),
     trackChip: (weeks) => `${weeks}-Week Track`,
 
     programs: { da: 'Data Analytics', cc: 'Content Creation', gd: 'Graphic Design' },
@@ -86,17 +92,20 @@ export const translations = {
     creativeTechMeta: 'Content Creation or Graphic Design',
     pickerSwitchNote: 'Your progress in each program is saved separately on this device.',
     back: 'Back',
-    chooseProgram: 'Choose your program',
     change: 'change',
     changeProgram: 'Change your program',
     selected: 'Selected',
 
+    // The hero before a program is chosen: what Pace is, for someone seeing it
+    // for the first time. The no-break space keeps "ALX Pace" on one line.
+    welcomeNew: 'Welcome to ALX\u00a0Pace',
+    introLine: "Know exactly what to study each week, and whether you're on track.",
+    introChips: ['Free', 'No login', 'Saved on this phone'],
     welcomeBack: () => `Welcome back, `,
     welcomeBackAfterName: `!`,
     weekSlogan: (week, slogan) => `Week ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
     started: (date) => `Started ${date}`,
-    setStartDate: 'Set your start date',
-    todayHint: (date) => `(today: ${date})`,
+    starts: (date) => `Starts ${date}`,
     yourName: 'Your name',
     editName: 'Edit your name',
     saveName: 'Save name',
@@ -343,17 +352,20 @@ export const translations = {
     pickerSwitchNote:
       'Ta progression dans chaque programme est enregistrée séparément sur cet appareil.',
     back: 'Retour',
-    chooseProgram: 'Choisis ton programme',
     change: 'changer',
     changeProgram: 'Changer de programme',
     selected: 'Sélectionné',
 
+    welcomeNew: 'Bienvenue sur ALX\u00a0Pace',
+    introLine: 'Sache exactement ce que tu dois étudier chaque semaine, et si tu es dans le rythme.',
+    introChips: ['Gratuit', 'Sans compte', 'Enregistré sur ce téléphone'],
     welcomeBack: () => `Bon retour, `,
-    welcomeBackAfterName: ` !`,
+    // A narrow no-break space, as French sets "!": with an ordinary one, the
+    // line broke there and left " !" and the rocket under the name.
+    welcomeBackAfterName: `\u202f!`,
     weekSlogan: (week, slogan) => `Semaine ${week} — ${slogan}${endsSentence(slogan) ? '' : ' !'}`,
     started: (date) => `Commencé le ${date}`,
-    setStartDate: 'Définis ta date de début',
-    todayHint: (date) => `(aujourd'hui : ${date})`,
+    starts: (date) => `Commence le ${date}`,
     yourName: 'Ton nom',
     editName: 'Modifier ton nom',
     saveName: 'Enregistrer le nom',
@@ -385,10 +397,10 @@ export const translations = {
     curriculumComplete: 'Parcours terminé',
     gradedMilestonesStat: 'Évaluations notées',
     lessonsComplete: (done, total, unit) =>
-      `${done} ${pick(unit, 'leçons terminées', 'éléments terminés')} sur ${total}`,
+      `${pick(unit, frPlural(done, 'leçon terminée', 'leçons terminées'), frPlural(done, 'élément terminé', 'éléments terminés'))} sur ${total}`,
 
     progressTitle: 'Progression du parcours',
-    itemsComplete: (done, total) => `${done} éléments terminés sur ${total}`,
+    itemsComplete: (done, total) => `${frPlural(done, 'élément terminé', 'éléments terminés')} sur ${total}`,
     progressAria: (p) => `${p} % du parcours terminé`,
     overallProgress: 'Progression globale',
 
@@ -410,7 +422,8 @@ export const translations = {
     focusAria: (weekLabel) => `Objectif de la semaine : ${weekLabel}`,
 
     milestonesTitle: 'Évaluations notées',
-    milestonesDue: (n, weekLabel) => `${n} à rendre en ${weekLabel} — elles comptent pour ta note.`,
+    milestonesDue: (n, weekLabel) =>
+      `${n} à rendre en ${weekLabel} — ${frWord(n, 'elle compte', 'elles comptent')} pour ta note.`,
     milestonesNone:
       "Aucune évaluation notée cette semaine — parfait pour prendre de l'avance ou consolider les bases.",
     milestonesAria: 'Évaluations notées de la semaine',
@@ -433,7 +446,8 @@ export const translations = {
       `Pas de nouveau contenu cette semaine — profites-en pour terminer ${frPlural(n, 'élément encore ouvert', 'éléments encore ouverts')} des semaines précédentes.`,
     catchUpAllClear:
       "Tu es à jour ! Repose-toi, révise ou prends de l'avance sur la semaine prochaine.",
-    catchUpMore: (n) => `+${n} encore ouvert(s) — voir la feuille de route ci-dessous`,
+    catchUpMore: (n) =>
+      `+${n} encore ${frWord(n, 'ouvert', 'ouverts')} — voir la feuille de route ci-dessous`,
     showDone: (n) => `Afficher ${frPlural(n, 'élément terminé', 'éléments terminés')}`,
     hideDone: 'Masquer les éléments terminés',
     weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
@@ -441,7 +455,7 @@ export const translations = {
     roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
     current: 'En cours',
-    doneCount: (done, total) => `${done}/${total} faits`,
+    doneCount: (done, total) => `${done}/${total} ${frWord(done, 'fait', 'faits')}`,
     gradedCount: (n) => `${n} noté${n > 1 ? 's' : ''}`,
     markWeekComplete: 'Marquer la semaine terminée',
     clearWeek: 'Réinitialiser la semaine',
@@ -492,7 +506,7 @@ export const translations = {
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
     reminderBehind: (behind, graded, unit) =>
-      `${pick(unit, frPlural(behind, 'leçon à rattraper', 'leçons à rattraper'), frPlural(behind, 'élément à rattraper', 'éléments à rattraper'))} · ${graded} évaluation(s) cette semaine.`,
+      `${pick(unit, frPlural(behind, 'leçon à rattraper', 'leçons à rattraper'), frPlural(behind, 'élément à rattraper', 'éléments à rattraper'))} · ${frPlural(graded, 'évaluation', 'évaluations')} cette semaine.`,
     reminderGraded: (n) =>
       `${frPlural(n, 'évaluation notée à rendre', 'évaluations notées à rendre')} cette semaine — garde le rythme.`,
     reminderOnTrack: (left, unit) =>
@@ -506,7 +520,8 @@ export const translations = {
     targetFinish: (date) => `Fin prévue : ${date}`,
     promptFinishPreview: (date) => `Avec cette date de début, tu auras terminé le ${date}.`,
     yourPace: 'Ton rythme',
-    paceValue: (n, unit) => `${n} ${pick(unit, 'leçons', 'éléments')}/semaine`,
+    paceValue: (n, unit) =>
+      `${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))}/semaine`,
     projectedFinishLabel: 'Fin estimée',
     targetLabel: 'Objectif',
     finishDelta: (days) => {
@@ -563,11 +578,18 @@ export const translations = {
 
   ar: {
     dir: 'rtl',
-    locale: 'ar',
+    /*
+      One digit style in the Arabic UI: Western digits (0-9), dates included.
+      Week counts used to be converted to Arabic-Indic digits (١٤) while every
+      other count stayed 0-9, and plain 'ar' leaves a date's digits to the
+      browser, so one countdown card read "مسار ١٤ أسبوعًا" beside "10 أيام".
+      The -u-nu-latn extension pins the digits wherever this locale formats.
+    */
+    locale: 'ar-u-nu-latn',
     langName: 'العربية',
 
     tagline: (program) => (program ? `${program} · وتيرة ذاتية` : 'متابعة بالوتيرة الذاتية'),
-    trackChip: (weeks) => `مسار ${arNum(weeks)} أسبوعًا`,
+    trackChip: (weeks) => `مسار ${weeks} أسبوعًا`,
 
     programs: { da: 'تحليل البيانات', cc: 'صناعة المحتوى', gd: 'التصميم الجرافيكي' },
     creativeTech: 'التقنية الإبداعية',
@@ -577,21 +599,23 @@ export const translations = {
     pickerTrackTitle: 'أي مسار في التقنية الإبداعية؟',
     pickerTrackBody: 'تضمّ التقنية الإبداعية مسارين بالوتيرة الذاتية. اختر مسارك لتحميل خطته الأسبوعية.',
     programMeta: (weeks, modules) =>
-      `${arNum(weeks)} أسبوعًا · ${arNum(modules)} ${modules >= 3 && modules <= 10 ? 'وحدات' : 'وحدة'}`,
+      `${weeks} أسبوعًا · ${modules} ${modules >= 3 && modules <= 10 ? 'وحدات' : 'وحدة'}`,
     creativeTechMeta: 'صناعة المحتوى أو التصميم الجرافيكي',
     pickerSwitchNote: 'يُحفَظ تقدّمك في كل برنامج بشكل منفصل على هذا الجهاز.',
     back: 'رجوع',
-    chooseProgram: 'اختر برنامجك',
     change: 'تغيير',
     changeProgram: 'تغيير البرنامج',
     selected: 'مُختار',
 
+    welcomeNew: 'مرحبًا بك في ALX\u00a0Pace',
+    introLine: 'اعرف بالضبط ما عليك دراسته كل أسبوع، وما إذا كنت على الوتيرة الصحيحة.',
+    introChips: ['مجاني', 'دون تسجيل دخول', 'محفوظ على هذا الهاتف'],
     welcomeBack: () => `أهلاً بعودتك، `,
     welcomeBackAfterName: `!`,
     weekSlogan: (week, slogan) => `الأسبوع ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
     started: (date) => `بدأت في ${date}`,
-    setStartDate: 'حدّد تاريخ بدايتك',
-    todayHint: (date) => `(اليوم: ${date})`,
+    // The same verb as the countdown's "تبدأ الدورة بعد" (the course begins in).
+    starts: (date) => `تبدأ في ${date}`,
     yourName: 'اسمك',
     editName: 'تعديل الاسم',
     saveName: 'حفظ الاسم',
@@ -602,7 +626,7 @@ export const translations = {
 
     promptTitle: 'حدّد تاريخ بداية الدورة',
     promptBody: (program, weeks) =>
-      `أخبرنا متى بدأت (أو متى تنوي البدء) وسننظّم لك مسار ${program} الكامل على ${arNum(weeks)} أسبوعًا — أسبوعًا بأسبوع، دون تسجيل دخول.`,
+      `أخبرنا متى بدأت (أو متى تنوي البدء) وسننظّم لك مسار ${program} الكامل على ${weeks} أسبوعًا — أسبوعًا بأسبوع، دون تسجيل دخول.`,
     startPacing: 'ابدأ المتابعة',
     startedToday: 'بدأت اليوم',
     courseStartDate: 'تاريخ بداية الدورة',
@@ -611,15 +635,15 @@ export const translations = {
     beginsIn: 'تبدأ الدورة بعد',
     beginsInDays: (n) => arCount(n, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا' }),
     countdownBody: (slogan, program, weeks) =>
-      `رحلتك في ${program} على مدى ${arNum(weeks)} أسبوعًا جاهزة. ${slogan} — العدّ التنازلي جزء من الاجتهاد.`,
+      `رحلتك في ${program} على مدى ${weeks} أسبوعًا جاهزة. ${slogan} — العدّ التنازلي جزء من الاجتهاد.`,
     firstUp: (weekLabel) => `نبدأ بـ · ${weekLabel}`,
 
     completedTitle: 'أكملت الدورة!',
     finishLineTitle: 'وصلت إلى خط النهاية!',
     completedBody: (weeks, unit) =>
-      `أنجزت كل ${pick(unit, 'الدروس', 'العناصر')} على مدى ${arNum(weeks)} أسبوعًا. هكذا يبدو فعل الأشياء الصعبة.`,
+      `أنجزت كل ${pick(unit, 'الدروس', 'العناصر')} على مدى ${weeks} أسبوعًا. هكذا يبدو فعل الأشياء الصعبة.`,
     finishLineBody: (weeks) =>
-      `اكتملت مدة المسار البالغة ${arNum(weeks)} أسبوعًا. أنهِ العناصر المتبقية أدناه لتصل إلى ١٠٠٪.`,
+      `اكتملت مدة المسار البالغة ${weeks} أسبوعًا. أنهِ العناصر المتبقية أدناه لتصل إلى 100٪.`,
     curriculumComplete: 'اكتمال المنهج',
     gradedMilestonesStat: 'التقييمات المحتسبة',
     lessonsComplete: (done, total, unit) => `اكتمل ${done} من ${total} ${pick(unit, 'درسًا', 'عنصرًا')}`,
@@ -675,7 +699,7 @@ export const translations = {
     hideDone: 'إخفاء العناصر المكتملة',
     weekAllDone: 'اكتمل كل ما في هذا الأسبوع. وتيرة رائعة.',
 
-    roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${arNum(weeks)} أسبوعًا`,
+    roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${weeks} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),
     current: 'الحالي',
     doneCount: (done, total) => `أُنجز ${done}/${total}`,

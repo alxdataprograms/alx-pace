@@ -63,7 +63,12 @@ export default function PaceStatusCard({ paceStatus, progress, today = new Date(
         </div>
       </div>
 
-      <p className="mt-3 flex items-start gap-1.5 border-t border-navy-900/10 pt-2.5 text-xs italic text-ink-soft dark:border-white/10 dark:text-paper/75">
+      {/*
+        Upright, set apart by its rule and quote mark. It was italic, but no
+        italic face is loaded, so browsers slanted the upright letters
+        themselves, and a faked slant warps Arabic script.
+      */}
+      <p className="mt-3 flex items-start gap-1.5 border-t border-navy-900/10 pt-2.5 text-xs text-ink-soft dark:border-white/10 dark:text-paper/75">
         <Quote size={12} className="mt-0.5 flex-none" aria-hidden="true" />
         <span>{quoteForDate(today, lang)}</span>
       </p>
