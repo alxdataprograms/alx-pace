@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { computePaceStatus } from './paceStatus'
-import { toISODateString } from './pacing'
+import { computePacing, toISODateString } from './pacing'
+import { SCHEDULES } from './schedule'
 
-// Minimal hand-built schedule so counts are fully controlled.
+// Minimal hand-built schedule so counts are fully controlled. Its weeks carry
+// the day spans a built schedule has (see scheduleModel.js): 7 days each.
+const span = (week) => ({ week, startDay: (week - 1) * 7, endDay: week * 7, days: 7 })
 const schedule = {
   totalLessons: 4,
   totalDays: 21,
@@ -13,9 +16,9 @@ const schedule = {
     { id: 'd', week: 3 },
   ],
   weeks: [
-    { week: 1, lessons: [{ id: 'a' }, { id: 'b' }], gradedItems: [{ id: 'b' }] },
-    { week: 2, lessons: [{ id: 'c' }], gradedItems: [] },
-    { week: 3, lessons: [{ id: 'd' }], gradedItems: [{ id: 'd' }] },
+    { ...span(1), lessons: [{ id: 'a' }, { id: 'b' }], gradedItems: [{ id: 'b' }] },
+    { ...span(2), lessons: [{ id: 'c' }], gradedItems: [] },
+    { ...span(3), lessons: [{ id: 'd' }], gradedItems: [{ id: 'd' }] },
   ],
 }
 
@@ -34,56 +37,51 @@ describe('computePaceStatus', () => {
   })
 
   it('flags "behind" for unfinished lessons in earlier weeks', () => {
-    const s = computePaceStatus(schedule, new Set(['a']), activePacing(), new Date(2026, 2, 8))
+    const s = computePaceStatus(schedule, new Set(['a']), activePacing())
     expect(s.status).toBe('behind')
     expect(s.behindCount).toBe(1) // 'b' from week 1 still open
   })
 
   it('flags "ahead" for lessons completed in later weeks', () => {
-    const s = computePaceStatus(
-      schedule,
-      new Set(['a', 'b', 'c']),
-      activePacing({ currentWeek: 1 }),
-      new Date(2026, 2, 8),
-    )
+    const s = computePaceStatus(schedule, new Set(['a', 'b', 'c']), activePacing({ currentWeek: 1 }))
     expect(s.status).toBe('ahead')
     expect(s.aheadCount).toBe(1) // only 'c' (week 2) is a completed later-week lesson
   })
 
   it('flags "on-track" when caught up with nothing pulled forward', () => {
-    const s = computePaceStatus(
-      schedule,
-      new Set(['a', 'b']),
-      activePacing({ currentWeek: 1 }),
-      new Date(2026, 2, 8),
-    )
+    const s = computePaceStatus(schedule, new Set(['a', 'b']), activePacing({ currentWeek: 1 }))
     expect(s.status).toBe('on-track')
   })
 
-  it('computes pace and a projected finish date from real progress', () => {
-    const now = new Date(2026, 2, 8)
-    const s = computePaceStatus(schedule, new Set(['a']), activePacing(), now)
+  /*
+    The pace is unchanged: ticks over the days so far. The finish it once
+    projected from that pace now comes from the learner's position (below):
+    with 'b' of Week 1 still open in Week 2, they are a week behind, and the
+    projected finish is the planned end a week later.
+  */
+  it('computes pace from real progress, and the finish from position', () => {
+    const s = computePaceStatus(schedule, new Set(['a']), activePacing())
     // 1 lesson over 8 days-in => 0.875/wk, rounded to 0.9
     expect(s.pacePerWeek).toBe(0.9)
     expect(s.completedCount).toBe(1)
     expect(s.remaining).toBe(3)
-    // perDay = 1/8; daysLeft = ceil(3 / 0.125) = 24
-    const expected = new Date(now)
-    expected.setDate(expected.getDate() + 24)
-    expect(toISODateString(s.projectedFinish)).toBe(toISODateString(expected))
-    expect(typeof s.finishDeltaDays).toBe('number')
+    expect(s.forecast).toBe('behind')
+    expect(s.forecastWeeks).toBe(1)
+    expect(s.oldestOpenWeek).toBe(1)
+    expect(s.finishShiftDays).toBe(7)
+    // planned end 2026-03-21, a week later
+    expect(toISODateString(s.projectedFinish)).toBe('2026-03-28')
   })
 
   it('lists the open earlier-week items oldest first and flags buffer weeks', () => {
     const withBuffer = {
       ...schedule,
-      weeks: [...schedule.weeks, { week: 4, isBuffer: true, lessons: [], gradedItems: [] }],
+      weeks: [...schedule.weeks, { ...span(4), isBuffer: true, lessons: [], gradedItems: [] }],
     }
     const s = computePaceStatus(
       withBuffer,
       new Set(['b']),
       activePacing({ currentWeek: 4, elapsedDays: 21 }),
-      new Date(2026, 2, 22),
     )
     expect(s.isBuffer).toBe(true)
     expect(s.behindItems.map((l) => l.id)).toEqual(['a', 'c', 'd'])
@@ -92,51 +90,235 @@ describe('computePaceStatus', () => {
   })
 
   it('targets the end of the program, not a fixed 14 weeks', () => {
-    const s = computePaceStatus(schedule, new Set(), activePacing(), new Date(2026, 2, 8))
+    const s = computePaceStatus(schedule, new Set(), activePacing())
     // start 2026-03-01 + 21 days - 1 = 2026-03-21
     expect(toISODateString(s.plannedEnd)).toBe('2026-03-21')
   })
 
-  it('has no projection before the first lesson is completed', () => {
-    const s = computePaceStatus(schedule, new Set(), activePacing(), new Date(2026, 2, 8))
+  /*
+    The forecast reads which items are open, so it has something true to say
+    before anything is ticked: the status card above it already does.
+  */
+  it('forecasts from the first visit, before anything is ticked', () => {
+    const s = computePaceStatus(schedule, new Set(), activePacing({ currentWeek: 1, elapsedDays: 0 }))
     expect(s.completedCount).toBe(0)
-    expect(s.projectedFinish).toBeNull()
-    expect(s.finishDeltaDays).toBeNull()
+    expect(s.forecast).toBe('on-track')
+    expect(s.finishShiftDays).toBe(0)
+    expect(toISODateString(s.projectedFinish)).toBe('2026-03-21')
   })
 
   /*
-    The forecast waits for a week's worth of signal. Without this, one tick in a
-    373-item course after nine days projected a finish in 2032.
+    The items-a-week figure waits for a week's worth of signal. Projected, one
+    tick in a 373-item course after nine days put the finish in 2032; the
+    finish no longer comes from it, but a rate from one tick still says
+    nothing.
   */
-  describe('forecast minimum', () => {
-    // 250 items over 22 weeks — Content Creation's shape. A week's worth is 12.
-    const big = {
-      totalLessons: 250,
-      totalWeeks: 22,
-      totalDays: 154,
-      lessons: Array.from({ length: 250 }, (_, i) => ({ id: `x${i}`, week: 1 + Math.floor(i / 12) })),
-      weeks: [{ week: 2, lessons: [], gradedItems: [] }],
-    }
-    const ids = (n) => new Set(Array.from({ length: n }, (_, i) => `x${i}`))
-    const nineDaysIn = activePacing({ currentWeek: 2, elapsedDays: 8 })
+  describe('the items-a-week minimum', () => {
+    // Nine days in: Week 2 of either program.
+    const nineDaysIn = (program) =>
+      computePacing(new Date(2026, 2, 1), new Date(2026, 2, 9), SCHEDULES[program])
+    const first = (program, n) => new Set(SCHEDULES[program].lessons.slice(0, n).map((l) => l.id))
 
-    it('withholds the projection after a single tick', () => {
-      const s = computePaceStatus(big, ids(1), nineDaysIn, new Date(2026, 2, 9))
-      expect(s.projectedFinish).toBeNull()
-      expect(s.finishDeltaDays).toBeNull()
-      expect(s.forecastNeeds).toBe(11)
-    })
-
-    it('projects once a week of items is done', () => {
-      const s = computePaceStatus(big, ids(12), nineDaysIn, new Date(2026, 2, 9))
-      expect(s.forecastNeeds).toBe(0)
+    it('withholds the rate after a single tick, but not the forecast', () => {
+      // Content Creation: 250 items over 22 weeks. A week's worth is 12.
+      const s = computePaceStatus(SCHEDULES.cc, first('cc', 1), nineDaysIn('cc'))
+      expect(s.paceNeeds).toBe(11)
+      expect(s.forecast).toBe('behind')
       expect(s.projectedFinish).toBeInstanceOf(Date)
     })
 
-    it('asks Data Analytics for two lessons — a week of its 27', () => {
-      const da = { ...big, totalLessons: 27, totalWeeks: 14 }
-      expect(computePaceStatus(da, ids(1), nineDaysIn).forecastNeeds).toBe(1)
-      expect(computePaceStatus(da, ids(2), nineDaysIn).forecastNeeds).toBe(0)
+    it('shows the rate once a week of items is done', () => {
+      expect(computePaceStatus(SCHEDULES.cc, first('cc', 12), nineDaysIn('cc')).paceNeeds).toBe(0)
     })
+
+    it('asks Data Analytics for two lessons — a week of its 27', () => {
+      expect(computePaceStatus(SCHEDULES.da, first('da', 1), nineDaysIn('da')).paceNeeds).toBe(1)
+      expect(computePaceStatus(SCHEDULES.da, first('da', 2), nineDaysIn('da')).paceNeeds).toBe(0)
+    })
+  })
+})
+
+/*
+  The finish forecast, on the real schedules.
+
+  It extrapolated ticks per day, as if every week were as heavy as the next,
+  and contradicted the status card beside it: "Right on pace" over "≈ 5 weeks
+  ahead", nine lessons behind as "≈ 11 weeks behind", and "≈ 27 weeks behind"
+  on a 22-week course. Now it reads the learner's oldest open item, by the
+  status card's rule: the current week is never late, and finishing it is not
+  yet ahead. Days count, so Graphic Design's half weeks and catch-up weeks are
+  measured as they fall.
+*/
+describe('the finish forecast', () => {
+  const START = new Date(2026, 2, 2)
+  /** The forecast of `program`, `day` days in, with these ticked. */
+  const at = (program, day, done) => {
+    const sch = SCHEDULES[program]
+    const now = new Date(START)
+    now.setDate(now.getDate() + day)
+    return computePaceStatus(sch, new Set(done), computePacing(START, now, sch))
+  }
+  const ids = (program, keep) => SCHEDULES[program].lessons.filter(keep).map((l) => l.id)
+  const upTo = (program, week) => ids(program, (l) => l.week < week)
+  const through = (program, week) => ids(program, (l) => l.week <= week)
+  const all = (program) => ids(program, () => true)
+  /** The planned end, `days` later (earlier if negative), as an ISO date. */
+  const shifted = (s, days) => {
+    const d = new Date(s.plannedEnd)
+    d.setDate(d.getDate() + days)
+    return toISODateString(d)
+  }
+
+  describe('in Data Analytics', () => {
+    it('is on track for the planned date when the oldest open lesson is this week’s', () => {
+      // Day 24 is Week 4; Weeks 1–3 done. The rate said "≈ 5 weeks ahead".
+      const s = at('da', 24, upTo('da', 4))
+      expect(s.status).toBe('on-track')
+      expect(s.forecast).toBe('on-track')
+      expect(s.forecastWeeks).toBe(0)
+      expect(toISODateString(s.projectedFinish)).toBe(toISODateString(s.plannedEnd))
+    })
+
+    it('is 4 weeks behind, from Week 3, in Week 7 with Weeks 3–6 open', () => {
+      // The rate said "≈ 11 weeks behind plan".
+      const s = at('da', 45, upTo('da', 3))
+      expect(s.status).toBe('behind')
+      expect(s.forecast).toBe('behind')
+      expect(s.forecastWeeks).toBe(4)
+      expect(s.oldestOpenWeek).toBe(3)
+      expect(s.finishShiftDays).toBe(28)
+      expect(toISODateString(s.projectedFinish)).toBe(shifted(s, 28))
+    })
+
+    it('holds still through the week, like the status card', () => {
+      for (const day of [42, 45, 48]) {
+        const s = at('da', day, upTo('da', 3))
+        expect([s.forecastWeeks, s.finishShiftDays], `day ${day}`).toEqual([4, 28])
+      }
+    })
+
+    it('counts a week finished early as on track, not ahead', () => {
+      // Week 4 done on its first day: the status card says "Right on pace" and
+      // the checklist offers "Get ahead".
+      const s = at('da', 21, through('da', 4))
+      expect(s.status).toBe('on-track')
+      expect(s.forecast).toBe('on-track')
+    })
+
+    it('is ahead by the weeks after this one already done', () => {
+      // Week 4, with Weeks 5 and 6 done too.
+      const s = at('da', 24, through('da', 6))
+      expect(s.status).toBe('ahead')
+      expect(s.forecast).toBe('ahead')
+      expect(s.forecastWeeks).toBe(2)
+      expect(s.finishShiftDays).toBe(-14)
+      expect(toISODateString(s.projectedFinish)).toBe(shifted(s, -14))
+    })
+
+    it('says finished, with nothing to project, once everything is done', () => {
+      const s = at('da', 80, all('da'))
+      expect(s.forecast).toBe('finished')
+      expect(s.oldestOpenWeek).toBeNull()
+      expect(s.finishShiftDays).toBeNull()
+      expect(s.projectedFinish).toBeNull()
+    })
+  })
+
+  describe('in Creative Tech', () => {
+    it('is 4 weeks behind on a 22-week course, not 27', () => {
+      // Week 6, with 30 of the 42 items of Weeks 1–2 done.
+      const s = at('cc', 40, upTo('cc', 3).slice(0, 30))
+      expect(s.forecast).toBe('behind')
+      expect(s.forecastWeeks).toBe(4)
+      expect(s.oldestOpenWeek).toBe(2)
+    })
+
+    it('counts a catch-up week as nothing to be ahead of', () => {
+      // Week 3 done before its catch-up week, then all caught up during it.
+      for (const day of [15, 22]) {
+        const s = at('cc', day, through('cc', 3))
+        expect(s.status, `day ${day}`).toBe('on-track')
+        expect(s.forecast, `day ${day}`).toBe('on-track')
+      }
+      // Week 5 done as well: one week of content ahead; Week 4 holds none.
+      const s = at('cc', 15, through('cc', 5))
+      expect(s.forecast).toBe('ahead')
+      expect(s.forecastWeeks).toBe(1)
+      expect(s.finishShiftDays).toBe(-7)
+    })
+
+    it('measures Graphic Design’s half weeks in days', () => {
+      // Week 13 lasts 4 days (84–87). Done through 12 on its last day: on track.
+      expect(at('gd', 87, upTo('gd', 13)).forecast).toBe('on-track')
+      // Its catch-up week 13.5 begins on day 88 with Week 13 open: 4 days behind.
+      const w13 = at('gd', 88, upTo('gd', 13))
+      expect([w13.forecast, w13.forecastWeeks, w13.finishShiftDays]).toEqual(['behind', 1, 4])
+      // Week 27.5 lasts 3 days (186–188): never less than a week behind.
+      const w27 = at('gd', 189, upTo('gd', 27.5))
+      expect([w27.forecast, w27.forecastWeeks, w27.finishShiftDays]).toEqual(['behind', 1, 3])
+      expect(w27.oldestOpenWeek).toBe(27.5)
+      // And 3 days ahead is under half a week: on track, the planned date.
+      const ahead = at('gd', 179, through('gd', 27.5))
+      expect(ahead.week).toBe(26.5)
+      expect([ahead.forecast, ahead.finishShiftDays]).toEqual(['on-track', 0])
+    })
+
+    it('counts the catch-up weeks gone by when behind', () => {
+      // Week 13.5 begins on day 88; Week 12 began on day 77 and is still open.
+      const s = at('gd', 90, upTo('gd', 12))
+      expect(s.isBuffer).toBe(true)
+      expect([s.forecast, s.forecastWeeks, s.oldestOpenWeek, s.finishShiftDays]).toEqual([
+        'behind',
+        2,
+        12,
+        11,
+      ])
+    })
+  })
+
+  /*
+    Every day of every program, with the first N items ticked and with a few
+    picked from later weeks: the forecast never contradicts the status card,
+    and never claims more weeks than the course has had or has left.
+  */
+  it('never contradicts the status card', () => {
+    const wrong = []
+    const check = (ok, where, what) => ok || wrong.push(`${where}: ${what}`)
+    for (const program of Object.keys(SCHEDULES)) {
+      const sch = SCHEDULES[program]
+      const n = sch.lessons.length
+      const step = Math.max(1, Math.floor(n / 40))
+      const ticks = []
+      for (let k = 0; k <= n; k += step) {
+        const prefix = sch.lessons.slice(0, k).map((l) => l.id)
+        const jumped = [...prefix, ...sch.lessons.slice(k + step, k + 2 * step).map((l) => l.id)]
+        ticks.push(new Set(prefix), new Set(jumped))
+      }
+      for (let day = 0; day < sch.totalDays; day += 1) {
+        const now = new Date(START)
+        now.setDate(now.getDate() + day)
+        const pacing = computePacing(START, now, sch)
+        for (const done of ticks) {
+          const s = computePaceStatus(sch, done, pacing)
+          const { forecast, status, forecastWeeks } = s
+          const where = `${program} day ${day}, ${done.size} done`
+          check((forecast === 'behind') === (status === 'behind'), where, `${forecast} vs ${status}`)
+          check(forecast !== 'ahead' || status === 'ahead', where, `ahead vs ${status}`)
+          if (forecast === 'behind') {
+            check(forecastWeeks <= Math.ceil(day / 7), where, `${forecastWeeks} weeks behind`)
+            check(s.oldestOpenWeek === s.behindItems[0].week, where, 'oldest open week')
+          }
+          if (forecast === 'ahead') {
+            const left = Math.ceil((sch.totalDays - day) / 7)
+            check(forecastWeeks <= left, where, `${forecastWeeks} weeks ahead`)
+          }
+          if (forecast !== 'finished') {
+            const date = toISODateString(s.projectedFinish)
+            check(date === shifted(s, s.finishShiftDays), where, `projected ${date}`)
+          }
+        }
+      }
+    }
+    expect(wrong).toEqual([])
   })
 })

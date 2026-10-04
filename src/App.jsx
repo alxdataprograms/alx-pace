@@ -151,9 +151,10 @@ export default function App() {
   // The course has begun, so one of its weeks is the current week.
   const hasBegun = status === 'active' || status === 'completed'
 
+  // Pure in the schedule, the ticks and the week: today reaches it through pacing.
   const paceStatus = useMemo(
-    () => (schedule ? computePaceStatus(schedule, completedSet, pacing, today) : null),
-    [schedule, completedSet, pacing, today],
+    () => (schedule ? computePaceStatus(schedule, completedSet, pacing) : null),
+    [schedule, completedSet, pacing],
   )
 
   /*

@@ -19,6 +19,13 @@ const arCount = (n, { one, two, few, many }) => {
   return `${n} ${many}`
 }
 
+// "By N weeks", after متأخّر (behind) or متقدّم (ahead). One and two take the
+// preposition as a prefix (بأسبوع واحد, بأسبوعين); a figure stands apart from
+// it, its noun plural to ten and singular from eleven (بـ 3 أسابيع, بـ 11
+// أسبوعًا). The pace card had "11 أسابيع" and "27 أسابيع".
+const arByWeeks = (n) =>
+  n === 1 ? 'بأسبوع واحد' : n === 2 ? 'بأسبوعين' : `بـ ${arCount(n, { few: 'أسابيع', many: 'أسبوعًا' })}`
+
 /*
   The program as it is named inside a LinkedIn post, per language. Data
   Analytics reads exactly as it did before Creative Tech existed. French keeps
@@ -318,18 +325,22 @@ export const translations = {
     yourPace: 'Your pace',
     paceValue: (n, unit) => `${n} ${pick(unit, 'lessons', 'items')}/week`,
     projectedFinishLabel: 'Projected finish',
-    targetLabel: 'Target',
-    finishDelta: (days) => {
-      if (days === 0) return 'right on plan'
-      const abs = Math.abs(days)
-      const span = abs >= 14 ? `${Math.round(abs / 7)} weeks` : `${abs} ${abs === 1 ? 'day' : 'days'}`
-      return days > 0 ? `≈ ${span} ahead of plan` : `≈ ${span} behind plan`
-    },
-    noPaceYet: (unit) => `Tick off your first ${pick(unit, 'lesson', 'item')} to unlock your finish forecast.`,
+    // The pace card's verdict, read from the learner's oldest open item (see
+    // paceStatus.js). Behind, it names that item's week in a second part, which
+    // the card moves to a line of its own when both do not fit. The week is the
+    // learner's own word for it, kept with its number, as in getAheadMore.
+    forecastBehind: (n) => `≈ ${n} ${n === 1 ? 'week' : 'weeks'} behind`,
+    forecastOldestOpen: (week) => `oldest open: Week\u00a0${week}`,
+    forecastOnTrack: (date) => `On track for ${date}`,
+    forecastAhead: (n) => `≈ ${n} ${n === 1 ? 'week' : 'weeks'} ahead of plan`,
+    forecastFinished: 'Finished ahead of plan',
+    // Only the items-a-week figure waits for a week's worth of ticks. The
+    // verdict shows from the start, so these no longer promise a forecast.
+    noPaceYet: (unit) => `Tick off your first ${pick(unit, 'lesson', 'item')} to see your weekly pace.`,
     noPaceYetMore: (n, unit) =>
-      `Tick off ${n} more ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} to unlock your finish forecast.`,
+      `Tick off ${n} more ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} to see your weekly pace.`,
     noPaceYetCount: (n, unit) =>
-      `Tick off ${n} ${pick(unit, 'lessons', 'items')} to unlock your finish forecast.`,
+      `Tick off ${n} ${pick(unit, 'lessons', 'items')} to see your weekly pace.`,
 
     slogans: [
       'Do Hard Things',
@@ -593,20 +604,19 @@ export const translations = {
     paceValue: (n, unit) =>
       `${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))}/semaine`,
     projectedFinishLabel: 'Fin estimée',
-    targetLabel: 'Objectif',
-    finishDelta: (days) => {
-      if (days === 0) return 'pile dans les temps'
-      const abs = Math.abs(days)
-      const span =
-        abs >= 14 ? `${Math.round(abs / 7)} semaines` : `${abs} ${abs === 1 ? 'jour' : 'jours'}`
-      return days > 0 ? `≈ ${span} d'avance` : `≈ ${span} de retard`
-    },
+    // "À rattraper dès la semaine 3": where the catching up starts, in the
+    // words the status card and "À rattraper d’abord" already use.
+    forecastBehind: (n) => `≈ ${frPlural(n, 'semaine', 'semaines')} de retard`,
+    forecastOldestOpen: (week) => `à rattraper dès la semaine\u00a0${week}`,
+    forecastOnTrack: (date) => `En bonne voie pour finir le ${date}`,
+    forecastAhead: (n) => `≈ ${frPlural(n, 'semaine', 'semaines')} d'avance`,
+    forecastFinished: 'Terminé avant la fin prévue',
     noPaceYet: (unit) =>
-      `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour débloquer ta date de fin estimée.`,
+      `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour voir ton rythme hebdomadaire.`,
     noPaceYetMore: (n, unit) =>
-      `Coche encore ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour débloquer ta date de fin estimée.`,
+      `Coche encore ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour voir ton rythme hebdomadaire.`,
     noPaceYetCount: (n, unit) =>
-      `Coche ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour débloquer ta date de fin estimée.`,
+      `Coche ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} pour voir ton rythme hebdomadaire.`,
 
     slogans: [
       'Fais des choses difficiles',
@@ -873,21 +883,18 @@ export const translations = {
     yourPace: 'وتيرتك',
     paceValue: (n, unit) => `${n} ${pick(unit, 'درس', 'عنصر')}/أسبوع`,
     projectedFinishLabel: 'الانتهاء المتوقّع',
-    targetLabel: 'الهدف',
-    finishDelta: (days) => {
-      if (days === 0) return 'تمامًا حسب الخطة'
-      const abs = Math.abs(days)
-      const span =
-        abs >= 14
-          ? `${Math.round(abs / 7)} أسابيع`
-          : arCount(abs, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا' })
-      return days > 0 ? `≈ متقدّم بـ ${span}` : `≈ متأخّر بـ ${span}`
-    },
-    noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض تاريخ انتهائك المتوقّع.`,
+    // "Oldest open" needs no noun: أقدم ما بقي مفتوحًا, "the oldest of what is
+    // still open", as catchUpBody says ما تبقّى مفتوحًا.
+    forecastBehind: (n) => `≈ متأخّر ${arByWeeks(n)}`,
+    forecastOldestOpen: (week) => `أقدم ما بقي مفتوحًا: الأسبوع\u00a0${week}`,
+    forecastOnTrack: (date) => `على المسار الصحيح للانتهاء بحلول ${date}`,
+    forecastAhead: (n) => `≈ متقدّم ${arByWeeks(n)}`,
+    forecastFinished: 'أنهيت قبل الموعد المخطّط',
+    noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض وتيرتك الأسبوعية.`,
     noPaceYetMore: (n, unit) =>
-      `بقي ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} لعرض تاريخ انتهائك المتوقّع.`,
+      `بقي ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} لعرض وتيرتك الأسبوعية.`,
     noPaceYetCount: (n, unit) =>
-      `أكمل ${arCount(n, pick(unit, { one: 'درسًا واحدًا', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصرًا واحدًا', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} لعرض تاريخ انتهائك المتوقّع.`,
+      `أكمل ${arCount(n, pick(unit, { one: 'درسًا واحدًا', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصرًا واحدًا', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} لعرض وتيرتك الأسبوعية.`,
 
     slogans: [
       'افعل الأشياء الصعبة',

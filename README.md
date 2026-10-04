@@ -57,6 +57,7 @@ runs after those gates pass on `main`.
 | **Get ahead** | Once this week is done, the focus card says so and lists the first three open items of the next week with anything to tick (catch-up weeks skipped), so there is always something to tick; from the next visit, the week's ticks fold behind *Show N done*. A learner with anything overdue catches up first instead. |
 | **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently; once all of them were done before a visit, the card is one green line. |
 | **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
+| **Your pace** | Where the learner stands against the plan, by the status card's own rule (see [The finish forecast](#the-finish-forecast)): *On track for Dec 16, 2026*, *≈ 4 weeks behind · oldest open: Week 3* or *≈ 2 weeks ahead of plan*, with the finish that puts them on, from the first visit. Lessons (or items) a week follow once a week's worth is ticked. |
 | **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week auto-expands and is flagged *Current*, and each earlier week with items still open is marked *N overdue* in amber. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
@@ -195,6 +196,27 @@ target finish date is always `start + totalDays − 1`.
 
 Dates are parsed as **local** dates (not UTC) so the calendar day never shifts in
 negative timezones.
+
+### The finish forecast
+
+Implemented in [`src/lib/paceStatus.js`](src/lib/paceStatus.js). It reads where
+the learner stands, not how fast they tick: weeks differ too much in weight (Data
+Analytics' Weeks 1–4 hold 13 of its 27 lessons) for a rate to say when anyone
+finishes.
+
+```
+oldest open item in an earlier week  →  behind by  startDay(this week) − startDay(its week)
+oldest open item in this week        →  on track
+oldest open item in a later week     →  ahead by   the days of the weeks with content
+                                                     after this one, already done
+nothing open                         →  finished
+projected finish = planned end, moved by those days    (shown as ≈ weeks; at least 1 behind)
+```
+
+The current week counts neither way, as in the status card: it is in progress,
+so it is never late, and finishing it early is not yet ahead. A catch-up week has
+nothing to tick, so passing one never puts a learner ahead. The forecast moves
+only when the learner ticks or the week turns.
 
 ---
 

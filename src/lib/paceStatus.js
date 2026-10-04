@@ -9,21 +9,26 @@
  *     catch-up list a buffer week surfaces; behindCount is its length.
  *   - aheadCount  = completed lessons in weeks after the current one.
  *   - status: 'behind' wins over 'ahead' (catch-up first), else 'on-track'.
- *   - forecastMin = one average week's worth of items (DA 2, CC 12, GD 12).
- *     No finish date is projected until that much is done — see below.
+ *   - forecast: the finish forecast, read from where the learner stands in
+ *     the schedule by that same rule — see forecastFrom below.
+ *   - paceMin = one average week's worth of items (DA 2, CC 12, GD 12). The
+ *     items-a-week figure waits until that much is done — see below.
  */
-import { atMidnight, plannedEndDate } from './pacing'
+import { plannedEndDate } from './pacing'
 
-export function computePaceStatus(schedule, completedSet, pacing, now = new Date()) {
+export function computePaceStatus(schedule, completedSet, pacing) {
   if (pacing.status !== 'active') return null
 
   const week = pacing.currentWeek
 
   const behindItems = []
   let aheadCount = 0
+  // Where the learner stands: their oldest open item, in curriculum order.
+  let oldestOpen = null
   for (const lesson of schedule.lessons) {
     if (lesson.week == null) continue
     const done = completedSet.has(lesson.id)
+    if (!done && !oldestOpen) oldestOpen = lesson
     if (lesson.week < week && !done) behindItems.push(lesson)
     if (lesson.week > week && done) aheadCount += 1
   }
@@ -36,37 +41,32 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
     ? thisWeek.gradedItems.filter((l) => !completedSet.has(l.id)).length
     : 0
 
-  // Personal pace + finish forecast. Day 1 is the start date itself, so the
-  // learner is "daysIn" days into the course (never 0 — avoids division by 0).
+  // Personal pace. Day 1 is the start date itself, so the learner is
+  // "daysIn" days into the course (never 0 — avoids division by 0).
   const completedCount = completedSet.size
   const remaining = schedule.totalLessons - completedCount
   const daysIn = Math.max(1, pacing.elapsedDays + 1)
   const pacePerWeek = Math.round((completedCount / (daysIn / 7)) * 10) / 10
 
-  const plannedEnd = plannedEndDate(pacing.startDate, schedule.totalDays)
-
   /*
-    A projection needs a minimum signal. Extrapolating a 373-item course from a
-    single tick produced finish dates years out ("1 of 250 after 9 days → 2032"),
-    which reads as a verdict on someone who has barely started. One average
-    week's worth of items is the smallest amount that says anything about a
-    pace; until then the card keeps its empty state and counts down to it.
+    The items-a-week figure needs a minimum signal. Projected from it, a single
+    tick of a 373-item course after 9 days gave finish dates years out ("1 of
+    250 after 9 days → 2032"), which reads as a verdict on someone who has
+    barely started. The forecast no longer comes from this rate, but a rate
+    from one or two ticks still says nothing, so the figure waits for one
+    average week's worth of items, and the card counts down to it meanwhile.
   */
-  const forecastMin = schedule.totalWeeks
+  const paceMin = schedule.totalWeeks
     ? Math.max(1, Math.ceil(schedule.totalLessons / schedule.totalWeeks))
     : 1
-  const forecastNeeds = Math.max(0, forecastMin - completedCount)
+  const paceNeeds = Math.max(0, paceMin - completedCount)
 
+  const plannedEnd = plannedEndDate(pacing.startDate, schedule.totalDays)
+  const { forecast, forecastWeeks, finishShiftDays } = forecastFrom(schedule, thisWeek, oldestOpen)
   let projectedFinish = null
-  let finishDeltaDays = null
-  if (completedCount > 0 && forecastNeeds === 0) {
-    const perDay = completedCount / daysIn
-    const daysLeft = Math.ceil(remaining / perDay)
-    projectedFinish = atMidnight(now)
-    projectedFinish.setDate(projectedFinish.getDate() + daysLeft)
-    if (plannedEnd) {
-      finishDeltaDays = Math.round((plannedEnd - projectedFinish) / (24 * 60 * 60 * 1000))
-    }
+  if (plannedEnd && finishShiftDays != null) {
+    projectedFinish = new Date(plannedEnd)
+    projectedFinish.setDate(projectedFinish.getDate() + finishShiftDays)
   }
 
   return {
@@ -86,11 +86,75 @@ export function computePaceStatus(schedule, completedSet, pacing, now = new Date
     completedCount,
     remaining,
     pacePerWeek,
-    // How many more items until the finish forecast unlocks (0 = shown).
-    forecastNeeds,
+    // How many more items until the items-a-week figure shows (0 = shown).
+    paceNeeds,
     plannedEnd,
+    // 'behind' | 'on-track' | 'ahead' | 'finished' — see forecastFrom.
+    forecast,
+    // ≈ whole weeks behind or ahead (at least 1 for either); 0 otherwise.
+    forecastWeeks,
+    // The week of the oldest open item, which the "behind" chip names.
+    oldestOpenWeek: oldestOpen ? oldestOpen.week : null,
+    // Days the projected finish moves from the planned end: later if
+    // positive, earlier if negative, 0 on track; null once finished.
+    finishShiftDays,
+    // The planned end moved by those days; null once everything is done.
     projectedFinish,
-    // Positive = projected to finish EARLY by that many days; negative = late.
-    finishDeltaDays,
   }
+}
+
+/*
+  The finish forecast.
+
+  It used to extrapolate ticks per day, as if every week were as heavy as the
+  next. They are not: Data Analytics weeks 1–4 hold 13 of its 27 lessons. So a
+  learner the status card called "Right on pace" read "≈ 5 weeks ahead" just
+  below it, one with 9 lessons open read "≈ 11 weeks behind", and a Content
+  Creation learner 4 weeks behind read "≈ 27 weeks behind", on a 22-week course.
+
+  Now it reads the learner's place in the schedule, by the status card's own
+  rule. The learner stands at their oldest open item; the plan stands in the
+  current week, which is still in progress, so it never counts as late, and
+  finishing it early is not yet "ahead" (that takes ticks in a later week, as
+  the status card and "Get ahead" have it):
+
+    oldest open item in an earlier week → 'behind', by the planned days from
+      the start of that week to the start of this one;
+    in this week                       → 'on-track';
+    in a later week                    → 'ahead', by the planned days of the
+      weeks after this one that are already done. A catch-up week has nothing
+      to tick, so passing one is not progress: only weeks with content count;
+    nothing open                       → 'finished'.
+
+  Days, not week numbers, because Graphic Design's half weeks and the weeks
+  labelled 13.5, 14.5, … begin mid-week. In weeks they are rounded: at least 1
+  behind, and less than half a week ahead (Week 27.5 lasts 3 days) is on
+  track. The projected finish is the planned end moved by the same days.
+
+  Measured from this week's start and end, not from today. From today, the
+  days already gone in the week would count as late and the days left in it
+  as ahead: a learner who finished Week 4 on its first day would read "Right
+  on pace" beside "≈ 1 week ahead of plan", and the chip would change from one
+  day to the next with nothing ticked. Like the status card, it moves only
+  when the learner ticks or the week turns.
+*/
+function forecastFrom(schedule, thisWeek, oldestOpen) {
+  if (!oldestOpen) return { forecast: 'finished', forecastWeeks: 0, finishShiftDays: null }
+  if (oldestOpen.week < thisWeek.week) {
+    const openWeek = schedule.weeks.find((w) => w.week === oldestOpen.week)
+    const days = thisWeek.startDay - openWeek.startDay
+    return {
+      forecast: 'behind',
+      forecastWeeks: Math.max(1, Math.round(days / 7)),
+      finishShiftDays: days,
+    }
+  }
+  if (oldestOpen.week > thisWeek.week) {
+    const days = schedule.weeks
+      .filter((w) => w.week > thisWeek.week && w.week < oldestOpen.week && w.lessons.length > 0)
+      .reduce((sum, w) => sum + w.days, 0)
+    const weeks = Math.round(days / 7)
+    if (weeks > 0) return { forecast: 'ahead', forecastWeeks: weeks, finishShiftDays: -days }
+  }
+  return { forecast: 'on-track', forecastWeeks: 0, finishShiftDays: 0 }
 }

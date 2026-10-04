@@ -6,10 +6,12 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import ForecastCard from './ForecastCard'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import { translations } from '../i18n/translations'
+import { formatHumanDate } from '../lib/formatDate'
 import tailwindConfig from '../../tailwind.config.js'
 
 /*
-  The "≈ N weeks behind plan" chip, readable in both themes.
+  The verdict chip ("≈ 4 weeks behind · oldest open: Week 3"), readable in
+  both themes.
 
   Its amber tone had no dark: pair, so dark mode kept amber-700, a colour
   chosen for white, on the navy card: 2.6:1, where text this size needs 4.5:1.
@@ -81,45 +83,145 @@ afterEach(() => {
   container.remove()
 })
 
-function renderChip(finishDeltaDays) {
+const en = translations.en
+const langs = Object.keys(translations)
+
+/*
+  A Data Analytics learner's card, on track unless told otherwise: what
+  computePaceStatus hands it. The planned end is Nov 25, 2026.
+*/
+function renderCard(over = {}, lang) {
+  if (lang) window.localStorage.setItem('alx-lang', lang)
   const paceStatus = {
     completedCount: 11,
     pacePerWeek: 1.1,
-    projectedFinish: new Date(2027, 1, 13),
-    plannedEnd: new Date(2026, 10, 25),
-    finishDeltaDays,
-    forecastNeeds: 0,
+    paceNeeds: 0,
     unit: 'lesson',
+    plannedEnd: new Date(2026, 10, 25),
+    forecast: 'on-track',
+    forecastWeeks: 0,
+    oldestOpenWeek: 4,
+    finishShiftDays: 0,
+    projectedFinish: new Date(2026, 10, 25),
+    ...over,
   }
   root = createRoot(container)
   act(() => {
     root.render(createElement(LanguageProvider, null, createElement(ForecastCard, { paceStatus })))
   })
-  const text = translations.en.finishDelta(finishDeltaDays)
-  return [...container.querySelectorAll('p')].find((p) => p.textContent === text)
 }
 
-describe('the finish-forecast chip', () => {
-  it.each([
-    ['behind plan', -77],
-    ['ahead of plan', 35],
-    ['on plan', 1],
-  ])('is readable %s, in the light theme and the dark one', (_, days) => {
-    const chip = renderChip(days)
-    expect(chip).toBeTruthy()
+// Behind from Week 3 by 4 weeks (28 days), ahead by 2 (14 days), or done.
+const VERDICTS = {
+  behind: {
+    forecast: 'behind',
+    forecastWeeks: 4,
+    oldestOpenWeek: 3,
+    finishShiftDays: 28,
+    projectedFinish: new Date(2026, 11, 23),
+  },
+  'on track': {},
+  ahead: {
+    forecast: 'ahead',
+    forecastWeeks: 2,
+    finishShiftDays: -14,
+    projectedFinish: new Date(2026, 10, 11),
+  },
+  finished: {
+    forecast: 'finished',
+    oldestOpenWeek: null,
+    finishShiftDays: null,
+    projectedFinish: null,
+  },
+}
+
+/** Text as a learner reads it: the no-break spaces that hold words together are spaces. */
+const read = (el) => el.textContent.replace(/\u00a0/g, ' ')
+const card = () => container.querySelector('section')
+/** The verdict chip: the card's last paragraph. */
+const chip = () => [...card().querySelectorAll('p')].at(-1)
+const row = (label) => [...card().querySelectorAll('dt')].find((dt) => read(dt) === label)
+
+describe('the verdict chip', () => {
+  it.each(Object.keys(VERDICTS))('is readable %s, in the light theme and the dark one', (name) => {
+    renderCard(VERDICTS[name])
     for (const theme of ['light', 'dark']) {
-      expect(chipContrast(chip, theme), `${theme} theme`).toBeGreaterThanOrEqual(4.5)
+      expect(chipContrast(chip(), theme), `${theme} theme`).toBeGreaterThanOrEqual(4.5)
     }
   })
 
   it('measures the behind chip as the browser did: 2.6:1 in dark mode before, 6.5:1 now', () => {
     // Pins the arithmetic above to the numbers measured in Chromium.
-    const chip = renderChip(-77)
-    expect(chipContrast(chip, 'dark')).toBeCloseTo(6.51, 1)
+    renderCard(VERDICTS.behind)
+    expect(chipContrast(chip(), 'dark')).toBeCloseTo(6.51, 1)
     const before = contrast(
       token('amber-700').rgb,
       over(token('amber/15'), hex(SURFACE.dark)),
     )
     expect(before).toBeCloseTo(2.61, 1)
+  })
+})
+
+/*
+  What the card says, now that it agrees with the status card.
+
+  It said "≈ 5 weeks ahead" beside "Right on pace", "≈ 11 weeks behind" for
+  nine lessons open, and repeated the hero's finish date in a "Target" row.
+  computePaceStatus works out the verdict (paceStatus.test.js); this is how
+  the card puts it.
+*/
+describe('what the card says', () => {
+  it('on track: the planned date, once, in the chip; no "Target" row', () => {
+    renderCard()
+    expect(read(chip())).toBe('On track for Nov 25, 2026')
+    expect(read(card())).not.toContain('Target')
+    // On track, the projection is the plan itself: no row to repeat it.
+    expect(row(en.projectedFinishLabel)).toBeUndefined()
+    expect(read(card()).split('Nov 25, 2026')).toHaveLength(2)
+  })
+
+  it('behind: the finish that puts them on, and the week to start from', () => {
+    renderCard(VERDICTS.behind)
+    expect(read(row(en.projectedFinishLabel).nextElementSibling)).toBe('Dec 23, 2026')
+    expect(read(chip())).toBe('≈ 4 weeks behind · oldest open: Week 3')
+    // Two boxes, so a chip too long for one line breaks between them.
+    expect([...chip().querySelectorAll('span')].map(read)).toEqual([
+      '≈ 4 weeks behind',
+      'oldest open: Week 3',
+    ])
+  })
+
+  it('ahead: the earlier finish, and by how many weeks', () => {
+    renderCard(VERDICTS.ahead)
+    expect(read(row(en.projectedFinishLabel).nextElementSibling)).toBe('Nov 11, 2026')
+    expect(read(chip())).toBe('≈ 2 weeks ahead of plan')
+  })
+
+  it('finished: the verdict, and nothing left to project', () => {
+    renderCard(VERDICTS.finished)
+    expect(read(chip())).toBe('Finished ahead of plan')
+    expect(row(en.projectedFinishLabel)).toBeUndefined()
+  })
+
+  it('before a week’s worth of ticks: the verdict already, the weekly figure later', () => {
+    renderCard({ completedCount: 1, paceNeeds: 1 })
+    expect(read(card())).toContain('Tick off 1 more lesson to see your weekly pace.')
+    expect(read(card())).not.toContain('lessons/week')
+    expect(read(chip())).toBe('On track for Nov 25, 2026')
+  })
+
+  it('counts down from nothing ticked, without promising what it already shows', () => {
+    renderCard({ completedCount: 0, paceNeeds: 2, ...VERDICTS.behind })
+    expect(read(card())).toContain('Tick off 2 lessons to see your weekly pace.')
+    expect(read(card())).not.toMatch(/forecast/i)
+    expect(read(chip())).toBe('≈ 4 weeks behind · oldest open: Week 3')
+  })
+
+  it.each(langs)('speaks the learner’s language (%s)', (lang) => {
+    const t = translations[lang]
+    renderCard(VERDICTS.behind, lang)
+    const parts = `${t.forecastBehind(4)} · ${t.forecastOldestOpen(3)}`
+    expect(read(chip())).toBe(parts.replace(/\u00a0/g, ' '))
+    expect(read(card())).toContain(formatHumanDate(new Date(2026, 11, 23), lang))
   })
 })

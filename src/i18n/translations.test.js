@@ -417,3 +417,58 @@ describe('the "Show N done" toggle', () => {
     expect(en.hideDone('item')).toBe(en.hideDone())
   })
 })
+
+/*
+  The pace card's verdict. Weeks are counted the way each language counts
+  them, Arabic's included: the card had "11 أسابيع" and "27 أسابيع", where
+  eleven and up take the singular. The oldest open week is the learner's own
+  word for it, never the sheet's English "Week 3", kept with its number.
+*/
+describe('the pace card’s verdict', () => {
+  const { en, fr, ar } = translations
+
+  it('reads plainly in English', () => {
+    expect(en.forecastBehind(1)).toBe('≈ 1 week behind')
+    expect(en.forecastBehind(4)).toBe('≈ 4 weeks behind')
+    expect(en.forecastOldestOpen(3)).toBe('oldest open: Week\u00a03')
+    expect(en.forecastOnTrack('Dec 16, 2026')).toBe('On track for Dec 16, 2026')
+    expect(en.forecastAhead(1)).toBe('≈ 1 week ahead of plan')
+    expect(en.forecastAhead(5)).toBe('≈ 5 weeks ahead of plan')
+    expect(en.forecastFinished).toBe('Finished ahead of plan')
+  })
+
+  it('agrees in French', () => {
+    expect(fr.forecastBehind(1)).toBe('≈ 1 semaine de retard')
+    expect(fr.forecastBehind(4)).toBe('≈ 4 semaines de retard')
+    expect(fr.forecastOldestOpen(3)).toBe('à rattraper dès la semaine\u00a03')
+    expect(fr.forecastOnTrack('16 déc. 2026')).toBe('En bonne voie pour finir le 16 déc. 2026')
+    expect(fr.forecastAhead(1)).toBe("≈ 1 semaine d'avance")
+    expect(fr.forecastAhead(2)).toBe("≈ 2 semaines d'avance")
+  })
+
+  it('counts weeks as Arabic does', () => {
+    expect(ar.forecastBehind(1)).toBe('≈ متأخّر بأسبوع واحد')
+    expect(ar.forecastBehind(2)).toBe('≈ متأخّر بأسبوعين')
+    expect(ar.forecastBehind(4)).toBe('≈ متأخّر بـ 4 أسابيع')
+    expect(ar.forecastBehind(11)).toBe('≈ متأخّر بـ 11 أسبوعًا')
+    expect(ar.forecastAhead(27)).toBe('≈ متقدّم بـ 27 أسبوعًا')
+    expect(ar.forecastOldestOpen(3)).toBe('أقدم ما بقي مفتوحًا: الأسبوع\u00a03')
+  })
+
+  it.each(langs)('%s names the oldest open week in its own words, kept with its number', (lang) => {
+    const line = translations[lang].forecastOldestOpen(13.5)
+    expect(line).toMatch(/\u00a013\.5$/)
+    if (lang !== 'en') expect(line).not.toMatch(/Week/)
+  })
+
+  it.each(langs)('%s counts down to the weekly figure without promising a forecast', (lang) => {
+    // The verdict shows from the first visit; only the items-a-week figure
+    // waits for a week's worth of ticks.
+    const t = translations[lang]
+    const promise = { en: 'forecast', fr: 'date de fin', ar: 'تاريخ انتهائك' }[lang]
+    for (const text of [t.noPaceYet(), t.noPaceYetMore(1), t.noPaceYetCount(2)]) {
+      expect(text).not.toContain(promise)
+    }
+    expect(translations.en.noPaceYetCount(2)).toBe('Tick off 2 lessons to see your weekly pace.')
+  })
+})
