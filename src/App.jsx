@@ -14,6 +14,7 @@ import AlxLogo from './components/AlxLogo'
 import PaceStatusCard from './components/PaceStatusCard'
 import ForecastCard from './components/ForecastCard'
 import PersonalizationWidget from './components/PersonalizationWidget'
+import InAppBrowserHint from './components/InAppBrowserHint'
 import ProgramPicker from './components/ProgramPicker'
 import ProgressBar from './components/ProgressBar'
 import CurrentFocusCard from './components/CurrentFocusCard'
@@ -292,6 +293,8 @@ export default function App() {
       </header>
 
       <main className="animate-fade-up space-y-4">
+        {!program && <InAppBrowserHint />}
+
         <PersonalizationWidget
           learnerName={learnerName}
           startDate={startDate}

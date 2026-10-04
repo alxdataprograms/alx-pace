@@ -100,6 +100,8 @@ export const translations = {
     // for the first time. The no-break space keeps "ALX Pace" on one line.
     welcomeNew: 'Welcome to ALX\u00a0Pace',
     introLine: "Know exactly what to study each week, and whether you're on track.",
+    openInBrowser:
+      'Opened from LinkedIn? Use its menu to open Pace in Chrome or Safari, so your progress stays with you.',
     introChips: ['Free', 'No login', 'Saved on this phone'],
     // What a screen reader calls the hero region: an introduction before a
     // program is chosen, the learner's own profile after. It was the English
@@ -371,6 +373,8 @@ export const translations = {
 
     welcomeNew: 'Bienvenue sur ALX\u00a0Pace',
     introLine: 'Sache exactement ce que tu dois étudier chaque semaine, et si tu es dans le rythme.',
+    openInBrowser:
+      'Ouvert depuis LinkedIn\u202f? Passe par son menu pour ouvrir Pace dans Chrome ou Safari, afin que ta progression reste avec toi.',
     introChips: ['Gratuit', 'Sans compte', 'Enregistré sur ce téléphone'],
     introAria: 'À propos d’ALX Pace',
     profileAria: 'Ton profil',
@@ -631,6 +635,7 @@ export const translations = {
 
     welcomeNew: 'مرحبًا بك في ALX\u00a0Pace',
     introLine: 'اعرف بالضبط ما عليك دراسته كل أسبوع، وما إذا كنت على الوتيرة الصحيحة.',
+    openInBrowser: 'فتحته من LinkedIn؟ افتح Pace في Chrome أو Safari من قائمة LinkedIn، ليبقى تقدّمك معك.',
     introChips: ['مجاني', 'دون تسجيل دخول', 'محفوظ على هذا الهاتف'],
     introAria: 'عن ALX Pace',
     profileAria: 'ملفك الشخصي',
