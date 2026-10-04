@@ -51,7 +51,10 @@ const LONG_WEEK = 8
  * In any other week, a learner with items still open from earlier weeks
  * (`catchUp`, oldest first) meets the oldest of them first, in a "Catch up
  * first" section above this week's lessons. `catchUpRef` marks that section's
- * heading, which the status card's "Catch up now" moves to (see App). `unit`
+ * heading, which the status card's "Catch up now" moves to (see App). In a
+ * catch-up week, whose whole card is that list, it marks the list's opening
+ * sentence instead, where "Already started?"'s "Not yet, show me what's open"
+ * goes (the status card offers no "Catch up now" there). `unit`
  * is what the counts count ('lesson' | 'item'). `nextCatchUp` ({ week, date },
  * Creative Tech only) is the catch-up week ahead, which that section names.
  *
@@ -120,6 +123,7 @@ export default function CurrentFocusCard({
           items={catchUp}
           completedSet={completedSet}
           onToggle={onToggle}
+          introRef={catchUpRef}
         />
       ) : (
         <>
@@ -373,8 +377,13 @@ function useCatchUp(items, limit, onToggle) {
  *
  * A tick stays in place, struck through, under its week, open in full or not
  * (useKeptInPlace), and the week's count drops with it.
+ *
+ * `introRef` marks the opening sentence ("…clear the 14 items still open…"),
+ * where "Not yet, show me what's open" goes: the margin above it is the one
+ * "Catch up first" keeps. Once nothing is open the sentence is hidden from
+ * assistive tech, so it lets go of the ref, and App goes elsewhere.
  */
-function CatchUpList({ items, completedSet, onToggle }) {
+function CatchUpList({ items, completedSet, onToggle, introRef }) {
   const { t } = useLang()
   const [showAll, setShowAll] = useState(false)
   const { shown, keep } = useCatchUp(items, showAll ? items.length : CATCH_UP_LIMIT, onToggle)
@@ -428,7 +437,9 @@ function CatchUpList({ items, completedSet, onToggle }) {
   return (
     <>
       <p
-        className="mb-3 text-sm font-medium text-ink-soft dark:text-paper/75"
+        ref={cleared ? undefined : introRef}
+        tabIndex={cleared ? undefined : -1}
+        className="mb-3 scroll-mt-5 text-sm font-medium text-ink-soft dark:text-paper/75"
         aria-hidden={cleared || undefined}
       >
         <SteadyText texts={widestCounts(onArrival.all).map(intro)}>

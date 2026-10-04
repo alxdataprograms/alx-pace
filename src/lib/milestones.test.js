@@ -8,6 +8,7 @@ import {
   buildPostText,
   CAMPAIGN_HASHTAG,
   milestoneIds,
+  milestonesCrossed,
   nextToCelebrate,
   postParts,
   pruneCelebrated,
@@ -114,6 +115,53 @@ describe('nextToCelebrate', () => {
   it('copes with a seen list containing ids this build no longer produces', () => {
     const achieved = achievedMilestones(SCHEDULE, idsOf([SCHEDULE.modules[0]]))
     expect(nextToCelebrate(achieved, ['module:GONE', 'nonsense'])?.id).toBe(achieved[0].id)
+  })
+})
+
+/*
+  "Already started?" ticks the weeks before this one in one go, for a learner
+  who did them on ALX before finding Pace, and records the milestones that
+  crosses as shown: a LinkedIn dialogue for a module finished weeks ago must
+  not open the moment the app is set up.
+*/
+describe('milestonesCrossed', () => {
+  const before = (schedule, week) => schedule.lessons.filter((l) => l.week < week).map((l) => l.id)
+
+  it('names the modules the ticks complete, in order', () => {
+    // Graphic Design's Weeks 1–8 are its first two modules.
+    expect(milestonesCrossed(GD, new Set(), before(GD, 9), 'gd', [])).toEqual([
+      'module:GD-1',
+      'module:GD-2',
+    ])
+    expect(milestonesCrossed(SCHEDULE, new Set(), before(SCHEDULE, 6), 'da', [])).toEqual([
+      'module:DA-1',
+      'module:DA-2',
+    ])
+  })
+
+  it('leaves out what has been seen, and nothing else: another program’s records count for nothing', () => {
+    const ids = before(GD, 9)
+    expect(milestonesCrossed(GD, new Set(), ids, 'gd', ['module:GD-1'])).toEqual(['module:GD-2'])
+    expect(milestonesCrossed(GD, new Set(), ids, 'gd', ['module:DA-1', 'programme'])).toEqual([
+      'module:GD-1',
+      'module:GD-2',
+    ])
+  })
+
+  it('counts what was ticked already, and reaches the programme once everything is', () => {
+    const all = CC.lessons.map((l) => l.id)
+    expect(milestonesCrossed(CC, new Set(all.slice(0, 10)), all.slice(10), 'cc', [])).toEqual([
+      ...CC.modules.map((m) => `module:${m.code}`),
+      'programme:cc',
+    ])
+  })
+
+  it('is empty when the ticks complete nothing, and copes with a corrupt seen list', () => {
+    expect(milestonesCrossed(GD, new Set(), before(GD, 3), 'gd', [])).toEqual([])
+    expect(milestonesCrossed(GD, new Set(), before(GD, 9), 'gd', { not: 'an array' })).toEqual([
+      'module:GD-1',
+      'module:GD-2',
+    ])
   })
 })
 

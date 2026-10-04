@@ -183,3 +183,57 @@ describe('every other week', () => {
     )
   })
 })
+
+/*
+  The first week, before anything in the program is ticked. "Right on pace —
+  keep the streak alive." spoke of a streak to someone with nothing done, and
+  nothing said that lessons are taken on ALX and ticked here. The headline
+  now says so, until the first tick; that brings "Right on pace" into the
+  same space, so the checklist below stays where the learner's finger is.
+*/
+describe('the first week, before the first tick', () => {
+  const howTo = () => en.statusFirstWeek(1, 'lesson')
+
+  it('says how Pace works, in place of "keep the streak alive"', () => {
+    // Day 2 of Data Analytics: Week 1, nothing ticked.
+    render(statusAt('da', 2))
+    expect(visible(headline())).toBe(howTo())
+    expect(card().querySelector('.lucide-circle-check-big')).not.toBeNull()
+    expect(subline().textContent).toBe(
+      `${en.weekOf(1, 14)} · ${en.doneThisWeek(0, 5)} · ${en.gradedStillDue(2)}`,
+    )
+  })
+
+  it('turns to "Right on pace" at the first tick, holding the how-to’s size', () => {
+    const first = SCHEDULES.da.lessons[0].id
+    render(statusAt('da', 2))
+    render(statusAt('da', 2, [first]))
+    expect(visible(headline())).toBe(en.statusOnTrack)
+    expect(heldInPlace(headline())).toEqual([howTo(), en.statusOnTrack])
+    // Unticked again, it is the how-to again, in the same space.
+    render(statusAt('da', 2))
+    expect(visible(headline())).toBe(howTo())
+  })
+
+  it('reads exactly as before for a learner who arrives with a tick', () => {
+    render(statusAt('da', 2, [SCHEDULES.da.lessons[0].id]))
+    expect(headline().textContent).toBe(en.statusOnTrack)
+    expect(heldInPlace(card())).toEqual([])
+    // Unticking it during the visit does not bring the how-to back.
+    render(statusAt('da', 2))
+    expect(headline().textContent).toBe(en.statusOnTrack)
+  })
+
+  it('leaves the nudge to a learner past Week 1 with nothing ticked', () => {
+    render(statusAt('gd', 57))
+    expect(headline().textContent).toBe(en.statusBehind(108, 'item'))
+    expect(heldInPlace(card())).toEqual([])
+  })
+
+  it.each(langs)('speaks the learner’s language, in items for Creative Tech (%s)', (lang) => {
+    window.localStorage.setItem('alx-lang', lang)
+    const t = translations[lang]
+    render(statusAt('gd', 2))
+    expect(visible(headline())).toBe(t.statusFirstWeek(1, 'item'))
+  })
+})

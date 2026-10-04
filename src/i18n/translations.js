@@ -86,6 +86,36 @@ const endsSentence = (text) => /[.!?؟…]$/.test(text)
 */
 const weeksOrHalf = (n, whole, half) => (Number.isInteger(n) ? whole(n) : half(Math.floor(n)))
 
+/*
+  A count from a hundred up takes its noun from its last two digits, as the
+  number is read aloud. 108 is "a hundred and eight", so its noun is the plural
+  of three to ten, "108 عناصر"; 113 the singular accusative of eleven to
+  ninety-nine, "113 عنصرًا"; a round hundred, or one or two past it, the
+  singular genitive, "200 عنصر". arCount reads every count from 11 up the
+  second way. "Already started?" is where counts in the hundreds are the rule
+  (Graphic Design's Weeks 1–8 are 108 items), so its count reads them this way.
+  `single` is that genitive singular.
+*/
+const arCountAll = (n, { single, ...forms }) => {
+  if (n < 100) return arCount(n, forms)
+  const rest = n % 100
+  if (rest <= 2) return `${n} ${single}`
+  return `${n} ${rest <= 10 ? forms.few : forms.many}`
+}
+
+/*
+  The weeks "Already started?" offers to tick, inside a sentence: "Weeks 1–8",
+  "les semaines 1 à 8", "الأسابيع 1–8", or one week alone, "Week 1". None of
+  it parts across two lines: a no-break space holds each number to its word,
+  and a word joiner the last number to the dash, after which a line may
+  otherwise break.
+*/
+const enWeeks = (from, to) => (from === to ? `Week\u00a0${from}` : `Weeks\u00a0${from}–\u2060${to}`)
+const frWeeks = (from, to) =>
+  from === to ? `la semaine\u00a0${from}` : `les semaines\u00a0${from}\u00a0à\u00a0${to}`
+const arWeeks = (from, to) =>
+  from === to ? `الأسبوع\u00a0${from}` : `الأسابيع\u00a0${from}–\u2060${to}`
+
 export const translations = {
   en: {
     dir: 'ltr',
@@ -173,6 +203,13 @@ export const translations = {
     statusBehind: (n, unit) =>
       `Catch-up nudge: ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} from earlier weeks still open.`,
     statusOnTrack: 'Right on pace — keep the streak alive.',
+    // statusOnTrack's place in the first week, until anything in the program
+    // is ticked: how Pace works, for someone with no streak yet to keep.
+    // "Under way" holds on any day of the week, the start date included.
+    // "On ALX", not "on the ALX platform": two lines from 360px, the height
+    // of statusOnTrack, where the longer wording took three.
+    statusFirstWeek: (week, unit) =>
+      `Week\u00a0${week} is under way. ${pick(unit, 'Study each lesson', 'Do each item')} on ALX, then tick it off here.`,
     statusAhead: (n, unit) =>
       `You're ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} ahead of schedule. Excellent.`,
     // A catch-up week's status: time set aside for the open items, so a plan
@@ -194,6 +231,18 @@ export const translations = {
     statusProgress: (p, done, total) => `${p}% · ${done} of ${total}`,
     statusProgressAria: (p, done, total) =>
       `${p}% of the curriculum complete, ${done} of ${total} items`,
+
+    // "Already started?": past Week 1 with nothing in the program ticked, most
+    // often a learner who found Pace part-way through the course. It offers to
+    // tick the weeks before this one, `from` to `to`, in one go.
+    alreadyStarted: 'Already started?',
+    alreadyStartedAsk: (week, program, from, to) =>
+      `You're in Week\u00a0${week} of ${program}. Have you already finished ${enWeeks(from, to)} on the ALX platform?`,
+    alreadyStartedYes: (from, to) => `Yes, tick ${enWeeks(from, to)}`,
+    alreadyStartedNotYet: "Not yet, show me what's open",
+    alreadyStartedDone: (n, unit) =>
+      `Marked ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} done`,
+    undo: 'Undo',
 
     focusEyebrow: "This Week's Focus",
     focusAria: (weekLabel) => `This week's focus: ${weekLabel}`,
@@ -497,6 +546,9 @@ export const translations = {
     statusBehind: (n, unit) =>
       `À rattraper : ${pick(unit, frPlural(n, 'leçon des semaines précédentes', 'leçons des semaines précédentes'), frPlural(n, 'élément des semaines précédentes', 'éléments des semaines précédentes'))}.`,
     statusOnTrack: 'Parfaitement dans le rythme — continue sur ta lancée.',
+    // "En cours", the word of the roadmap's chip for the current week.
+    statusFirstWeek: (week, unit) =>
+      `La semaine\u00a0${week} est en cours. ${pick(unit, 'Étudie chaque leçon sur ALX, puis coche-la ici.', 'Termine chaque élément sur ALX, puis coche-le ici.')}`,
     statusAhead: (n, unit) =>
       `Tu as ${pick(unit, frPlural(n, "leçon d'avance", "leçons d'avance"), frPlural(n, "élément d'avance", "éléments d'avance"))}. Excellent.`,
     // "À terminer", as the catch-up week's reminder says it.
@@ -511,6 +563,17 @@ export const translations = {
     statusProgress: (p, done, total) => `${p}\u00a0% · ${done} sur ${total}`,
     statusProgressAria: (p, done, total) =>
       `${p} % du parcours terminé, ${done} sur ${total} éléments`,
+
+    // The program in the words of promptBody, "le parcours Data Analytics".
+    // A narrow no-break space before "?", as openInBrowser sets it.
+    alreadyStarted: 'Déjà commencé\u202f?',
+    alreadyStartedAsk: (week, program, from, to) =>
+      `Tu es en semaine\u00a0${week} du parcours ${program}. As-tu déjà terminé ${frWeeks(from, to)} sur la plateforme ALX\u202f?`,
+    alreadyStartedYes: (from, to) => `Oui, cocher ${frWeeks(from, to)}`,
+    alreadyStartedNotYet: 'Pas encore, afficher ce qui reste à faire',
+    alreadyStartedDone: (n, unit) =>
+      pick(unit, frPlural(n, 'leçon cochée', 'leçons cochées'), frPlural(n, 'élément coché', 'éléments cochés')),
+    undo: 'Annuler',
 
     focusEyebrow: 'Objectif de la semaine',
     focusAria: (weekLabel) => `Objectif de la semaine : ${weekLabel}`,
@@ -787,6 +850,11 @@ export const translations = {
     statusBehind: (n, unit) =>
       `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ${arStillOpen(n)}.`,
     statusOnTrack: 'أنت على الوتيرة الصحيحة — واصل التقدّم.',
+    // "Put a mark on it": the tick, as "Already started?" names it too.
+    // Unlike English and French, it keeps "the ALX platform" (منصة ALX),
+    // which costs it no line.
+    statusFirstWeek: (week, unit) =>
+      `بدأ الأسبوع\u00a0${week}. ${pick(unit, 'ادرس كل درس', 'أنجز كل عنصر')} على منصة ALX، ثم ضع علامة عليه هنا.`,
     statusAhead: (n, unit) =>
       `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} عن الجدول. ممتاز.`,
     // "N items to finish", as the catch-up week's reminder says it; the days
@@ -803,6 +871,18 @@ export const translations = {
     // well over ten items.
     statusProgress: (p, done, total) => `${p}٪ · ${done} من ${total}`,
     statusProgressAria: (p, done, total) => `اكتمل ${p}٪ من المنهج، ${done} من ${total} عنصرًا`,
+
+    // The program in the words of promptBody, "مسار تحليل البيانات". "Put a mark
+    // on" takes the genitive, and Graphic Design's Weeks 1–8 alone are 108
+    // items, so the count reads past a hundred (arCountAll).
+    alreadyStarted: 'بدأت بالفعل؟',
+    alreadyStartedAsk: (week, program, from, to) =>
+      `أنت في الأسبوع\u00a0${week} من مسار ${program}. هل أنهيت بالفعل ${arWeeks(from, to)} على منصة ALX؟`,
+    alreadyStartedYes: (from, to) => `نعم، ضع علامة على ${arWeeks(from, to)}`,
+    alreadyStartedNotYet: 'ليس بعد، اعرض ما بقي مفتوحًا',
+    alreadyStartedDone: (n, unit) =>
+      `تم وضع علامة على ${arCountAll(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))}`,
+    undo: 'تراجع',
 
     focusEyebrow: 'تركيز هذا الأسبوع',
     focusAria: (weekLabel) => `تركيز هذا الأسبوع: ${weekLabel}`,

@@ -42,6 +42,26 @@ export function contentWeeksAfter(schedule, weekNumber) {
 }
 
 /**
+ * The weeks before week `weekNumber`, as "Already started?" offers to tick
+ * them: the first and last of them as the curriculum numbers them, and every
+ * item they hold, in curriculum order. The span counts a catch-up week like
+ * any other: Graphic Design's Week 9 follows "Weeks 1–8", whose Week 8 has
+ * nothing of its own. Null in the first week, which has none before it.
+ *
+ * @returns {{ from: number, to: number, items: object[] } | null}
+ */
+export function weeksBefore(schedule, weekNumber) {
+  const index = schedule?.weeks.findIndex((w) => w.week === weekNumber) ?? -1
+  if (index < 1) return null
+  const weeks = schedule.weeks.slice(0, index)
+  return {
+    from: weeks[0].week,
+    to: weeks[weeks.length - 1].week,
+    items: weeks.flatMap((w) => w.lessons),
+  }
+}
+
+/**
  * A week's next checkpoint: its first graded item still open, in the sheet's
  * order, and how many open items lead up to it, itself included — the
  * "9 items away" of "Next checkpoint: Quiz 1: Poster Design". Items ticked

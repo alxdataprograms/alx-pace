@@ -135,6 +135,31 @@ export function achievedMilestones(schedule, completedSet, programId = 'da') {
 }
 
 /**
+ * The milestones that ticking `ids` as well as `completedSet` reaches, and
+ * that `seen` does not hold yet, by id.
+ *
+ * "Already started?" ticks the weeks before this one in one go for a learner
+ * who did them on the ALX platform before finding Pace, and records these as
+ * shown. Graphic Design's Weeks 1–8 complete two modules: without the record,
+ * a LinkedIn dialogue for a module finished weeks ago would open the moment
+ * the learner set the app up. The modules are still achieved, and keep their
+ * Share button in the roadmap.
+ *
+ * @param {{ modules: any[], lessons: any[], totalLessons: number } | null} schedule
+ * @param {Set<string>} completedSet
+ * @param {string[]} ids
+ * @param {string} programId
+ * @param {string[]} seen
+ * @returns {string[]}
+ */
+export function milestonesCrossed(schedule, completedSet, ids, programId, seen) {
+  const shown = new Set(Array.isArray(seen) ? seen : [])
+  return achievedMilestones(schedule, new Set([...completedSet, ...ids]), programId)
+    .map((m) => m.id)
+    .filter((id) => !shown.has(id))
+}
+
+/**
  * The one to celebrate now, or null.
  *
  * The LAST unseen milestone rather than the first. Someone who ticks off a

@@ -62,6 +62,9 @@ const VARIANTS = {
  * `onCatchUp` takes a learner who is behind to the "Catch up first" section
  * that opens the checklist below. A catch-up week has no such section: its
  * whole card is that list already, so this card plans the week instead.
+ *
+ * In the first week, until anything in the program is ticked, the headline
+ * says how Pace works (see FirstWeekHeadline).
  */
 export default function PaceStatusCard({
   paceStatus,
@@ -76,6 +79,12 @@ export default function PaceStatusCard({
   // What a catch-up week had open on arrival: the longest its headline gets
   // this visit (see CatchUpWeekHeadline). App keys the card by week.
   const [openOnArrival] = useState(paceStatus?.behindCount ?? 0)
+  // Nothing ticked in the program, and nothing overdue: the first week, as
+  // every later week has earlier items to be overdue. Decided on arrival, as
+  // the catch-up row is: the how-to is for someone who has not started, so a
+  // learner who unticks their only tick keeps "Right on pace".
+  const firstSteps = paceStatus?.status === 'on-track' && paceStatus.completedCount === 0
+  const [firstStepsOnArrival] = useState(firstSteps)
 
   /*
     Once offered, the button's row stays for the rest of the visit. Ticking the
@@ -117,6 +126,10 @@ export default function PaceStatusCard({
                 openOnArrival={openOnArrival}
                 daysLeft={paceStatus.daysLeft}
               />
+            ) : firstStepsOnArrival ? (
+              <FirstWeekHeadline paceStatus={paceStatus} howTo={firstSteps}>
+                {v.headline(t, paceStatus)}
+              </FirstWeekHeadline>
             ) : (
               v.headline(t, paceStatus)
             )}
@@ -177,6 +190,26 @@ function CatchUpWeekHeadline({ open, openOnArrival, daysLeft }) {
   const say = (n) =>
     n > 0 ? t.statusCatchUpWeek(n, daysLeft, perDayToClear(n, daysLeft)) : t.statusCatchUpWeekClear
   return <SteadyText texts={widestCounts(openOnArrival).map(say)}>{say(open)}</SteadyText>
+}
+
+/*
+  The first week's headline, until anything in the program is ticked: "Week 1
+  is under way. Study each lesson on ALX, then tick it off here." Nothing on
+  the page had said that lessons are taken on ALX and ticked here, and "Right
+  on pace — keep the streak alive." spoke of a streak to someone with nothing
+  done. "Under way" holds on any day of the week, the start date included.
+
+  The first tick brings "Right on pace" (`children`, the card's own headline
+  by then) into the how-to's place, which holds its size for the rest of the
+  visit (SteadyText). A line shorter in French, and at 320px in every
+  language, it would otherwise pull the checklist up under the finger that
+  just ticked. The next visit has a tick to its name, and the card as it
+  always was.
+*/
+function FirstWeekHeadline({ paceStatus, howTo, children }) {
+  const { t } = useLang()
+  const text = t.statusFirstWeek(paceStatus.week, paceStatus.unit)
+  return <SteadyText texts={[text, t.statusOnTrack]}>{howTo ? text : children}</SteadyText>
 }
 
 /*

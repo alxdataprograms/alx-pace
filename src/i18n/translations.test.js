@@ -612,3 +612,114 @@ describe('the catch-up week’s copy', () => {
     expect(next).not.toMatch(/\d /)
   })
 })
+
+/*
+  A learner with nothing ticked: the first week's how-to in the status card,
+  and "Already started?" past it. The count "Already started?" confirms is the
+  size of the weeks before this one, which in Creative Tech runs into the
+  hundreds (Graphic Design's Weeks 1–8 are 108 items), so Arabic reads it by
+  its last two digits, as the number is said: "108 عناصر", not "108 عنصرًا".
+*/
+describe('the first week and "Already started?"', () => {
+  const { en, fr, ar } = translations
+  /** As read: no-break spaces as spaces, word joiners gone. */
+  const plain = (text) => text.replace(/\u00a0/g, ' ').replace(/\u2060/g, '')
+
+  it('reads plainly in English', () => {
+    expect(plain(en.statusFirstWeek(1, 'lesson'))).toBe(
+      'Week 1 is under way. Study each lesson on ALX, then tick it off here.',
+    )
+    expect(plain(en.statusFirstWeek(1, 'item'))).toBe(
+      'Week 1 is under way. Do each item on ALX, then tick it off here.',
+    )
+    expect(en.alreadyStarted).toBe('Already started?')
+    expect(plain(en.alreadyStartedAsk(9, 'Graphic Design', 1, 8))).toBe(
+      "You're in Week 9 of Graphic Design. Have you already finished Weeks 1–8 on the ALX platform?",
+    )
+    expect(plain(en.alreadyStartedAsk(2, 'Data Analytics', 1, 1))).toBe(
+      "You're in Week 2 of Data Analytics. Have you already finished Week 1 on the ALX platform?",
+    )
+    expect(plain(en.alreadyStartedYes(1, 8))).toBe('Yes, tick Weeks 1–8')
+    expect(plain(en.alreadyStartedYes(1, 1))).toBe('Yes, tick Week 1')
+    expect(en.alreadyStartedNotYet).toBe("Not yet, show me what's open")
+    expect(en.alreadyStartedDone(108, 'item')).toBe('Marked 108 items done')
+    expect(en.alreadyStartedDone(1, 'item')).toBe('Marked 1 item done')
+    expect(en.alreadyStartedDone(14)).toBe('Marked 14 lessons done')
+    expect(en.undo).toBe('Undo')
+  })
+
+  it('agrees in French', () => {
+    expect(plain(fr.statusFirstWeek(1, 'lesson'))).toBe(
+      'La semaine 1 est en cours. Étudie chaque leçon sur ALX, puis coche-la ici.',
+    )
+    // "Élément" is masculine: coche-le.
+    expect(plain(fr.statusFirstWeek(1, 'item'))).toBe(
+      'La semaine 1 est en cours. Termine chaque élément sur ALX, puis coche-le ici.',
+    )
+    expect(plain(fr.alreadyStartedAsk(9, 'Design graphique', 1, 8))).toBe(
+      'Tu es en semaine 9 du parcours Design graphique. As-tu déjà terminé les semaines 1 à 8 sur la plateforme ALX\u202f?',
+    )
+    expect(plain(fr.alreadyStartedAsk(2, 'Data Analytics', 1, 1))).toMatch(/As-tu déjà terminé la semaine 1 /)
+    expect(plain(fr.alreadyStartedYes(1, 8))).toBe('Oui, cocher les semaines 1 à 8')
+    expect(plain(fr.alreadyStartedYes(1, 1))).toBe('Oui, cocher la semaine 1')
+    expect(fr.alreadyStartedDone(108, 'item')).toBe('108 éléments cochés')
+    expect(fr.alreadyStartedDone(1, 'item')).toBe('1 élément coché')
+    expect(fr.alreadyStartedDone(14)).toBe('14 leçons cochées')
+    expect(fr.undo).toBe('Annuler')
+  })
+
+  it('reads in Arabic, the count past a hundred by its last two digits', () => {
+    expect(plain(ar.statusFirstWeek(1, 'lesson'))).toBe(
+      'بدأ الأسبوع 1. ادرس كل درس على منصة ALX، ثم ضع علامة عليه هنا.',
+    )
+    expect(plain(ar.statusFirstWeek(1, 'item'))).toBe(
+      'بدأ الأسبوع 1. أنجز كل عنصر على منصة ALX، ثم ضع علامة عليه هنا.',
+    )
+    expect(plain(ar.alreadyStartedAsk(9, 'التصميم الجرافيكي', 1, 8))).toBe(
+      'أنت في الأسبوع 9 من مسار التصميم الجرافيكي. هل أنهيت بالفعل الأسابيع 1–8 على منصة ALX؟',
+    )
+    expect(plain(ar.alreadyStartedYes(1, 1))).toBe('نعم، ضع علامة على الأسبوع 1')
+
+    // After "on" (على), in the genitive.
+    const count = (n, unit = 'item') => ar.alreadyStartedDone(n, unit).replace('تم وضع علامة على ', '')
+    expect(count(1)).toBe('عنصر واحد')
+    expect(count(2)).toBe('عنصرين')
+    expect(count(5)).toBe('5 عناصر')
+    expect(count(14)).toBe('14 عنصرًا')
+    expect(count(100)).toBe('100 عنصر')
+    expect(count(102)).toBe('102 عنصر')
+    expect(count(108)).toBe('108 عناصر')
+    expect(count(110)).toBe('110 عناصر')
+    expect(count(113)).toBe('113 عنصرًا')
+    expect(count(200)).toBe('200 عنصر')
+    expect(count(250)).toBe('250 عنصرًا')
+    expect(count(2, 'lesson')).toBe('درسين')
+    expect(count(14, 'lesson')).toBe('14 درسًا')
+    expect(ar.undo).toBe('تراجع')
+  })
+
+  it.each(langs)('%s keeps each week with its number, and a span of weeks in one piece', (lang) => {
+    const t = translations[lang]
+    for (const text of [
+      t.statusFirstWeek(1, 'item'),
+      t.alreadyStartedAsk(9, t.programs.gd, 1, 8),
+      t.alreadyStartedYes(1, 8),
+      t.alreadyStartedYes(1, 13.5),
+    ]) {
+      // No ordinary space before a number: no line ends on "Week" or "à"
+      // and starts the next on "9".
+      expect(text, `${lang}: ${text}`).not.toMatch(/[^\s\d.] \d/)
+      // A dash in a span is held to the number after it.
+      expect(text, `${lang}: ${text}`).not.toMatch(/–(?!\u2060)/)
+    }
+  })
+
+  it.each(langs)('%s counts lessons by default, as every count string does, items when told', (lang) => {
+    const t = translations[lang]
+    for (const n of [1, 2, 9, 14, 108]) {
+      expect(t.alreadyStartedDone(n, 'lesson')).toBe(t.alreadyStartedDone(n))
+      expect(t.alreadyStartedDone(n, 'item')).not.toBe(t.alreadyStartedDone(n, 'lesson'))
+    }
+    expect(t.statusFirstWeek(1, 'item')).not.toBe(t.statusFirstWeek(1, 'lesson'))
+  })
+})

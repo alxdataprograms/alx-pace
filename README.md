@@ -52,6 +52,7 @@ runs after those gates pass on `main`.
 | **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
 | **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
 | **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. A long Creative Tech week stays open in full under one line naming its next graded item: *Next checkpoint: Quiz 1: Poster Design · 9 items away*. |
+| **Already started?** | Past Week 1 with nothing in the program ticked (a learner who found Pace mid-course), a card under the status card asks *You're in Week 9 of Graphic Design. Have you already finished Weeks 1–8 on the ALX platform?* *Yes, tick Weeks 1–8* ticks them all in one go, records any module that completes as already celebrated (no share dialogue for work done weeks ago), and says *Marked 108 items done*, with *Undo*. *Not yet, show me what's open* puts the card away for the visit and goes to *Catch up first*. In Week 1, the status card says how Pace works instead: *Week 1 is under way. Study each lesson on ALX, then tick it off here.* Nothing new is saved: once anything in the program is ticked, the next visit shows neither. |
 | **Catch up first** | Behind in an ordinary week, the focus card opens with the three oldest items still open from earlier weeks, each labelled with its week, above this week's lessons; the status card's *Catch up now* goes straight there. In Creative Tech it ends by naming the next catch-up week: *Next catch-up week: Week 10, from Oct 27*. |
 | **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks, under a heading for each week (*Week 12 · GD-4 — 10 open*), six at a time, with *Show all 14* to open the rest in place. The status card plans the week instead of nudging: *Catch-up week: 14 items to clear · 5 days left (about 3 a day)*. |
 | **Get ahead** | Once this week is done, the focus card says so and lists the first three open items of the next week with anything to tick (catch-up weeks skipped), so there is always something to tick; from the next visit, the week's ticks fold behind *Show N done*. A learner with anything overdue catches up first instead. |
@@ -230,7 +231,7 @@ only when the learner ticks or the week turns.
 | `completedLessons` | JSON array of lesson ids | `[]` | yes |
 | `alx-theme` | `"light"` \| `"dark"` | `"light"` | yes |
 | `alx-lang` | `"en"` \| `"fr"` \| `"ar"` | browser language | yes |
-| `alx-celebrated` | JSON array of milestone ids already shown (`module:DA-1`, `module:CC-2`, `programme` for DA, `programme:cc` / `programme:gd`) | `[]` | yes (unioned) |
+| `alx-celebrated` | JSON array of milestone ids already shown, or passed over by *Already started?* (`module:DA-1`, `module:CC-2`, `programme` for DA, `programme:cc` / `programme:gd`) | `[]` | yes (unioned) |
 | `alx-reminders` | reminder mode | unset | **no** — see below |
 | `alx-metrics-day` | analytics dedupe stamp | unset | **no** — see below |
 | `alx-handoff-done` | ISO date the handoff ran | unset | n/a |

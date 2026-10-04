@@ -6,6 +6,7 @@ import {
   getWeek,
   moduleProgress,
   nextCheckpoint,
+  weeksBefore,
 } from './schedule'
 
 // Runs against the real bundled CSVs (Vitest resolves `?raw` like Vite does).
@@ -145,5 +146,44 @@ describe('moduleProgress', () => {
   it('is null for a week the programme does not have, or no programme', () => {
     expect(moduleProgress(gd, 40, new Set())).toBeNull()
     expect(moduleProgress(null, 1, new Set())).toBeNull()
+  })
+})
+
+/*
+  The weeks "Already started?" offers to tick for a learner who joins
+  mid-course: everything before this week, named by its first and last week
+  as the curriculum numbers them. Graphic Design's Week 9 follows "Weeks 1–8"
+  and their 108 items, though Week 8 is a catch-up week with nothing of its own.
+*/
+describe('weeksBefore', () => {
+  const span = (program, week) => {
+    const got = weeksBefore(SCHEDULES[program], week)
+    return got && { from: got.from, to: got.to, items: got.items.length }
+  }
+
+  it('spans the weeks before this one, catch-up weeks included, and every item in them', () => {
+    expect(span('gd', 9)).toEqual({ from: 1, to: 8, items: 108 })
+    expect(span('cc', 6)).toEqual({ from: 1, to: 5, items: 81 })
+    expect(span('da', 6)).toEqual({ from: 1, to: 5, items: 14 })
+    expect(span('da', 2)).toEqual({ from: 1, to: 1, items: 5 })
+  })
+
+  it('names half weeks and catch-up weeks as the curriculum does', () => {
+    // Week 13.5 follows Graphic Design's half Week 13; Week 14.5 follows 13.5.
+    expect(span('gd', 13.5)).toEqual({ from: 1, to: 13, items: 167 })
+    expect(span('gd', 14.5)).toEqual({ from: 1, to: 13.5, items: 167 })
+  })
+
+  it('holds exactly the items of the earlier weeks, in curriculum order', () => {
+    const gd = SCHEDULES.gd
+    expect(weeksBefore(gd, 9).items).toEqual(gd.lessons.filter((l) => l.week < 9))
+    // Content Creation's last week is a catch-up week: before it, the whole programme.
+    expect(weeksBefore(SCHEDULES.cc, 22).items).toEqual(SCHEDULES.cc.lessons)
+  })
+
+  it('is null in the first week, for a week the programme does not have, or no programme', () => {
+    expect(weeksBefore(SCHEDULES.da, 1)).toBeNull()
+    expect(weeksBefore(SCHEDULES.gd, 40)).toBeNull()
+    expect(weeksBefore(null, 3)).toBeNull()
   })
 })

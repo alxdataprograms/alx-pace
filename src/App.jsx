@@ -1,8 +1,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { contentWeeksAfter, getWeek, moduleProgress } from './lib/schedule'
+import { contentWeeksAfter, getWeek, moduleProgress, weeksBefore } from './lib/schedule'
 import { PROGRAMS } from './lib/programs'
 import { computePacing, progressPercent } from './lib/pacing'
-import { achievedMilestones, milestoneIds, nextToCelebrate, pruneCelebrated } from './lib/milestones'
+import {
+  achievedMilestones,
+  milestoneIds,
+  milestonesCrossed,
+  nextToCelebrate,
+  pruneCelebrated,
+} from './lib/milestones'
 import { computePaceStatus } from './lib/paceStatus'
 import { saveReminderState } from './lib/reminderStore'
 import { trackAppOpen, trackPacingDaily } from './lib/analytics'
@@ -13,6 +19,7 @@ import { useLocalStorage } from './hooks/useLocalStorage'
 
 import AlxLogo from './components/AlxLogo'
 import PaceStatusCard from './components/PaceStatusCard'
+import AlreadyStartedCard from './components/AlreadyStartedCard'
 import ForecastCard from './components/ForecastCard'
 import PersonalizationWidget from './components/PersonalizationWidget'
 import InAppBrowserHint from './components/InAppBrowserHint'
@@ -132,6 +139,12 @@ export default function App() {
     () => contentWeeksAfter(schedule, pacing.currentWeek),
     [schedule, pacing.currentWeek],
   )
+  // The weeks before this one, which "Already started?" offers to tick; null
+  // in the first week.
+  const earlierWeeks = useMemo(
+    () => weeksBefore(schedule, pacing.currentWeek),
+    [schedule, pacing.currentWeek],
+  )
   const firstWeek = schedule?.weeks[0] ?? null
   const totalLessons = schedule?.totalLessons ?? 0
 
@@ -191,6 +204,15 @@ export default function App() {
     heading.scrollIntoView({ block: 'start' })
     heading.focus({ preventScroll: true })
   }
+  // "Not yet, show me what's open" (AlreadyStartedCard) goes there too. A
+  // catch-up week's whole checklist is its open items, so the list's opening
+  // sentence takes the place of "Catch up first" (see CurrentFocusCard).
+  // Should neither be on screen, the status card's headline, which counts
+  // them, takes the focus.
+  const showWhatsOpen = () => {
+    if (catchUpHeading.current) goToCatchUp()
+    else stepHeading.current?.focus()
+  }
 
   /*
     Milestones.
@@ -237,6 +259,37 @@ export default function App() {
       return Array.from(seen)
     })
   }, [achieved, setCelebrated])
+
+  /*
+    "Already started?" (AlreadyStartedCard): "Yes" ticks what is still open in
+    the weeks before this one, and records the milestones that crosses as
+    shown, in the same render, so no LinkedIn dialogue opens for a module the
+    learner finished on ALX weeks ago. Undo takes back exactly that: those
+    items, which were open before, and those records, which were not there.
+    Anything ticked or celebrated meanwhile stays, and so does every other
+    program's progress, which shares both lists.
+  */
+  const tickWeeksBefore = useCallback(() => {
+    const ids = earlierWeeks.items.filter((l) => !completedSet.has(l.id)).map((l) => l.id)
+    const crossed = milestonesCrossed(schedule, completedSet, ids, program, celebrated)
+    setLessonsCompleted(ids, true)
+    if (crossed.length > 0) {
+      setCelebrated((prev) => [...(Array.isArray(prev) ? prev : []), ...crossed])
+    }
+    return { ids, crossed }
+  }, [earlierWeeks, completedSet, schedule, program, celebrated, setLessonsCompleted, setCelebrated])
+
+  const untickWeeksBefore = useCallback(
+    ({ ids, crossed }) => {
+      setLessonsCompleted(ids, false)
+      if (crossed.length > 0) {
+        setCelebrated((prev) =>
+          Array.isArray(prev) ? prev.filter((id) => !crossed.includes(id)) : prev,
+        )
+      }
+    },
+    [setLessonsCompleted, setCelebrated],
+  )
 
   /*
     A milestone opened deliberately from the roadmap, rather than by crossing it.
@@ -383,6 +436,26 @@ export default function App() {
                   headingRef={stepHeading}
                   onCatchUp={goToCatchUp}
                 />
+                {/*
+                  Past the first week with nothing in the program ticked, the
+                  question about the weeks before, under the status card that
+                  counts them. Offered on arrival and kept for the visit, so it
+                  is keyed like the status card, by program and week.
+                */}
+                {earlierWeeks && (
+                  <AlreadyStartedCard
+                    key={`started:${program}:${pacing.currentWeek}`}
+                    offered={completedCount === 0}
+                    week={pacing.currentWeek}
+                    from={earlierWeeks.from}
+                    to={earlierWeeks.to}
+                    programName={programName}
+                    unit={paceStatus?.unit}
+                    onYes={tickWeeksBefore}
+                    onUndo={untickWeeksBefore}
+                    onNotYet={showWhatsOpen}
+                  />
+                )}
                 <CurrentFocusCard
                   week={currentWeek}
                   completedSet={completedSet}

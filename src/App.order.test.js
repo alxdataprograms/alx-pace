@@ -85,6 +85,7 @@ const CARDS = {
   countdown: (el) => heading(el).startsWith(en.beginsIn),
   graduation: (el) => [en.completedTitle, en.finishLineTitle].includes(heading(el)),
   status: (el) => label(el) === en.pacingStatusAria,
+  'already started': (el) => heading(el) === en.alreadyStarted,
   focus: (el) => label(el).startsWith(en.focusAria('')),
   progress: (el) => label(el) === en.overallProgress,
   pace: (el) => label(el) === en.yourPace,
@@ -119,8 +120,65 @@ describe('an active week leads with the checklist', () => {
 
   it('still leaves the graded card out of a catch-up week', () => {
     // Day 90 is Graphic Design's Week 13.5, which has no lessons of its own.
+    // Nothing is ticked, so "Already started?" asks about Weeks 1–13.
     renderActive('gd', -90)
-    expect(layout()).toEqual(['hero', 'status', 'focus', 'progress', 'pace', 'roadmap', 'footer'])
+    expect(layout()).toEqual([
+      'hero',
+      'status',
+      'already started',
+      'focus',
+      'progress',
+      'pace',
+      'roadmap',
+      'footer',
+    ])
+  })
+})
+
+/*
+  "Already started?" asks a learner past the first week with nothing ticked
+  whether they did the earlier weeks on ALX. It goes under the status card,
+  which keeps its place as the first answer to "am I OK?", and above the
+  checklist it changes. In the first week there is nothing before to ask
+  about, and a learner with anything ticked is not asked.
+*/
+describe('a learner with nothing ticked yet', () => {
+  const ACTIVE = ['hero', 'status', 'focus', 'progress', 'pace', 'graded', 'roadmap', 'footer']
+  const ASKED = ['hero', 'status', 'already started', ...ACTIVE.slice(2)]
+  const click = (text) => {
+    const button = [...container.querySelectorAll('button')].find(
+      (b) => b.textContent.trim() === text,
+    )
+    act(() => button.dispatchEvent(new MouseEvent('click', { bubbles: true })))
+  }
+
+  it('meets the checklist straight under the status card in Week 1', () => {
+    renderActive('da', -2)
+    expect(layout()).toEqual(ACTIVE)
+  })
+
+  it.each([
+    ['Data Analytics', 'da', -36],
+    ['Content Creation', 'cc', -36],
+    ['Graphic Design', 'gd', -57],
+  ])('is asked "Already started?" between the status card and the checklist in %s', (_, program, offset) => {
+    renderActive(program, offset)
+    expect(layout()).toEqual(ASKED)
+  })
+
+  it('keeps the card, as its confirmation, after Yes, and puts it away after Not yet', () => {
+    renderActive('gd', -57)
+    click(en.alreadyStartedYes(1, 8))
+    expect(layout()).toEqual(ASKED)
+    act(() => root.unmount())
+    window.localStorage.clear()
+
+    // Not yet goes to "Catch up first", which jsdom cannot scroll to.
+    Element.prototype.scrollIntoView = () => {}
+    renderActive('gd', -57)
+    click(en.alreadyStartedNotYet)
+    expect(layout()).toEqual(ACTIVE)
+    delete Element.prototype.scrollIntoView
   })
 })
 
