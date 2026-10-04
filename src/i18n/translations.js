@@ -195,6 +195,16 @@ export const translations = {
       `No new content this week — use it to clear the ${n} ${n === 1 ? 'item' : 'items'} still open from earlier weeks.`,
     catchUpAllClear: "You're all caught up! Rest, review, or get a head start on next week.",
     catchUpMore: (n) => `+${n} more open — see the roadmap below`,
+    // An ordinary week for a learner who is behind: the oldest open items from
+    // earlier weeks head the checklist, above this week's own. The status
+    // card's button goes there.
+    catchUpFirst: 'Catch up first',
+    catchUpFirstMore: (n) => `+${n} more overdue — see the roadmap below`,
+    catchUpFirstDone: "You're all caught up! On to this week.",
+    thisWeek: 'This week',
+    catchUpNow: 'Catch up now',
+    // Where the button was, once nothing is overdue any more (this visit only).
+    caughtUp: 'All caught up',
     showDone: (n) => `Show ${n} done`,
     hideDone: 'Hide done',
     weekAllDone: 'Everything in this week is done. Nicely paced.',
@@ -202,6 +212,8 @@ export const translations = {
     roadmapTitle: (weeks) => `Full ${weeks}-Week Roadmap`,
     weekRange: (a, b) => (a === b ? `Week ${a}` : `Weeks ${a}–${b}`),
     current: 'Current',
+    // A week gone by with items still open.
+    overdueChip: (n) => `${n} overdue`,
     doneCount: (done, total) => `${done}/${total} done`,
     gradedCount: (n) => `${n} graded`,
     markWeekComplete: 'Mark week complete',
@@ -467,6 +479,13 @@ export const translations = {
       "Tu es à jour ! Repose-toi, révise ou prends de l'avance sur la semaine prochaine.",
     catchUpMore: (n) =>
       `+${n} encore ${frWord(n, 'ouvert', 'ouverts')} — voir la feuille de route ci-dessous`,
+    catchUpFirst: 'À rattraper d’abord',
+    catchUpFirstMore: (n) =>
+      `+${n} ${frWord(n, 'autre', 'autres')} en retard — voir la feuille de route ci-dessous`,
+    catchUpFirstDone: 'Tu es à jour\u202f! Place à cette semaine.',
+    thisWeek: 'Cette semaine',
+    catchUpNow: 'Rattraper maintenant',
+    caughtUp: 'Tout est rattrapé',
     showDone: (n) => `Afficher ${frPlural(n, 'élément terminé', 'éléments terminés')}`,
     hideDone: 'Masquer les éléments terminés',
     weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
@@ -474,6 +493,8 @@ export const translations = {
     roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
     current: 'En cours',
+    // "En retard" does not agree with the count: "1 en retard", "4 en retard".
+    overdueChip: (n) => `${n} en retard`,
     doneCount: (done, total) => `${done}/${total} ${frWord(done, 'fait', 'faits')}`,
     gradedCount: (n) => `${n} noté${n > 1 ? 's' : ''}`,
     markWeekComplete: 'Marquer la semaine terminée',
@@ -723,6 +744,15 @@ export const translations = {
       `لا محتوى جديد هذا الأسبوع — استغلّه لإنهاء ما تبقّى مفتوحًا من الأسابيع السابقة (${n}).`,
     catchUpAllClear: 'لا شيء متأخّر! استرح أو راجع أو ابدأ مبكرًا في الأسبوع القادم.',
     catchUpMore: (n) => `+${n} أخرى مفتوحة — راجع الخارطة أدناه`,
+    catchUpFirst: 'الاستدراك أولًا',
+    // Counted with its noun, which the adjectives after it agree with: "درس آخر
+    // متأخر", "درسان آخران متأخران", "6 دروس أخرى متأخرة", "14 درسًا آخر متأخرًا".
+    catchUpFirstMore: (n, unit) =>
+      `${arCount(n, pick(unit, { one: 'درس آخر متأخر', two: 'درسان آخران متأخران', few: 'دروس أخرى متأخرة', many: 'درسًا آخر متأخرًا' }, { one: 'عنصر آخر متأخر', two: 'عنصران آخران متأخران', few: 'عناصر أخرى متأخرة', many: 'عنصرًا آخر متأخرًا' }))} — راجع الخارطة أدناه`,
+    catchUpFirstDone: 'لا شيء متأخّر! تابع مع هذا الأسبوع.',
+    thisWeek: 'هذا الأسبوع',
+    catchUpNow: 'استدرك الآن',
+    caughtUp: 'لا شيء متأخّر',
     showDone: (n) =>
       `عرض ${arCount(n, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' })}`,
     hideDone: 'إخفاء العناصر المكتملة',
@@ -731,6 +761,8 @@ export const translations = {
     roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${weeks} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),
     current: 'الحالي',
+    overdueChip: (n, unit) =>
+      arCount(n, pick(unit, { one: 'درس واحد متأخر', two: 'درسان متأخران', few: 'دروس متأخرة', many: 'درسًا متأخرًا' }, { one: 'عنصر واحد متأخر', two: 'عنصران متأخران', few: 'عناصر متأخرة', many: 'عنصرًا متأخرًا' })),
     doneCount: (done, total) => `أُنجز ${done}/${total}`,
     gradedCount: (n) => `${n} محتسب`,
     markWeekComplete: 'إكمال هذا الأسبوع',

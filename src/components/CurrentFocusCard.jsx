@@ -10,6 +10,11 @@ import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
 // an accidental tick can be undone right where it happened.
 const CATCH_UP_LIMIT = 6
 
+// An ordinary week lists fewer, because this week's own lessons follow them:
+// three of the oldest are enough to start on, and keep the week's first lesson
+// close to the first screen.
+const CATCH_UP_FIRST_LIMIT = 3
+
 // A focus week longer than this tucks its already-done items behind a toggle,
 // so the next open item is near the top instead of under a screen of ticks.
 // Creative Tech weeks run to 31 items; Data Analytics never exceeds 5, so DA
@@ -22,8 +27,21 @@ const LONG_WEEK = 8
  *
  * Buffer weeks (Creative Tech) have no new content, so the card turns into a
  * catch-up list: the oldest still-open items from earlier weeks.
+ *
+ * In any other week, a learner with items still open from earlier weeks
+ * (`catchUp`, oldest first) meets the oldest of them first, in a "Catch up
+ * first" section above this week's lessons. `catchUpRef` marks that section's
+ * heading, which the status card's "Catch up now" moves to (see App). `unit`
+ * is what the counts count ('lesson' | 'item').
  */
-export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp = [] }) {
+export default function CurrentFocusCard({
+  week,
+  completedSet,
+  onToggle,
+  catchUp = [],
+  catchUpRef,
+  unit,
+}) {
   const { t } = useLang()
   if (!week) return null
 
@@ -78,6 +96,16 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
           <p dir="ltr" className="mb-3 text-start text-sm font-medium text-ink-soft dark:text-paper/75">
             {week.moduleTitle}
           </p>
+
+          {/* Keyed per week, like the lists, so its kept rows reset with the week. */}
+          <CatchUpFirst
+            key={`catch-up-${week.moduleCode}-${week.week}`}
+            items={catchUp}
+            completedSet={completedSet}
+            onToggle={onToggle}
+            headingRef={catchUpRef}
+            unit={unit}
+          />
 
           {total > LONG_WEEK ? (
             <LongWeekList
@@ -176,14 +204,24 @@ function LongWeekList({ lessons, completedSet, onToggle }) {
   )
 }
 
+/**
+ * The catch-up lists' shared rule: the `limit` oldest open items, plus
+ * anything ticked on the list this visit — still shown, struck through, so it
+ * can be unticked from the same spot (see useKeptInPlace). Ticking one pulls
+ * the next oldest in. `more` counts the open items beyond the first `limit`.
+ */
+function useCatchUp(items, limit, onToggle) {
+  const [kept, keep] = useKeptInPlace(onToggle)
+  return {
+    shown: withKept(items.slice(0, limit), kept),
+    more: items.length - Math.min(items.length, limit),
+    keep,
+  }
+}
+
 function CatchUpList({ items, completedSet, onToggle }) {
   const { t } = useLang()
-  const [kept, keep] = useKeptInPlace(onToggle)
-
-  // The oldest open items, plus anything ticked here this visit — still shown,
-  // struck through, so it can be unticked from the same spot.
-  const shown = withKept(items.slice(0, CATCH_UP_LIMIT), kept)
-  const more = items.length - Math.min(items.length, CATCH_UP_LIMIT)
+  const { shown, more, keep } = useCatchUp(items, CATCH_UP_LIMIT, onToggle)
 
   if (shown.length === 0) return <AllClear text={t.catchUpAllClear} />
 
@@ -223,6 +261,85 @@ function CatchUpList({ items, completedSet, onToggle }) {
           {t.catchUpMore(more)}
         </p>
       )}
+    </>
+  )
+}
+
+/**
+ * "Catch up first": an ordinary week opens with the oldest items still open
+ * from earlier weeks, when there are any.
+ *
+ * WHY
+ * Only a catch-up week listed overdue items, and Data Analytics has none, so a
+ * behind DA learner read "9 lessons from earlier weeks still open" above a
+ * checklist holding only this week's one lesson. The nine sat in four
+ * collapsed roadmap weeks, about 1,600px further down.
+ *
+ * So the three oldest come first, each labelled with its week and module in
+ * the learner's language (the sheet's own label is English). Oldest first, as
+ * in a catch-up week, because each week builds on the ones before it. It is
+ * the catch-up week's rule at a smaller size (useCatchUp): a tick stays where
+ * it is, struck through, and the next oldest joins below it, so three stay
+ * open. This week's lessons follow under their own heading.
+ *
+ * Shown only while something is overdue, or was ticked here this visit, so a
+ * learner on track or ahead sees the card exactly as before. Clearing the last
+ * overdue item here keeps the section until the next visit: the rows stay
+ * under the learner's finger, and the all-clear appears below them in a
+ * polite live region, where it moves nothing.
+ */
+function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit }) {
+  const { t } = useLang()
+  const { shown, more, keep } = useCatchUp(items, CATCH_UP_FIRST_LIMIT, onToggle)
+
+  if (shown.length === 0) return null
+  const cleared = items.length === 0
+
+  return (
+    <>
+      <div className="-mx-1 mb-4 rounded-xl border-2 border-amber/40 bg-amber/10 p-2">
+        {/*
+          The status card's "Catch up now" scrolls this heading into view and
+          focuses it; the scroll margin keeps the section's edge on screen.
+        */}
+        <h3
+          ref={headingRef}
+          tabIndex={-1}
+          className="flex scroll-mt-5 items-center gap-1.5 px-2.5 pb-1 pt-0.5 text-xs font-bold uppercase tracking-widest text-amber-700 dark:text-amber"
+        >
+          <RefreshCcw size={14} strokeWidth={2.5} className="flex-none" aria-hidden="true" />
+          {t.catchUpFirst}
+        </h3>
+        <ul className="space-y-0.5">
+          {shown.map((lesson) => (
+            <LessonRow
+              key={lesson.id}
+              lesson={lesson}
+              checked={completedSet.has(lesson.id)}
+              onToggle={() => keep(lesson)}
+              meta={
+                <>
+                  {t.weekRange(lesson.week, lesson.week)} ·{' '}
+                  <span dir="ltr">{lesson.moduleCode}</span>
+                </>
+              }
+            />
+          ))}
+        </ul>
+        {more > 0 && (
+          <p className="mt-1 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber">
+            {t.catchUpFirstMore(more, unit)}
+          </p>
+        )}
+        {/* Always in the DOM, so the all-clear is announced when it appears. */}
+        <div role="status" aria-live="polite" className={cleared ? 'mt-2' : ''}>
+          {cleared && <AllClear text={t.catchUpFirstDone} />}
+        </div>
+      </div>
+
+      <h3 className="mb-1 px-1.5 text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
+        {t.thisWeek}
+      </h3>
     </>
   )
 }

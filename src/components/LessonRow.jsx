@@ -105,9 +105,16 @@ export default function LessonRow({ lesson, checked, onToggle, highlight = false
       </button>
 
       <div className="min-w-0 flex-1">
+        {/*
+          The line takes the direction of its own first word. A catch-up
+          week's label is the sheet's English ("Week 12 · GD-4"), and stays
+          left to right in every language, as it always has; "Catch up first"
+          labels a row in the learner's language, so in Arabic it runs right to
+          left, its module code kept left to right by the caller.
+        */}
         {meta && (
           <p
-            dir="ltr"
+            dir="auto"
             className="text-start text-[11px] font-semibold uppercase tracking-wide text-ink-mute dark:text-paper/60"
           >
             {meta}

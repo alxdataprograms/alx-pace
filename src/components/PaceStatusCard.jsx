@@ -1,4 +1,5 @@
-import { AlarmClock, CircleCheckBig, Quote, Zap } from 'lucide-react'
+import { useState } from 'react'
+import { AlarmClock, ArrowDown, CheckCircle2, CircleCheckBig, Quote, Zap } from 'lucide-react'
 import { quoteForDate } from '../lib/quotes'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -34,9 +35,33 @@ const VARIANTS = {
  * `headingRef` marks the headline, the card's answer to "am I OK?", as the
  * place App moves focus to when a start date set just now brings this card in
  * (see App's takeStep).
+ *
+ * `onCatchUp` takes a learner who is behind to the "Catch up first" section
+ * that opens the checklist below. A catch-up week has no such section: its
+ * whole card is that list already, so the nudge there stays as it was.
  */
-export default function PaceStatusCard({ paceStatus, progress, today = new Date(), headingRef }) {
+export default function PaceStatusCard({
+  paceStatus,
+  progress,
+  today = new Date(),
+  headingRef,
+  onCatchUp,
+}) {
   const { t, lang } = useLang()
+  const offerCatchUp =
+    Boolean(onCatchUp) && paceStatus?.status === 'behind' && !paceStatus.isBuffer
+
+  /*
+    Once offered, the button's row stays for the rest of the visit. Ticking the
+    last overdue item turns this card to "Right on pace"; had the button gone
+    with it, the card would have shrunk by the row's 52px and pulled the
+    checklist below up with it, taking the row just ticked out from under the
+    learner's finger. So the row says "All caught up" instead, until the card is
+    mounted afresh: the next visit, or another week or program (App keys it).
+  */
+  const [offeredCatchUp, setOfferedCatchUp] = useState(offerCatchUp)
+  if (offerCatchUp && !offeredCatchUp) setOfferedCatchUp(true)
+
   if (!paceStatus) return null
   const v = VARIANTS[paceStatus.status]
   const { Icon } = v
@@ -66,6 +91,26 @@ export default function PaceStatusCard({ paceStatus, progress, today = new Date(
             {parts.join(' · ')}
           </p>
           {progress && <ProgressLine {...progress} />}
+          {/*
+            The nudge said what was open but offered nowhere to act on it.
+            One tap now reaches the oldest open items: a 44px button in the
+            app's in-card action style, below the card's figures.
+          */}
+          {offerCatchUp ? (
+            <button
+              type="button"
+              onClick={onCatchUp}
+              className="mt-2 inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-cobalt/40 px-4 text-xs font-semibold text-cobalt-600 transition-colors hover:bg-cobalt/10 dark:border-lime/40 dark:text-lime dark:hover:bg-lime/10"
+            >
+              {t.catchUpNow}
+              <ArrowDown size={14} strokeWidth={2.5} aria-hidden="true" />
+            </button>
+          ) : offeredCatchUp ? (
+            <p className="mt-2 flex min-h-[44px] items-center gap-1.5 text-xs font-semibold text-alxgreen-700 dark:text-alxgreen">
+              <CheckCircle2 size={14} strokeWidth={2.5} className="flex-none" aria-hidden="true" />
+              {t.caughtUp}
+            </p>
+          ) : null}
         </div>
       </div>
 

@@ -151,6 +151,24 @@ export default function App() {
   )
 
   /*
+    "Catch up now", in the status card of a learner who is behind, goes to the
+    "Catch up first" section that opens the checklist: it scrolls the section
+    to the top of the screen and hands focus to its heading, so a keyboard or
+    screen-reader user carries on from there rather than from the button.
+
+    The scroll follows the page's scroll-behavior: smooth, and instant for
+    anyone who asked for reduced motion (index.css's one rule for that).
+    Focus moves without a scroll of its own, so that one is the only movement.
+  */
+  const catchUpHeading = useRef(null)
+  const goToCatchUp = () => {
+    const heading = catchUpHeading.current
+    if (!heading) return
+    heading.scrollIntoView({ block: 'start' })
+    heading.focus({ preventScroll: true })
+  }
+
+  /*
     Milestones.
 
     Achievement is DERIVED from completed lessons every render — nothing writes
@@ -328,18 +346,26 @@ export default function App() {
             */}
             {status === 'active' && (
               <>
-                {/* Where-you're-at: behind / on-track / ahead, a progress line, daily quote */}
+                {/*
+                  Where-you're-at: behind / on-track / ahead, a progress line,
+                  daily quote. Keyed by program and week, so the catch-up row it
+                  keeps for the rest of a visit starts over with a new week.
+                */}
                 <PaceStatusCard
+                  key={`${program}:${pacing.currentWeek}`}
                   paceStatus={paceStatus}
                   progress={progress}
                   today={today}
                   headingRef={stepHeading}
+                  onCatchUp={goToCatchUp}
                 />
                 <CurrentFocusCard
                   week={currentWeek}
                   completedSet={completedSet}
                   onToggle={toggleLesson}
                   catchUp={paceStatus?.behindItems}
+                  catchUpRef={catchUpHeading}
+                  unit={paceStatus?.unit}
                 />
                 <ProgressBar {...progress} />
                 <ForecastCard paceStatus={paceStatus} />

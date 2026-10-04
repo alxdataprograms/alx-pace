@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { CheckCircle2, ChevronDown, CircleDot, Coffee, ListChecks, Share2 } from 'lucide-react'
+import { AlarmClock, CheckCircle2, ChevronDown, CircleDot, Coffee, ListChecks, Share2 } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -10,6 +10,11 @@ import { useLang } from '../i18n/LanguageContext'
  *
  * `currentWeek` is null until the course begins: then every week starts
  * closed, and none is flagged.
+ *
+ * A week before the current one with items still open is overdue: amber
+ * number, "N overdue" chip. It wore the same grey number as a week still to
+ * come, so a learner who is behind could not see where the open items were
+ * without opening the weeks one by one.
  */
 export default function WeekAccordion({
   schedule,
@@ -103,6 +108,9 @@ export default function WeekAccordion({
             const done = week.lessons.filter((l) => completedSet.has(l.id)).length
             const total = week.lessons.length
             const allDone = total > 0 && done === total
+            // The same rule as the status card's: only weeks strictly before
+            // the current one are late, so this week's open items are not.
+            const overdue = currentWeek != null && week.week < currentWeek ? total - done : 0
             const panelId = `week-panel-${week.week}`
 
             if (week.isBuffer && total === 0) {
@@ -174,7 +182,9 @@ export default function WeekAccordion({
                         ? 'bg-alxgreen text-navy-900'
                         : isCurrent
                           ? 'bg-lime text-navy-900'
-                          : 'bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75'
+                          : overdue > 0
+                            ? 'bg-amber text-navy-900'
+                            : 'bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75'
                     }`}
                   >
                     {allDone ? <CheckCircle2 size={18} aria-hidden="true" /> : week.week}
@@ -196,6 +206,13 @@ export default function WeekAccordion({
                       {isCurrent && (
                         <span className="alx-chip flex-none bg-lime-300 text-navy-900">
                           <CircleDot size={11} aria-hidden="true" /> {t.current}
+                        </span>
+                      )}
+                      {/* The pace card's amber tone: ≥4.5:1 in both themes. */}
+                      {overdue > 0 && (
+                        <span className="alx-chip flex-none bg-amber/15 text-amber-700 dark:bg-amber/20 dark:text-amber">
+                          <AlarmClock size={11} aria-hidden="true" />{' '}
+                          {t.overdueChip(overdue, schedule.itemNoun)}
                         </span>
                       )}
                     </div>

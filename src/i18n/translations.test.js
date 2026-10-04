@@ -211,6 +211,51 @@ describe('Arabic agreement in the catch-up status', () => {
 })
 
 /*
+  "Catch up first" and the roadmap's overdue weeks count what is still open.
+  English and French need no agreement ("4 overdue", "4 en retard"); French's
+  "+N more" does, and Arabic counts the noun as everywhere else: one, two,
+  three to ten, eleven and up, each with its own form.
+*/
+describe('overdue counts', () => {
+  const { en, fr, ar } = translations
+
+  it('read plainly in English', () => {
+    expect(en.overdueChip(4)).toBe('4 overdue')
+    expect(en.catchUpFirstMore(6)).toBe('+6 more overdue — see the roadmap below')
+  })
+
+  it('take the singular below two in French', () => {
+    expect(fr.catchUpFirstMore(1)).toMatch(/^\+1 autre en retard —/)
+    expect(fr.catchUpFirstMore(6)).toMatch(/^\+6 autres en retard —/)
+    expect(fr.overdueChip(1)).toBe('1 en retard')
+  })
+
+  it('agree in Arabic with one, two, a few and many, for lessons and items alike', () => {
+    expect(ar.overdueChip(1)).toBe('درس واحد متأخر')
+    expect(ar.overdueChip(2)).toBe('درسان متأخران')
+    expect(ar.overdueChip(4)).toBe('4 دروس متأخرة')
+    expect(ar.overdueChip(14)).toBe('14 درسًا متأخرًا')
+    expect(ar.overdueChip(1, 'item')).toBe('عنصر واحد متأخر')
+    expect(ar.overdueChip(10, 'item')).toBe('10 عناصر متأخرة')
+    expect(ar.overdueChip(31, 'item')).toBe('31 عنصرًا متأخرًا')
+
+    expect(ar.catchUpFirstMore(1)).toMatch(/^درس آخر متأخر —/)
+    expect(ar.catchUpFirstMore(2)).toMatch(/^درسان آخران متأخران —/)
+    expect(ar.catchUpFirstMore(6)).toMatch(/^6 دروس أخرى متأخرة —/)
+    expect(ar.catchUpFirstMore(13)).toMatch(/^13 درسًا آخر متأخرًا —/)
+    expect(ar.catchUpFirstMore(48, 'item')).toMatch(/^48 عنصرًا آخر متأخرًا —/)
+  })
+
+  it.each(langs)('%s reads the same for DA with or without the unit', (lang) => {
+    const t = translations[lang]
+    for (const n of [1, 2, 4, 14]) {
+      expect(t.overdueChip(n, 'lesson')).toBe(t.overdueChip(n))
+      expect(t.catchUpFirstMore(n, 'lesson')).toBe(t.catchUpFirstMore(n))
+    }
+  })
+})
+
+/*
   French writes a count below two in the singular. Several strings hard-coded
   the plural, so the first tick read "1 éléments terminés sur 27", and a week
   in the roadmap "1/1 faits".
