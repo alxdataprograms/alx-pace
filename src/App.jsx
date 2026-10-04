@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { contentWeeksAfter, getWeek } from './lib/schedule'
+import { contentWeeksAfter, getWeek, moduleProgress } from './lib/schedule'
+import { PROGRAMS } from './lib/programs'
 import { computePacing, progressPercent } from './lib/pacing'
 import { achievedMilestones, milestoneIds, nextToCelebrate, pruneCelebrated } from './lib/milestones'
 import { computePaceStatus } from './lib/paceStatus'
@@ -155,6 +156,22 @@ export default function App() {
   const paceStatus = useMemo(
     () => (schedule ? computePaceStatus(schedule, completedSet, pacing) : null),
     [schedule, completedSet, pacing],
+  )
+
+  /*
+    Creative Tech runs to 10 modules, 32 weeks and weeks of up to 31 items, so
+    it is read by module: the progress card names the module of the week, and
+    the roadmap folds the finished ones and leaves this week to the checklist
+    (see WeekAccordion). Data Analytics' 4 modules and short weeks read as
+    they always have.
+  */
+  const creativeTech = PROGRAMS[program]?.family === 'creative-tech'
+  const weekModule = useMemo(
+    () =>
+      creativeTech && status === 'active'
+        ? moduleProgress(schedule, pacing.currentWeek, completedSet)
+        : null,
+    [creativeTech, status, schedule, pacing.currentWeek, completedSet],
   )
 
   /*
@@ -375,7 +392,7 @@ export default function App() {
                   unit={paceStatus?.unit}
                   upcoming={upcomingWeeks}
                 />
-                <ProgressBar {...progress} />
+                <ProgressBar {...progress} currentModule={weekModule} />
                 <ForecastCard paceStatus={paceStatus} />
                 {/*
                   Keyed like the status card: whether the week's graded items
@@ -437,10 +454,10 @@ export default function App() {
               Week 1 then, as the week to come, and passing that on badged it
               "Current" and opened it under "Course begins in 10 days".
 
-              Keyed by program, so switching re-opens the new current week, and
-              by whether the course has begun, so a countdown that reaches its
-              start day in a tab left open opens Week 1 at midnight, as a fresh
-              visit would.
+              Keyed by program, so switching lays out the new program's roadmap
+              afresh, and by whether the course has begun, so a countdown that
+              reaches its start day in a tab left open flags Week 1 at midnight
+              (and in Data Analytics opens it), as a fresh visit would.
             */}
             <WeekAccordion
               key={`${program}:${hasBegun ? 'begun' : 'not-begun'}`}
@@ -451,6 +468,7 @@ export default function App() {
               onSetWeek={setLessonsCompleted}
               achieved={achieved}
               onShare={setManualMilestone}
+              creativeTech={creativeTech}
             />
           </>
         )}

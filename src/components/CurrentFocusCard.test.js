@@ -572,3 +572,170 @@ describe('a week done early', () => {
     expect(aheadSection().contains(ahead)).toBe(true)
   })
 })
+
+/*
+  "Next checkpoint". A long week stays open in full, in the sheet's order, and
+  one line above its list names the first graded item still open and how many
+  open items lead up to it, itself included. Graphic Design's Week 9 is 31
+  items, graded at 9, 20 and 31, and nothing marked those out from the rows
+  around them.
+*/
+describe('a long week’s next checkpoint', () => {
+  const en = translations.en
+  const gd = SCHEDULES.gd
+  const week9 = gd.weeks.find((w) => w.week === 9) // 31 items
+  const [quiz1, quiz2, mastery] = week9.gradedItems
+  const ids = (items) => items.map((l) => l.id)
+
+  /** A learner with `initiallyDone` ticked on arrival, as App passes the card. */
+  function Learner({ week, initiallyDone = [], overdue = [], unit = 'item' }) {
+    const [done, setDone] = useState(() => new Set(initiallyDone))
+    const toggle = (id) =>
+      setDone((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    return createElement(CurrentFocusCard, {
+      week,
+      completedSet: done,
+      onToggle: toggle,
+      catchUp: overdue.filter((l) => !done.has(l.id)),
+      unit,
+    })
+  }
+  const renderLearner = (props) => {
+    root = createRoot(container)
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(Learner, props)))
+    })
+  }
+  const remount = (props) => {
+    act(() => root.unmount())
+    renderLearner(props)
+  }
+
+  /** What a learner reads, and a screen reader says: the text outside aria-hidden. */
+  const spoken = (el) =>
+    [...el.childNodes]
+      .map((node) => {
+        if (node.nodeType === Node.TEXT_NODE) return node.textContent
+        if (node.nodeType !== Node.ELEMENT_NODE) return ''
+        return node.getAttribute('aria-hidden') === 'true' ? '' : spoken(node)
+      })
+      .join('')
+  /** The line, found by what it says. */
+  const lineSaying = (text) => [...container.querySelectorAll('p')].find((p) => spoken(p).startsWith(text))
+  const checkpoint = (t = en) => lineSaying(t.nextCheckpoint)
+  const says = (item, away, t = en) =>
+    `${t.nextCheckpoint} ${item.title}\u00a0· ${t.checkpointAway(away, 'item')}`
+  const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  const boxNamed = (title) => boxes().find((b) => nameOf(b) === title)
+
+  it('names the first graded item and how far off it is, above a week left open in full', () => {
+    renderLearner({ week: week9 })
+    const line = checkpoint()
+    expect(spoken(line)).toBe(says(quiz1, 9))
+    // Every one of the week's 31 rows is still there, in the sheet's order.
+    expect(boxes().map(nameOf)).toEqual(week9.lessons.map((l) => l.title))
+    expect(follows(line, container.querySelector('ul'))).toBe(true)
+    // Not announced on every tick: the checkbox already says what changed.
+    expect(line.closest('[aria-live]')).toBeNull()
+    expect(line.getAttribute('role')).toBeNull()
+  })
+
+  it('draws nearer with each tick on the way, and moves on once the checkpoint is ticked', () => {
+    renderLearner({ week: week9 })
+    const line = checkpoint()
+    click(boxes()[0])
+    expect(spoken(line)).toBe(says(quiz1, 8))
+    click(boxes()[0])
+    expect(spoken(line)).toBe(says(quiz1, 9))
+
+    for (const item of week9.lessons.slice(0, 9)) click(boxNamed(item.title))
+    expect(spoken(line)).toBe(says(quiz2, 11))
+    // Ticked rows stay where they were: nothing in the week folds on a tick.
+    expect(boxes()).toHaveLength(31)
+  })
+
+  it('counts only the open items, for a learner working out of order', () => {
+    renderLearner({ week: week9, initiallyDone: [quiz1.id] })
+    expect(spoken(checkpoint())).toBe(says(quiz2, 19))
+  })
+
+  it('turns into the all-done line in the same place when the last graded item is ticked', () => {
+    renderLearner({ week: week9, initiallyDone: ids(week9.lessons.slice(0, -1)) })
+    const line = checkpoint()
+    expect(spoken(line)).toBe(says(mastery, 1))
+
+    click(boxNamed(mastery.title))
+    expect(line.isConnected).toBe(true)
+    expect(spoken(line)).toBe(en.milestonesAllDone(3, 9))
+    // Unticking brings the checkpoint back, in the same place again.
+    click(boxNamed(mastery.title))
+    expect(spoken(checkpoint())).toBe(says(mastery, 1))
+    expect(checkpoint()).toBe(line)
+  })
+
+  it('keeps one height through the visit: every text it can show shares its place, unseen and unread', () => {
+    renderLearner({ week: week9 })
+    const line = checkpoint()
+    const held = [...line.querySelectorAll('[aria-hidden="true"]')].filter((el) => el.tagName === 'SPAN')
+    const texts = held.map((el) => el.textContent)
+    for (const item of week9.gradedItems) {
+      expect(texts.some((text) => text.includes(item.title))).toBe(true)
+    }
+    expect(texts).toContain(en.milestonesAllDone(3, 9))
+    // Laid over the text in force (one grid cell), and invisible.
+    const cell = line.querySelector('.grid')
+    for (const el of [...cell.children]) expect(el.className).toContain('col-start-1 row-start-1')
+    for (const el of held) expect(el.className).toContain('invisible')
+  })
+
+  it('shows nothing for a week with nothing graded left open on arrival', () => {
+    renderLearner({ week: week9, initiallyDone: ids(week9.gradedItems) })
+    expect(checkpoint()).toBeUndefined()
+    expect(lineSaying(en.milestonesAllDone(3, 9))).toBeUndefined()
+    expect(boxes()).toHaveLength(28)
+
+    // Graphic Design's Week 11 is 14 items, none of them graded.
+    remount({ week: gd.weeks.find((w) => w.week === 11) })
+    expect(checkpoint()).toBeUndefined()
+  })
+
+  it('leaves every short week, so every Data Analytics week, without one', () => {
+    renderLearner({ week: SCHEDULES.da.weeks[0], unit: 'lesson' })
+    for (const week of SCHEDULES.da.weeks) {
+      remount({ week, unit: 'lesson' })
+      expect(checkpoint(), `Week ${week.week}`).toBeUndefined()
+      expect(container.querySelector('.grid'), `Week ${week.week}`).toBeNull()
+    }
+  })
+
+  it('sits under "This week" when the week opens with "Catch up first", above the fold', () => {
+    const overdue = gd.lessons.filter((l) => l.week < 9)
+    renderLearner({ week: week9, initiallyDone: [week9.lessons[0].id], overdue })
+    const [catchUp, thisWeek] = [...container.querySelectorAll('h3')]
+    expect([catchUp.textContent, thisWeek.textContent]).toEqual([en.catchUpFirst, en.thisWeek])
+    const line = checkpoint()
+    expect(spoken(line)).toBe(says(quiz1, 8))
+    expect(follows(thisWeek, line)).toBe(true)
+    expect(follows(line, container.querySelector('button[aria-expanded]'))).toBe(true)
+  })
+
+  it.each(Object.keys(translations))(
+    'speaks the learner’s language (%s), the title the sheet’s English, kept left to right',
+    (lang) => {
+      window.localStorage.setItem('alx-lang', lang)
+      const t = translations[lang]
+      renderLearner({ week: week9 })
+      const line = checkpoint(t)
+      expect(spoken(line)).toBe(says(quiz1, 9, t))
+      const title = [...line.querySelectorAll('[dir="ltr"]')].find(
+        (el) => !el.closest('[aria-hidden="true"]'),
+      )
+      expect(title.textContent).toBe(quiz1.title)
+    },
+  )
+})

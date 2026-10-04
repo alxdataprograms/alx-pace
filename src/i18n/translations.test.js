@@ -472,3 +472,52 @@ describe('the pace card’s verdict', () => {
     expect(translations.en.noPaceYetCount(2)).toBe('Tick off 2 lessons to see your weekly pace.')
   })
 })
+
+/*
+  Creative Tech, read by module. A long week's "Next checkpoint" counts the
+  open items up to its next graded item the way each language counts: French
+  in the singular below two, Arabic after "على بُعد" (at a distance of), whose
+  noun takes the genitive: عنصر واحد، عنصرين، 9 عناصر، 11 عنصرًا. The progress
+  card names the module of the week as the module's milestone post does.
+*/
+describe('the next checkpoint and the module of the week', () => {
+  const { en, fr, ar } = translations
+
+  it('reads plainly in English', () => {
+    expect(en.nextCheckpoint).toBe('Next checkpoint:')
+    expect(en.checkpointAway(1, 'item')).toBe('1 item away')
+    expect(en.checkpointAway(9, 'item')).toBe('9 items away')
+    expect(en.moduleOf(3, 10)).toBe('Module 3 of 10')
+  })
+
+  it('agrees in French, its colon held to the label', () => {
+    expect(fr.nextCheckpoint).toBe('Prochaine évaluation\u00a0:')
+    expect(fr.checkpointAway(1, 'item')).toBe('dans 1 élément')
+    expect(fr.checkpointAway(9, 'item')).toBe('dans 9 éléments')
+    expect(fr.moduleOf(3, 10)).toBe('Module 3 sur 10')
+  })
+
+  it('counts in the genitive in Arabic', () => {
+    expect(ar.nextCheckpoint).toBe('التقييم التالي:')
+    expect(ar.checkpointAway(1, 'item')).toBe('على بُعد عنصر واحد')
+    expect(ar.checkpointAway(2, 'item')).toBe('على بُعد عنصرين')
+    expect(ar.checkpointAway(9, 'item')).toBe('على بُعد 9 عناصر')
+    expect(ar.checkpointAway(11, 'item')).toBe('على بُعد 11 عنصرًا')
+    expect(ar.checkpointAway(2)).toBe('على بُعد درسين')
+    expect(ar.moduleOf(3, 10)).toBe('الوحدة 3 من 10')
+  })
+
+  it.each(langs)('%s counts lessons by default, as every count string does, items when told', (lang) => {
+    const t = translations[lang]
+    for (const n of [1, 2, 9, 14]) {
+      expect(t.checkpointAway(n, 'lesson')).toBe(t.checkpointAway(n))
+      expect(t.checkpointAway(n, 'item')).not.toBe(t.checkpointAway(n, 'lesson'))
+    }
+  })
+
+  it.each(langs)('%s puts the module’s number in the words its milestone post uses', (lang) => {
+    const t = translations[lang]
+    const sub = t.milestoneModuleSub({ index: 3, total: 10, weeks: 2 })
+    expect(sub.startsWith(t.moduleOf(3, 10))).toBe(true)
+  })
+})

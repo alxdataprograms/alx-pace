@@ -157,6 +157,9 @@ export const translations = {
     itemsComplete: (done, total) => `${done} of ${total} items complete`,
     progressAria: (p) => `${p}% of the curriculum complete`,
     overallProgress: 'Overall progress',
+    // Creative Tech's progress card names the module the learner is in, as
+    // the module's milestone post does.
+    moduleOf: (index, total) => `Module ${index} of ${total}`,
 
     statusBehind: (n, unit) =>
       `Catch-up nudge: ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} from earlier weeks still open.`,
@@ -226,6 +229,12 @@ export const translations = {
     showDone: (n) => `Show ${n} done`,
     hideDone: () => 'Hide done',
     weekAllDone: 'Everything in this week is done. Nicely paced.',
+    // A long week's next graded item, and how many open items lead up to it,
+    // itself included. The item's title is the sheet's own, set apart by the
+    // card so that Arabic cannot reorder it.
+    nextCheckpoint: 'Next checkpoint:',
+    checkpointAway: (n, unit) =>
+      `${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} away`,
     // A week done early: the next week with anything open, to start on now.
     getAhead: 'Get ahead',
     getAheadMore: (n, week) => `+${n} more in Week\u00a0${week}`,
@@ -459,6 +468,7 @@ export const translations = {
     itemsComplete: (done, total) => `${frPlural(done, 'élément terminé', 'éléments terminés')} sur ${total}`,
     progressAria: (p) => `${p} % du parcours terminé`,
     overallProgress: 'Progression globale',
+    moduleOf: (index, total) => `Module ${index} sur ${total}`,
 
     statusBehind: (n, unit) =>
       `À rattraper : ${pick(unit, frPlural(n, 'leçon des semaines précédentes', 'leçons des semaines précédentes'), frPlural(n, 'élément des semaines précédentes', 'éléments des semaines précédentes'))}.`,
@@ -521,6 +531,11 @@ export const translations = {
       `Afficher ${pick(unit, frPlural(n, 'leçon terminée', 'leçons terminées'), frPlural(n, 'élément terminé', 'éléments terminés'))}`,
     hideDone: (unit) => `Masquer les ${pick(unit, 'leçons terminées', 'éléments terminés')}`,
     weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
+    // "Évaluation", the word the graded card uses. A no-break space keeps the
+    // colon with it, as French sets one.
+    nextCheckpoint: 'Prochaine évaluation\u00a0:',
+    checkpointAway: (n, unit) =>
+      `dans ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))}`,
     getAhead: 'Prends de l’avance',
     getAheadMore: (n, week) => `+${n} ${frWord(n, 'autre', 'autres')} en semaine\u00a0${week}`,
 
@@ -735,6 +750,7 @@ export const translations = {
     itemsComplete: (done, total) => `اكتمل ${done} من ${total} عنصرًا`,
     progressAria: (p) => `اكتمل ${p}٪ من المنهج`,
     overallProgress: 'التقدّم العام',
+    moduleOf: (index, total) => `الوحدة ${index} من ${total}`,
 
     statusBehind: (n, unit) =>
       `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ${arStillOpen(n)}.`,
@@ -798,6 +814,11 @@ export const translations = {
       `عرض ${arCount(n, pick(unit, { one: 'درس واحد مكتمل', two: 'درسين مكتملين', few: 'دروس مكتملة', many: 'درسًا مكتملًا' }, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' }))}`,
     hideDone: (unit) => `إخفاء ${pick(unit, 'الدروس المكتملة', 'العناصر المكتملة')}`,
     weekAllDone: 'اكتمل كل ما في هذا الأسبوع. وتيرة رائعة.',
+    // "At a distance of", as Arabic gives any distance: the noun after it is
+    // counted as everywhere else, in the genitive (عنصرين, not عنصران).
+    nextCheckpoint: 'التقييم التالي:',
+    checkpointAway: (n, unit) =>
+      `على بُعد ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))}`,
     // "Start early": the same words the catch-up week's all-clear uses for a
     // head start on next week.
     getAhead: 'ابدأ مبكرًا',

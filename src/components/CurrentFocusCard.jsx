@@ -1,8 +1,9 @@
 import { useId, useState } from 'react'
-import { CheckCircle2, ChevronDown, RefreshCcw, Target, Zap } from 'lucide-react'
+import { CheckCircle2, ChevronDown, Flag, RefreshCcw, Target, Zap } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
+import { nextCheckpoint } from '../lib/schedule'
 
 // How many open items a catch-up week lists at once; ticking one pulls the
 // next oldest in, so the card stays short however far behind a learner is.
@@ -21,9 +22,11 @@ const CATCH_UP_FIRST_LIMIT = 3
 const GET_AHEAD_LIMIT = 3
 
 // A focus week longer than this tucks its already-done items behind a toggle,
-// so the next open item is near the top instead of under a screen of ticks.
+// so the next open item is near the top instead of under a screen of ticks,
+// and names its next checkpoint above the list (see NextCheckpoint).
 // Creative Tech weeks run to 31 items; Data Analytics never exceeds 5, so a
-// DA week folds only once all of it was done (see WeekList).
+// DA week folds only once all of it was done (see WeekList), and never names
+// a checkpoint.
 const LONG_WEEK = 8
 
 /**
@@ -42,6 +45,9 @@ const LONG_WEEK = 8
  * Once this week is done, a learner with nothing overdue gets the next thing
  * to tick: "Get ahead" lists the first open items of `upcoming`, the later
  * weeks with something to tick (see contentWeeksAfter).
+ *
+ * A long week stays open in full, and one line above its list names the next
+ * graded item and how far off it is (see NextCheckpoint).
  */
 export default function CurrentFocusCard({
   week,
@@ -116,6 +122,16 @@ export default function CurrentFocusCard({
             headingRef={catchUpRef}
             unit={unit}
           />
+
+          {/* Keyed per week too: whether it shows is decided on arrival. */}
+          {week.lessons.length > LONG_WEEK && (
+            <NextCheckpoint
+              key={`checkpoint-${week.moduleCode}-${week.week}`}
+              week={week}
+              completedSet={completedSet}
+              unit={unit}
+            />
+          )}
 
           <WeekList
             key={`${week.moduleCode}-${week.week}`}
@@ -216,6 +232,92 @@ function WeekList({ lessons, completedSet, onToggle, unit }) {
         {allDone && <AllClear text={t.weekAllDone} />}
       </div>
     </>
+  )
+}
+
+/**
+ * "Next checkpoint": a long week's first graded item still open, and how many
+ * open items lead up to it.
+ *
+ * WHY
+ * Creative Tech weeks run to 31 items, and the quizzes and the mastery project
+ * that close each part of a week looked like any other row: "Module 1 Wrap
+ * Up", then "Quiz 1: Poster Design", then the next part. Opening Graphic
+ * Design's Week 9 showed a column of 31 rows and no near goal. The week stays
+ * open in full, in the sheet's order, so a learner who works out of order
+ * still finds every item where it was; this one line above it names the goal:
+ * "Next checkpoint: Quiz 1: Poster Design · 9 items away". The count is of the
+ * open items up to the checkpoint, itself included (see nextCheckpoint), so it
+ * drops with every tick on the way, and moves on to the next graded item once
+ * that one is ticked.
+ *
+ * Decided on arrival, like "Show N done": a week with nothing graded left
+ * open shows no line. Once shown, it stays for the visit. Ticking the last
+ * graded item turns it into the graded card's "All 3 graded items for Week 9
+ * are done." in the same place; taking it away would pull every row below up
+ * by a line, the one just ticked with them. Unticking brings the checkpoint
+ * back. Not a live region: a count that changes with every tick would be read
+ * out after every tick, and the checkbox already says what changed.
+ *
+ * The title is the sheet's own, in English in every language, set apart so
+ * that Arabic cannot reorder it.
+ */
+function NextCheckpoint({ week, completedSet, unit }) {
+  const { t } = useLang()
+  const next = nextCheckpoint(week, completedSet)
+  const [shown] = useState(next != null)
+  if (!shown) return null
+
+  const allDone = t.milestonesAllDone(week.gradedItems.length, week.week)
+  // A no-break space holds the "·" to the title, so a line that wraps ends
+  // on it rather than starting with it.
+  const line = (item, away) => (
+    <>
+      <span className="font-semibold">{t.nextCheckpoint}</span>{' '}
+      <span dir="ltr" className="font-semibold text-ink dark:text-paper">
+        {item.graded?.title ?? item.title}
+      </span>
+      {'\u00a0'}· <span className="whitespace-nowrap">{t.checkpointAway(away, unit)}</span>
+    </>
+  )
+  // The longest count a checkpoint can show: as many items away as it can be
+  // (it and everything before it), or one, which Arabic writes longest.
+  const longest = (item) => {
+    const most = week.lessons.indexOf(item) + 1
+    return t.checkpointAway(1, unit).length > t.checkpointAway(most, unit).length ? 1 : most
+  }
+
+  return (
+    <p className="mb-1 flex items-start gap-2 px-2.5 py-1.5 text-xs text-ink-soft dark:text-paper/75">
+      {next ? (
+        <Flag size={16} className="flex-none text-cobalt-600 dark:text-lime" aria-hidden="true" />
+      ) : (
+        <CheckCircle2
+          size={16}
+          className="flex-none text-alxgreen-700 dark:text-alxgreen"
+          aria-hidden="true"
+        />
+      )}
+      {/*
+        Every line this visit can show shares one grid cell, all but the one
+        in force invisible, and so unread: the line is as tall as the tallest
+        of them from the start. Moving on to the next checkpoint, or clearing
+        the last, changes its words and never its height; a longer title had
+        taken a line more, and the all-clear a line less, moving every row
+        below by a line, the one just ticked among them.
+      */}
+      <span className="grid min-w-0 flex-1">
+        {week.gradedItems.map((item) => (
+          <span key={item.id} className="invisible col-start-1 row-start-1" aria-hidden="true">
+            {line(item, longest(item))}
+          </span>
+        ))}
+        <span className="invisible col-start-1 row-start-1" aria-hidden="true">
+          {allDone}
+        </span>
+        <span className="col-start-1 row-start-1">{next ? line(next.item, next.away) : allDone}</span>
+      </span>
+    </p>
   )
 }
 
