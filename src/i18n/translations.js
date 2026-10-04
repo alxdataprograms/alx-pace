@@ -185,9 +185,6 @@ export const translations = {
     clearWeek: 'Clear this week',
     fullCurriculumAria: 'Full curriculum',
 
-    markComplete: (title) => `Mark "${title}" complete`,
-    markIncomplete: (title) => `Mark "${title}" incomplete`,
-
     lightMode: 'Light mode',
     darkMode: 'Dark mode',
     switchTheme: (target) => `Switch to ${target} mode`,
@@ -439,9 +436,6 @@ export const translations = {
     clearWeek: 'Réinitialiser la semaine',
     fullCurriculumAria: 'Parcours complet',
 
-    markComplete: (title) => `Marquer « ${title} » comme terminé`,
-    markIncomplete: (title) => `Marquer « ${title} » comme non terminé`,
-
     lightMode: 'Mode clair',
     darkMode: 'Mode sombre',
     switchTheme: (target) => `Passer en ${target}`,
@@ -674,9 +668,6 @@ export const translations = {
     markWeekComplete: 'إكمال هذا الأسبوع',
     clearWeek: 'مسح هذا الأسبوع',
     fullCurriculumAria: 'المنهج الكامل',
-
-    markComplete: (title) => `وضع علامة إكمال على «${title}»`,
-    markIncomplete: (title) => `إزالة علامة الإكمال عن «${title}»`,
 
     lightMode: 'الوضع الفاتح',
     darkMode: 'الوضع الداكن',
