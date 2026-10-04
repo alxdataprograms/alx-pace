@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { getWeek } from './lib/schedule'
+import { contentWeeksAfter, getWeek } from './lib/schedule'
 import { computePacing, progressPercent } from './lib/pacing'
 import { achievedMilestones, milestoneIds, nextToCelebrate, pruneCelebrated } from './lib/milestones'
 import { computePaceStatus } from './lib/paceStatus'
@@ -125,6 +125,12 @@ export default function App() {
   )
 
   const currentWeek = getWeek(schedule, pacing.currentWeek)
+  // The weeks after this one with something to tick: where the focus card's
+  // "Get ahead" looks once this week is done.
+  const upcomingWeeks = useMemo(
+    () => contentWeeksAfter(schedule, pacing.currentWeek),
+    [schedule, pacing.currentWeek],
+  )
   const firstWeek = schedule?.weeks[0] ?? null
   const totalLessons = schedule?.totalLessons ?? 0
 
@@ -366,11 +372,20 @@ export default function App() {
                   catchUp={paceStatus?.behindItems}
                   catchUpRef={catchUpHeading}
                   unit={paceStatus?.unit}
+                  upcoming={upcomingWeeks}
                 />
                 <ProgressBar {...progress} />
                 <ForecastCard paceStatus={paceStatus} />
+                {/*
+                  Keyed like the status card: whether the week's graded items
+                  were all done on arrival is decided afresh for a new week.
+                */}
                 {!currentWeek?.isBuffer && (
-                  <GradedMilestonesAlert week={currentWeek} completedSet={completedSet} />
+                  <GradedMilestonesAlert
+                    key={`graded:${program}:${pacing.currentWeek}`}
+                    week={currentWeek}
+                    completedSet={completedSet}
+                  />
                 )}
               </>
             )}

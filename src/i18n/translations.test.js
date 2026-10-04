@@ -336,3 +336,84 @@ describe('the hero', () => {
     for (const chip of t.introChips) expect(chip.trim()).not.toBe('')
   })
 })
+
+/*
+  A week done early. The graded card's one line counts its items the way each
+  language does: "the", "both", "all 3"; French agrees in number, and Arabic
+  puts the verb first, singular before one and two and feminine before three
+  and up. The week is the learner's own word for it, never the sheet's English
+  "Week 4", and stays on one line with its number.
+*/
+describe('the week-done copy', () => {
+  const { en, fr, ar } = translations
+
+  it('reads plainly in English', () => {
+    expect(en.milestonesAllDone(1, 4)).toBe('The graded item for Week 4 is done.')
+    expect(en.milestonesAllDone(2, 4)).toBe('Both graded items for Week 4 are done.')
+    expect(en.milestonesAllDone(3, 9)).toBe('All 3 graded items for Week 9 are done.')
+    expect(en.getAheadMore(11, 11, 'item')).toBe('+11 more in Week 11')
+  })
+
+  it('agrees in French', () => {
+    expect(fr.milestonesAllDone(1, 4)).toBe('L’évaluation notée de la semaine 4 est terminée.')
+    expect(fr.milestonesAllDone(2, 4)).toBe('Les deux évaluations notées de la semaine 4 sont terminées.')
+    expect(fr.milestonesAllDone(3, 9)).toBe('Les 3 évaluations notées de la semaine 9 sont toutes terminées.')
+    expect(fr.getAheadMore(1, 5)).toBe('+1 autre en semaine 5')
+    expect(fr.getAheadMore(11, 11, 'item')).toBe('+11 autres en semaine 11')
+  })
+
+  it('agrees in Arabic, for lessons and items alike', () => {
+    expect(ar.milestonesAllDone(1, 4)).toBe('اكتمل التقييم المحتسب للأسبوع 4.')
+    expect(ar.milestonesAllDone(2, 4)).toBe('اكتمل التقييمان المحتسبان للأسبوع 4.')
+    expect(ar.milestonesAllDone(3, 9)).toBe('اكتملت كل التقييمات المحتسبة الـ3 للأسبوع 9.')
+
+    expect(ar.getAheadMore(1, 5)).toBe('درس آخر في الأسبوع 5')
+    expect(ar.getAheadMore(2, 5)).toBe('درسان آخران في الأسبوع 5')
+    expect(ar.getAheadMore(6, 5)).toBe('6 دروس أخرى في الأسبوع 5')
+    expect(ar.getAheadMore(2, 11, 'item')).toBe('عنصران آخران في الأسبوع 11')
+    expect(ar.getAheadMore(11, 11, 'item')).toBe('11 عنصرًا آخر في الأسبوع 11')
+  })
+
+  it.each(langs)('%s names the week in its own words, kept with its number', (lang) => {
+    const t = translations[lang]
+    for (const n of [1, 2, 3]) {
+      const line = t.milestonesAllDone(n, 13.5)
+      expect(line).toMatch(/ 13\.5/)
+      if (lang !== 'en') expect(line).not.toMatch(/Week/)
+    }
+    expect(t.getAheadMore(4, 13.5, 'item')).toMatch(/ 13\.5$/)
+  })
+})
+
+/*
+  "Show N done" folded only Creative Tech's long weeks, so French and Arabic
+  named what it folded "items". A Data Analytics week folds now too, once it
+  is done in full, and its rows are lessons.
+*/
+describe('the "Show N done" toggle', () => {
+  const { en, fr, ar } = translations
+
+  it('names lessons for Data Analytics in French and Arabic', () => {
+    expect(fr.showDone(1)).toBe('Afficher 1 leçon terminée')
+    expect(fr.showDone(2)).toBe('Afficher 2 leçons terminées')
+    expect(fr.hideDone()).toBe('Masquer les leçons terminées')
+    expect(ar.showDone(1)).toBe('عرض درس واحد مكتمل')
+    expect(ar.showDone(2)).toBe('عرض درسين مكتملين')
+    expect(ar.showDone(5)).toBe('عرض 5 دروس مكتملة')
+    expect(ar.hideDone()).toBe('إخفاء الدروس المكتملة')
+  })
+
+  it('reads exactly as before for Creative Tech items', () => {
+    expect(fr.showDone(10, 'item')).toBe('Afficher 10 éléments terminés')
+    expect(fr.hideDone('item')).toBe('Masquer les éléments terminés')
+    expect(ar.showDone(2, 'item')).toBe('عرض عنصرين مكتملين')
+    expect(ar.showDone(31, 'item')).toBe('عرض 31 عنصرًا مكتملًا')
+    expect(ar.hideDone('item')).toBe('إخفاء العناصر المكتملة')
+  })
+
+  it('needs no noun in English', () => {
+    expect(en.showDone(2)).toBe('Show 2 done')
+    expect(en.showDone(2, 'item')).toBe('Show 2 done')
+    expect(en.hideDone('item')).toBe(en.hideDone())
+  })
+})

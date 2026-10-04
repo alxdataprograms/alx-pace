@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Award, CheckCircle2 } from 'lucide-react'
 import GradedBadge from './GradedBadge'
 import { DONE_TEXT } from './LessonRow'
@@ -10,24 +11,31 @@ import { useLang } from '../i18n/LanguageContext'
  * Prominent, not alarming. Every Data Analytics week has graded items, so this
  * card is routine; its header carries the generic graded badge's own icon
  * rather than the warning triangle it once had, which read like an error.
+ *
+ * Once every one of them is done, the card is one green line, as for a week
+ * with none: "Both graded items for Week 4 are done." A learner who finished
+ * early met about 300px of crossed-out titles here instead, every visit until
+ * the week ended.
+ *
+ * Decided on arrival, like the checklist's "Show N done". Collapsing the
+ * moment the last one was ticked would pull everything below up by 230px or
+ * more — the roadmap, where this week sits open too — taking the row just
+ * ticked there out from under the learner's finger. App keys the card by week,
+ * so the next visit, or the next week, decides afresh. An item unticked in
+ * the meantime brings the full card back for the rest of the visit: the line
+ * never claims more than is true, and ticking the item again, to undo a
+ * mis-tap, does not shrink the card a second time.
  */
 export default function GradedMilestonesAlert({ week, completedSet }) {
   const { t } = useLang()
+  const items = week?.gradedItems || []
+  const allDone = items.length > 0 && items.every((l) => completedSet.has(l.id))
+  const [oneLine, setOneLine] = useState(allDone)
+  if (oneLine && !allDone) setOneLine(false)
   if (!week) return null
-  const items = week.gradedItems || []
 
-  if (items.length === 0) {
-    return (
-      <section className="alx-card flex items-center gap-3 border-alxgreen/25 bg-alxgreen/5">
-        <CheckCircle2
-          size={20}
-          className="flex-none text-alxgreen-700 dark:text-alxgreen"
-          aria-hidden="true"
-        />
-        <p className="text-sm font-medium">{t.milestonesNone}</p>
-      </section>
-    )
-  }
+  if (items.length === 0) return <DoneLine text={t.milestonesNone} />
+  if (oneLine && allDone) return <DoneLine text={t.milestonesAllDone(items.length, week.week)} />
 
   return (
     <section
@@ -92,6 +100,20 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
           )
         })}
       </ul>
+    </section>
+  )
+}
+
+/** The card as one calm green line: nothing graded this week, or nothing left. */
+function DoneLine({ text }) {
+  return (
+    <section className="alx-card flex items-center gap-3 border-alxgreen/25 bg-alxgreen/5">
+      <CheckCircle2
+        size={20}
+        className="flex-none text-alxgreen-700 dark:text-alxgreen"
+        aria-hidden="true"
+      />
+      <p className="text-sm font-medium">{text}</p>
     </section>
   )
 }

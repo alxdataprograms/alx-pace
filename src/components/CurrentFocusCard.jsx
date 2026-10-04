@@ -1,5 +1,5 @@
 import { useId, useState } from 'react'
-import { CheckCircle2, ChevronDown, RefreshCcw, Target } from 'lucide-react'
+import { CheckCircle2, ChevronDown, RefreshCcw, Target, Zap } from 'lucide-react'
 import LessonRow from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 import { useKeptInPlace, withKept } from '../hooks/useKeptInPlace'
@@ -15,10 +15,15 @@ const CATCH_UP_LIMIT = 6
 // close to the first screen.
 const CATCH_UP_FIRST_LIMIT = 3
 
+// How many of next week's open items "Get ahead" lists: enough to start on,
+// few enough that a finished week's card stays short. Ticking one pulls the
+// next in, as in the catch-up lists.
+const GET_AHEAD_LIMIT = 3
+
 // A focus week longer than this tucks its already-done items behind a toggle,
 // so the next open item is near the top instead of under a screen of ticks.
-// Creative Tech weeks run to 31 items; Data Analytics never exceeds 5, so DA
-// learners always see the full list exactly as before.
+// Creative Tech weeks run to 31 items; Data Analytics never exceeds 5, so a
+// DA week folds only once all of it was done (see WeekList).
 const LONG_WEEK = 8
 
 /**
@@ -33,6 +38,10 @@ const LONG_WEEK = 8
  * first" section above this week's lessons. `catchUpRef` marks that section's
  * heading, which the status card's "Catch up now" moves to (see App). `unit`
  * is what the counts count ('lesson' | 'item').
+ *
+ * Once this week is done, a learner with nothing overdue gets the next thing
+ * to tick: "Get ahead" lists the first open items of `upcoming`, the later
+ * weeks with something to tick (see contentWeeksAfter).
  */
 export default function CurrentFocusCard({
   week,
@@ -41,6 +50,7 @@ export default function CurrentFocusCard({
   catchUp = [],
   catchUpRef,
   unit,
+  upcoming = [],
 }) {
   const { t } = useLang()
   if (!week) return null
@@ -107,26 +117,23 @@ export default function CurrentFocusCard({
             unit={unit}
           />
 
-          {total > LONG_WEEK ? (
-            <LongWeekList
-              key={`${week.moduleCode}-${week.week}`}
-              lessons={week.lessons}
-              completedSet={completedSet}
-              onToggle={onToggle}
-            />
-          ) : (
-            <ul className="-mx-1 space-y-0.5">
-              {week.lessons.map((lesson) => (
-                <LessonRow
-                  key={lesson.id}
-                  lesson={lesson}
-                  checked={completedSet.has(lesson.id)}
-                  onToggle={onToggle}
-                  highlight
-                />
-              ))}
-            </ul>
-          )}
+          <WeekList
+            key={`${week.moduleCode}-${week.week}`}
+            lessons={week.lessons}
+            completedSet={completedSet}
+            onToggle={onToggle}
+            unit={unit}
+          />
+
+          {/* Keyed per week too: the rows it keeps reset with the week. */}
+          <GetAhead
+            key={`ahead-${week.moduleCode}-${week.week}`}
+            weeks={upcoming}
+            completedSet={completedSet}
+            onToggle={onToggle}
+            offered={done === total && catchUp.length === 0}
+            unit={unit}
+          />
         </>
       )}
     </section>
@@ -134,7 +141,7 @@ export default function CurrentFocusCard({
 }
 
 /**
- * A long week: open items first-class, finished ones folded away.
+ * This week's own list: open items first-class, finished ones folded away.
  *
  * Items already done when the learner arrived sit behind "Show N done"; the
  * list keeps curriculum order either way, so expanding it restores the week
@@ -143,11 +150,18 @@ export default function CurrentFocusCard({
  * make a mis-tap impossible to undo here and pull focus out from under the
  * learner (see useKeptInPlace).
  *
+ * A long week folds whatever was done. A short one (every Data Analytics
+ * week) folds only once it was done in full: part-way through, its few rows
+ * read at a glance, and the week looks exactly as it always has. Done in
+ * full, it met a learner who finished early with crossed-out rows and nothing
+ * after them; now they see "Show 2 done", the note, and "Get ahead" below.
+ *
  * The "week done" note sits BELOW the list in a polite live region: above it,
  * it pushed the rows down the moment the last one was ticked, moving the
  * control just used, and appearing silently it said nothing to a screen reader.
+ * Only long weeks had it; a week of any length gets it now.
  */
-function LongWeekList({ lessons, completedSet, onToggle }) {
+function WeekList({ lessons, completedSet, onToggle, unit }) {
   const { t } = useLang()
   const [kept, keep] = useKeptInPlace(onToggle)
   const [showDone, setShowDone] = useState(false)
@@ -156,9 +170,10 @@ function LongWeekList({ lessons, completedSet, onToggle }) {
   )
   const listId = useId()
 
-  const folded = lessons.filter(
-    (l) => doneOnArrival.has(l.id) && completedSet.has(l.id) && !kept.has(l.id),
-  )
+  const folds = lessons.length > LONG_WEEK || doneOnArrival.size === lessons.length
+  const folded = folds
+    ? lessons.filter((l) => doneOnArrival.has(l.id) && completedSet.has(l.id) && !kept.has(l.id))
+    : []
   const shown = showDone ? lessons : lessons.filter((l) => !folded.includes(l))
   const allDone = lessons.every((l) => completedSet.has(l.id))
 
@@ -173,7 +188,7 @@ function LongWeekList({ lessons, completedSet, onToggle }) {
           className="mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 text-start text-xs font-semibold text-cobalt-600 hover:bg-navy-900/[0.04] dark:text-lime dark:hover:bg-white/[0.05]"
         >
           <CheckCircle2 size={16} className="flex-none" aria-hidden="true" />
-          <span className="flex-1">{showDone ? t.hideDone : t.showDone(folded.length)}</span>
+          <span className="flex-1">{showDone ? t.hideDone(unit) : t.showDone(folded.length, unit)}</span>
           <ChevronDown
             size={16}
             className={`flex-none transition-transform motion-reduce:transition-none ${
@@ -205,18 +220,23 @@ function LongWeekList({ lessons, completedSet, onToggle }) {
 }
 
 /**
- * The catch-up lists' shared rule: the `limit` oldest open items, plus
- * anything ticked on the list this visit — still shown, struck through, so it
- * can be unticked from the same spot (see useKeptInPlace). Ticking one pulls
- * the next oldest in. `more` counts the open items beyond the first `limit`.
+ * The shared rule of the lists that refill: the first `limit` of `items`, plus
+ * anything ticked on the list this visit (`kept`) — still shown, struck
+ * through, so it can be unticked from the same spot (see useKeptInPlace).
+ * Ticking one pulls the next in. `more` counts the items beyond the first
+ * `limit`.
  */
-function useCatchUp(items, limit, onToggle) {
-  const [kept, keep] = useKeptInPlace(onToggle)
+function windowOf(items, limit, kept) {
   return {
     shown: withKept(items.slice(0, limit), kept),
     more: items.length - Math.min(items.length, limit),
-    keep,
   }
+}
+
+/** The catch-up lists: windowOf the oldest open items, with their own kept rows. */
+function useCatchUp(items, limit, onToggle) {
+  const [kept, keep] = useKeptInPlace(onToggle)
+  return { ...windowOf(items, limit, kept), keep }
 }
 
 function CatchUpList({ items, completedSet, onToggle }) {
@@ -341,6 +361,74 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit }) {
         {t.thisWeek}
       </h3>
     </>
+  )
+}
+
+/**
+ * "Get ahead": once this week is done, the first open items of the next week
+ * with anything to tick.
+ *
+ * WHY
+ * A learner who finished the week early came back the next day to a card of
+ * crossed-out rows and no next step. Getting ahead, which is what turns the
+ * status card green, meant scrolling to the roadmap and opening next week.
+ * Now the first three open items of that week follow the week-done note,
+ * under "Get ahead · Week 5 · DA-2", in the learner's language. A catch-up
+ * week has nothing to tick, so it is skipped, and so is a week already done.
+ * The rows go without the lime tint of this week's own: nothing here is due.
+ *
+ * Not offered while anything is overdue (that learner has "Catch up first"
+ * above instead, and "get ahead" would contradict it), or after the
+ * programme's last week with content: there is nothing ahead to get to.
+ *
+ * The catch-up lists' rule again: a tick stays in place, struck through, and
+ * the next open item joins below it. Once something is ticked here, the
+ * section stays, on that week, until the next visit, so the tick can be
+ * undone where it happened even if the week above stops being done.
+ */
+function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
+  const { t } = useLang()
+  const [kept, keep] = useKeptInPlace(onToggle)
+  const week =
+    (kept.size > 0 && weeks.find((w) => w.lessons.some((l) => kept.has(l.id)))) ||
+    weeks.find((w) => w.lessons.some((l) => !completedSet.has(l.id)))
+
+  if (!week || (!offered && kept.size === 0)) return null
+  const open = week.lessons.filter((l) => !completedSet.has(l.id))
+  const { shown, more } = windowOf(open, GET_AHEAD_LIMIT, kept)
+
+  return (
+    <div className="mt-4 border-t border-navy-900/10 pt-3 dark:border-white/10">
+      {/*
+        French runs the heading to two lines at 375px, as larger text would in
+        any language: it breaks after "Get ahead", never inside "Week 11 ·
+        GD-4", and the icon stays with the first line.
+      */}
+      <h3 className="mb-1 flex items-start gap-1.5 px-1.5 text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
+        <Zap size={14} strokeWidth={2.5} className="mt-px flex-none" aria-hidden="true" />
+        <span>
+          {t.getAhead} ·{' '}
+          <span className="whitespace-nowrap">
+            {t.weekRange(week.week, week.week)} · <span dir="ltr">{week.moduleCode}</span>
+          </span>
+        </span>
+      </h3>
+      <ul className="-mx-1 space-y-0.5">
+        {shown.map((lesson) => (
+          <LessonRow
+            key={lesson.id}
+            lesson={lesson}
+            checked={completedSet.has(lesson.id)}
+            onToggle={() => keep(lesson)}
+          />
+        ))}
+      </ul>
+      {more > 0 && (
+        <p className="mt-1 px-1.5 text-xs font-semibold text-cobalt-600 dark:text-lime">
+          {t.getAheadMore(more, week.week, unit)}
+        </p>
+      )}
+    </div>
   )
 }
 

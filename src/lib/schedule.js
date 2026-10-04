@@ -30,3 +30,13 @@ export function getSchedule(programId) {
 export function getWeek(schedule, weekNumber) {
   return schedule?.weeks.find((w) => w.week === weekNumber) || null
 }
+
+/**
+ * The weeks after `weekNumber` with something to tick, in order: where the
+ * focus card's "Get ahead" looks once this week is done. A catch-up week
+ * carries nothing of its own, so it is never one of them. Empty after the
+ * programme's last week with content.
+ */
+export function contentWeeksAfter(schedule, weekNumber) {
+  return schedule?.weeks.filter((w) => w.week > weekNumber && w.lessons.length > 0) ?? []
+}

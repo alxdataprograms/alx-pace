@@ -175,6 +175,15 @@ export const translations = {
     milestonesDue: (n, weekLabel) => `${n} due in ${weekLabel} — these count toward your grade.`,
     milestonesNone:
       'No graded milestones this week — a great window to get ahead or reinforce the fundamentals.',
+    // The whole graded card, once every graded item of the week is done. Here
+    // and in getAheadMore, a no-break space keeps the week's number with its
+    // word: French left "9" alone on the line after "semaine".
+    milestonesAllDone: (n, week) =>
+      n === 1
+        ? `The graded item for Week\u00a0${week} is done.`
+        : n === 2
+          ? `Both graded items for Week\u00a0${week} are done.`
+          : `All ${n} graded items for Week\u00a0${week} are done.`,
     milestonesAria: 'Graded milestones due this week',
     completed: 'Completed',
 
@@ -205,9 +214,14 @@ export const translations = {
     catchUpNow: 'Catch up now',
     // Where the button was, once nothing is overdue any more (this visit only).
     caughtUp: 'All caught up',
+    // The week's finished items, folded away. The unit is for the languages
+    // that name what is folded; English needs no noun.
     showDone: (n) => `Show ${n} done`,
-    hideDone: 'Hide done',
+    hideDone: () => 'Hide done',
     weekAllDone: 'Everything in this week is done. Nicely paced.',
+    // A week done early: the next week with anything open, to start on now.
+    getAhead: 'Get ahead',
+    getAheadMore: (n, week) => `+${n} more in Week\u00a0${week}`,
 
     roadmapTitle: (weeks) => `Full ${weeks}-Week Roadmap`,
     weekRange: (a, b) => (a === b ? `Week ${a}` : `Weeks ${a}–${b}`),
@@ -457,6 +471,12 @@ export const translations = {
       `${n} à rendre en ${weekLabel} — ${frWord(n, 'elle compte', 'elles comptent')} pour ta note.`,
     milestonesNone:
       "Aucune évaluation notée cette semaine — parfait pour prendre de l'avance ou consolider les bases.",
+    milestonesAllDone: (n, week) =>
+      n === 1
+        ? `L’évaluation notée de la semaine\u00a0${week} est terminée.`
+        : n === 2
+          ? `Les deux évaluations notées de la semaine\u00a0${week} sont terminées.`
+          : `Les ${n} évaluations notées de la semaine\u00a0${week} sont toutes terminées.`,
     milestonesAria: 'Évaluations notées de la semaine',
     completed: 'Terminé',
 
@@ -486,9 +506,12 @@ export const translations = {
     thisWeek: 'Cette semaine',
     catchUpNow: 'Rattraper maintenant',
     caughtUp: 'Tout est rattrapé',
-    showDone: (n) => `Afficher ${frPlural(n, 'élément terminé', 'éléments terminés')}`,
-    hideDone: 'Masquer les éléments terminés',
+    showDone: (n, unit) =>
+      `Afficher ${pick(unit, frPlural(n, 'leçon terminée', 'leçons terminées'), frPlural(n, 'élément terminé', 'éléments terminés'))}`,
+    hideDone: (unit) => `Masquer les ${pick(unit, 'leçons terminées', 'éléments terminés')}`,
     weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
+    getAhead: 'Prends de l’avance',
+    getAheadMore: (n, week) => `+${n} ${frWord(n, 'autre', 'autres')} en semaine\u00a0${week}`,
 
     roadmapTitle: (weeks) => `Feuille de route — ${weeks} semaines`,
     weekRange: (a, b) => (a === b ? `Semaine ${a}` : `Semaines ${a}–${b}`),
@@ -724,6 +747,14 @@ export const translations = {
     milestonesTitle: 'التقييمات المحتسبة',
     milestonesDue: (n, weekLabel) => `${n} مستحقة في ${weekLabel} — وهي تُحتسب في درجتك.`,
     milestonesNone: 'لا تقييمات محتسبة هذا الأسبوع — فرصة رائعة للتقدّم أو ترسيخ الأساسيات.',
+    // The verb comes first, so it stays singular: masculine for one and two,
+    // like تقييم itself, and feminine for three and up, a non-human plural.
+    milestonesAllDone: (n, week) =>
+      n === 1
+        ? `اكتمل التقييم المحتسب للأسبوع\u00a0${week}.`
+        : n === 2
+          ? `اكتمل التقييمان المحتسبان للأسبوع\u00a0${week}.`
+          : `اكتملت كل التقييمات المحتسبة الـ${n} للأسبوع\u00a0${week}.`,
     milestonesAria: 'التقييمات المستحقة هذا الأسبوع',
     completed: 'مكتمل',
 
@@ -753,10 +784,16 @@ export const translations = {
     thisWeek: 'هذا الأسبوع',
     catchUpNow: 'استدرك الآن',
     caughtUp: 'لا شيء متأخّر',
-    showDone: (n) =>
-      `عرض ${arCount(n, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' })}`,
-    hideDone: 'إخفاء العناصر المكتملة',
+    showDone: (n, unit) =>
+      `عرض ${arCount(n, pick(unit, { one: 'درس واحد مكتمل', two: 'درسين مكتملين', few: 'دروس مكتملة', many: 'درسًا مكتملًا' }, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' }))}`,
+    hideDone: (unit) => `إخفاء ${pick(unit, 'الدروس المكتملة', 'العناصر المكتملة')}`,
     weekAllDone: 'اكتمل كل ما في هذا الأسبوع. وتيرة رائعة.',
+    // "Start early": the same words the catch-up week's all-clear uses for a
+    // head start on next week.
+    getAhead: 'ابدأ مبكرًا',
+    // Counted with its noun, which "آخر" agrees with, as in catchUpFirstMore.
+    getAheadMore: (n, week, unit) =>
+      `${arCount(n, pick(unit, { one: 'درس آخر', two: 'درسان آخران', few: 'دروس أخرى', many: 'درسًا آخر' }, { one: 'عنصر آخر', two: 'عنصران آخران', few: 'عناصر أخرى', many: 'عنصرًا آخر' }))} في الأسبوع\u00a0${week}`,
 
     roadmapTitle: (weeks) => `خارطة الطريق الكاملة — ${weeks} أسبوعًا`,
     weekRange: (a, b) => (a === b ? `الأسبوع ${a}` : `الأسابيع ${a}–${b}`),

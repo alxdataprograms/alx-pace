@@ -54,7 +54,8 @@ runs after those gates pass on `main`.
 | **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. |
 | **Catch up first** | Behind in an ordinary week, the focus card opens with the three oldest items still open from earlier weeks, each labelled with its week, above this week's lessons; the status card's *Catch up now* goes straight there. |
 | **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
-| **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
+| **Get ahead** | Once this week is done, the focus card says so and lists the first three open items of the next week with anything to tick (catch-up weeks skipped), so there is always something to tick; from the next visit, the week's ticks fold behind *Show N done*. A learner with anything overdue catches up first instead. |
+| **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently; once all of them were done before a visit, the card is one green line. |
 | **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
 | **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week auto-expands and is flagged *Current*, and each earlier week with items still open is marked *N overdue* in amber. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |

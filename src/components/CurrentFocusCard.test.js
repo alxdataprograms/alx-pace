@@ -7,7 +7,7 @@ import CurrentFocusCard from './CurrentFocusCard'
 import { LanguageProvider } from '../i18n/LanguageContext'
 import { translations } from '../i18n/translations'
 import { withKept } from '../hooks/useKeptInPlace'
-import { SCHEDULES } from '../lib/schedule'
+import { SCHEDULES, contentWeeksAfter } from '../lib/schedule'
 
 /*
   Behaviour, not markup: what a learner can still reach after ticking.
@@ -354,5 +354,221 @@ describe('a long focus week', () => {
     expect(container.textContent).toMatch(/this week is done/i)
     click(toggleButton())
     expect(container.textContent).toMatch(/this week is done/i)
+  })
+})
+
+/*
+  A week done early. A learner who finished it came back the next day to a card
+  of crossed-out rows and no next step; Data Analytics' short weeks did not even
+  say the week was done. Now a week done before the visit folds behind "Show N
+  done", says so, and "Get ahead" lists the first open items of the next week
+  with anything to tick.
+*/
+describe('a week done early', () => {
+  const en = translations.en
+  const da = SCHEDULES.da
+  const week4 = da.weeks.find((w) => w.week === 4) // two lessons
+  const week5 = da.weeks.find((w) => w.week === 5) // one lesson
+  /** Every Data Analytics lesson up to and including `week`. */
+  const doneThrough = (week) => da.lessons.filter((l) => l.week <= week).map((l) => l.id)
+
+  // Lets a test untick something "elsewhere" (the roadmap) while the card is up.
+  let setFromOutside
+  /**
+   * A learner with `initiallyDone` ticked on arrival. `overdue` is what App
+   * counts as open from earlier weeks, recomputed from the ticks as App does.
+   */
+  function Learner({ week, initiallyDone, overdue = [], ...rest }) {
+    const [done, setDone] = useState(() => new Set(initiallyDone))
+    setFromOutside = setDone
+    const toggle = (id) =>
+      setDone((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      })
+    return createElement(CurrentFocusCard, {
+      week,
+      completedSet: done,
+      onToggle: toggle,
+      catchUp: overdue.filter((l) => !done.has(l.id)),
+      ...rest,
+    })
+  }
+  const renderLearner = (props) => {
+    root = createRoot(container)
+    act(() => {
+      root.render(createElement(LanguageProvider, null, createElement(Learner, props)))
+    })
+  }
+  /** DA's Week 4, as App passes it: everything after it with something to tick. */
+  const daWeek4 = (initiallyDone) =>
+    renderLearner({ week: week4, initiallyDone, upcoming: contentWeeksAfter(da, 4), unit: 'lesson' })
+
+  const gd = SCHEDULES.gd
+  const week11 = gd.weeks.find((w) => w.week === 11) // after Week 10, a catch-up week
+  /** Graphic Design's Week 9, all 31 items done before the visit. */
+  const gdWeek9Done = () =>
+    renderLearner({
+      week: gd.weeks.find((w) => w.week === 9),
+      initiallyDone: gd.lessons.filter((l) => l.week <= 9).map((l) => l.id),
+      upcoming: contentWeeksAfter(gd, 9),
+      unit: 'item',
+    })
+
+  const toggleButton = () => container.querySelector('button[aria-expanded]')
+  /** This week's live region: the one under the week's own list. */
+  const weekNote = () => [...container.querySelectorAll('[role="status"]')].pop()
+  const aheadHeading = (t = en) =>
+    [...container.querySelectorAll('h3')].find((h) => h.textContent.startsWith(t.getAhead))
+  const aheadSection = () => aheadHeading()?.parentElement
+  const boxesIn = (el) => [...el.querySelectorAll('[role="checkbox"]')]
+  const titleOf = (box) => document.getElementById(box.getAttribute('aria-labelledby'))
+  const open = (el) => boxesIn(el).filter((b) => b.getAttribute('aria-checked') === 'false')
+  const follows = (a, b) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+
+  it('folds a short week done before the visit behind "Show 2 done", and says the week is done', () => {
+    daWeek4(doneThrough(4))
+    expect(toggleButton().textContent).toBe(en.showDone(2))
+    expect(toggleButton().getAttribute('aria-expanded')).toBe('false')
+    // No crossed-out rows of this week: the only row is next week's.
+    expect(boxes().map(nameOf)).toEqual(week5.lessons.map((l) => l.title))
+    expect(weekNote().textContent).toBe(en.weekAllDone)
+
+    click(toggleButton())
+    expect(boxes().map(nameOf)).toEqual([...week4.lessons, ...week5.lessons].map((l) => l.title))
+    expect(weekNote().textContent).toBe(en.weekAllDone)
+  })
+
+  it('follows the note with "Get ahead · Week 5 · DA-2" and next week’s lesson, without the lime of a lesson due', () => {
+    daWeek4(doneThrough(4))
+    const heading = aheadHeading()
+    expect(heading.textContent).toBe(`${en.getAhead} · ${en.weekRange(5, 5)} · DA-2`)
+    expect(follows(weekNote(), heading)).toBe(true)
+    const rows = boxesIn(aheadSection())
+    expect(rows.map(nameOf)).toEqual(week5.lessons.map((l) => l.title))
+    for (const box of rows) {
+      expect(box.getAttribute('aria-checked')).toBe('false')
+      expect(box.closest('li').className).not.toContain('bg-lime')
+    }
+    // This week's own rows keep it.
+    click(toggleButton())
+    expect(boxes()[0].closest('li').className).toContain('bg-lime/10')
+  })
+
+  it.each(Object.keys(translations))('names the week and counts lessons in the learner’s language (%s)', (lang) => {
+    window.localStorage.setItem('alx-lang', lang)
+    const t = translations[lang]
+    daWeek4(doneThrough(4))
+    expect(toggleButton().textContent).toBe(t.showDone(2, 'lesson'))
+    const heading = aheadHeading(t)
+    expect(heading.textContent).toBe(`${t.getAhead} · ${t.weekRange(5, 5)} · DA-2`)
+    // The code keeps its own direction, so Arabic cannot turn "DA-2" into "2-DA".
+    expect(heading.querySelector('[dir="ltr"]').textContent).toBe('DA-2')
+  })
+
+  it('skips a catch-up week, lists three, and says how many more wait in that week', () => {
+    gdWeek9Done()
+    expect(aheadHeading().textContent).toBe(`${en.getAhead} · ${en.weekRange(11, 11)} · GD-4`)
+    expect(boxesIn(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(0, 3).map((l) => l.title))
+    expect(aheadSection().textContent).toContain(en.getAheadMore(week11.lessons.length - 3, 11, 'item'))
+  })
+
+  it('keeps a tick in place, struck through, and pulls the next item in, as the catch-up lists do', () => {
+    gdWeek9Done()
+    const first = boxesIn(aheadSection())[0]
+    click(first)
+
+    expect(boxesIn(aheadSection())[0]).toBe(first)
+    expect(first.getAttribute('aria-checked')).toBe('true')
+    expect(titleOf(first).className).toContain('line-through')
+    expect(open(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(1, 4).map((l) => l.title))
+    expect(aheadSection().textContent).toContain(en.getAheadMore(week11.lessons.length - 4, 11, 'item'))
+
+    click(first)
+    expect(boxesIn(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(0, 3).map((l) => l.title))
+  })
+
+  it('moves on past a week already done', () => {
+    daWeek4(doneThrough(5))
+    expect(aheadHeading().textContent).toBe(`${en.getAhead} · ${en.weekRange(6, 6)} · DA-3`)
+  })
+
+  it('offers nothing ahead after the programme’s last week with content, but still says it is done', () => {
+    const cc = SCHEDULES.cc
+    const week21 = cc.weeks.find((w) => w.week === 21) // Week 22 is a catch-up week
+    renderLearner({
+      week: week21,
+      initiallyDone: week21.lessons.map((l) => l.id),
+      upcoming: contentWeeksAfter(cc, 21),
+      unit: 'item',
+    })
+    expect(weekNote().textContent).toBe(en.weekAllDone)
+    expect(aheadHeading()).toBeUndefined()
+  })
+
+  it('is not offered while anything is overdue: that learner catches up first', () => {
+    const week7 = da.weeks.find((w) => w.week === 7)
+    renderLearner({
+      week: week7,
+      initiallyDone: [...doneThrough(2), ...week7.lessons.map((l) => l.id)],
+      overdue: da.lessons.filter((l) => l.week < 7),
+      upcoming: contentWeeksAfter(da, 7),
+      unit: 'lesson',
+    })
+    expect([...container.querySelectorAll('h3')].map((h) => h.textContent)).toEqual([
+      en.catchUpFirst,
+      en.thisWeek,
+    ])
+    expect(weekNote().textContent).toBe(en.weekAllDone)
+    expect(aheadHeading()).toBeUndefined()
+  })
+
+  it('finished during the visit: the rows stay put, and the note and "Get ahead" appear below them', () => {
+    daWeek4(doneThrough(4).slice(0, -1))
+    expect(weekNote().textContent).toBe('')
+    expect(aheadHeading()).toBeUndefined()
+    const [first, last] = boxes()
+
+    click(last)
+    // Nothing folds on a tick: both rows are where they were, the last one
+    // ticked, so a mis-tap can be undone on the spot.
+    expect(toggleButton()).toBeNull()
+    expect(boxes().slice(0, 2)).toEqual([first, last])
+    expect(last.getAttribute('aria-checked')).toBe('true')
+    expect(weekNote().textContent).toBe(en.weekAllDone)
+    expect(follows(last, weekNote())).toBe(true)
+    expect(follows(weekNote(), aheadHeading())).toBe(true)
+
+    click(last)
+    expect(weekNote().textContent).toBe('')
+    expect(aheadHeading()).toBeUndefined()
+  })
+
+  it('leaves a week part-way through exactly as it was: no fold, no note, nothing ahead', () => {
+    daWeek4(doneThrough(3))
+    expect(toggleButton()).toBeNull()
+    expect(boxes().map(nameOf)).toEqual(week4.lessons.map((l) => l.title))
+    expect(weekNote().textContent).toBe('')
+    expect(aheadHeading()).toBeUndefined()
+  })
+
+  it('keeps "Get ahead" and its tick for the visit if the week above stops being done', () => {
+    daWeek4(doneThrough(4))
+    const ahead = boxesIn(aheadSection())[0]
+    click(ahead)
+    // A lesson of this week unticked in the roadmap below.
+    act(() =>
+      setFromOutside((prev) => {
+        const next = new Set(prev)
+        next.delete(week4.lessons[0].id)
+        return next
+      }),
+    )
+    expect(weekNote().textContent).toBe('')
+    expect(ahead.isConnected).toBe(true)
+    expect(ahead.getAttribute('aria-checked')).toBe('true')
+    expect(aheadSection().contains(ahead)).toBe(true)
   })
 })
