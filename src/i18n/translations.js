@@ -221,6 +221,12 @@ export const translations = {
     enabling: 'Enabling…',
     remindersOn: 'Weekly reminders on',
     notificationsAllowed: 'Notifications allowed',
+    remindersNeedInstall: 'Install the app so reminders can reach you',
+    installApp: 'Install ALX Pace',
+    installWhy: 'Opens from your home screen like an app, and works offline.',
+    installWhyReminders:
+      'Opens from your home screen like an app, works offline, and can send your weekly reminder.',
+    installIosSteps: 'Tap Share, then “Add to Home Screen”.',
     remindersBlocked: 'Notifications are blocked — allow them in your browser settings.',
     // Shown once, only to someone whose reminders were on at the app's previous
     // address. Notification permission is granted per origin and cannot be
@@ -485,6 +491,12 @@ export const translations = {
     enabling: 'Activation…',
     remindersOn: 'Rappels hebdomadaires activés',
     notificationsAllowed: 'Notifications autorisées',
+    remindersNeedInstall: 'Installe l’app pour que tes rappels te parviennent',
+    installApp: 'Installer ALX Pace',
+    installWhy: 'S’ouvre depuis ton écran d’accueil comme une app, et fonctionne hors ligne.',
+    installWhyReminders:
+      'S’ouvre depuis ton écran d’accueil comme une app, fonctionne hors ligne et peut t’envoyer ton rappel hebdomadaire.',
+    installIosSteps: 'Touche Partager, puis « Sur l’écran d’accueil ».',
     remindersBlocked:
       'Les notifications sont bloquées — autorise-les dans les réglages du navigateur.',
     remindersLapsed:
@@ -734,6 +746,11 @@ export const translations = {
     enabling: 'جارٍ التفعيل…',
     remindersOn: 'التذكيرات الأسبوعية مفعّلة',
     notificationsAllowed: 'الإشعارات مسموح بها',
+    remindersNeedInstall: 'ثبّت التطبيق لتصلك التذكيرات',
+    installApp: 'تثبيت ALX Pace',
+    installWhy: 'يُفتح من شاشتك الرئيسية كتطبيق، ويعمل دون اتصال.',
+    installWhyReminders: 'يُفتح من شاشتك الرئيسية كتطبيق، ويعمل دون اتصال، ويمكنه إرسال تذكيرك الأسبوعي.',
+    installIosSteps: 'اضغط «مشاركة»، ثم «إضافة إلى الشاشة الرئيسية».',
     remindersBlocked: 'الإشعارات محظورة — اسمح بها من إعدادات المتصفح.',
     remindersLapsed: 'لم تنتقل تذكيراتك الأسبوعية مع تغيير العنوان. أعد تفعيلها من الأسفل.',
 

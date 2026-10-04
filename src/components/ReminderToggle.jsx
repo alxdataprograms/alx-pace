@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Bell, BellRing, X } from 'lucide-react'
 import { enableReminders, reminderSupported } from '../lib/reminders'
+import { isStandalone, supportsPeriodicSync } from '../lib/install'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useLang } from '../i18n/LanguageContext'
 import { REMINDERS_LAPSED_KEY } from '../lib/handoff'
@@ -26,7 +27,29 @@ export default function ReminderToggle() {
 
   if (!reminderSupported()) return null
 
-  if (mode) {
+  /*
+    'granted' is permission with nothing registered to fire: Chromium grants
+    periodic background sync to installed apps only, so enabling reminders in
+    a tab ends here. It used to say "Notifications allowed", which read as
+    "reminders are on" to someone who would never receive one.
+    - In a tab, say what would make them work: installing.
+    - Installed (the flag carries over from the tab, same origin), offer the
+      button again, so setup can now register the sync it could not before.
+    Browsers without periodic sync have no better option to offer, so they
+    keep the plain statement.
+  */
+  const grantedOnly = mode === 'granted' && supportsPeriodicSync()
+
+  if (grantedOnly && !isStandalone()) {
+    return (
+      <p className="inline-flex min-h-[44px] items-center gap-1.5 px-3 text-xs font-semibold text-ink-soft dark:text-paper/80">
+        <Bell size={13} aria-hidden="true" />
+        {t.remindersNeedInstall}
+      </p>
+    )
+  }
+
+  if (mode && !grantedOnly) {
     return (
       <p className="inline-flex min-h-[44px] items-center gap-1.5 px-3 text-xs font-semibold text-alxgreen-700 dark:text-alxgreen">
         <BellRing size={13} aria-hidden="true" />
