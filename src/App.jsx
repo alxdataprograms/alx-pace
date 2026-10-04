@@ -79,6 +79,9 @@ export default function App() {
 
   const completedCount = completedLessons.length
   const percent = progressPercent(completedSet, totalLessons)
+  // The progress card's figures, also summed up in one line of the status card.
+  // Both get this one object, so the two can never disagree.
+  const progress = { completed: completedCount, total: totalLessons, percent }
   const gradedDone = useMemo(
     () =>
       schedule ? schedule.lessons.filter((l) => l.isGraded && completedSet.has(l.id)).length : 0,
@@ -233,10 +236,38 @@ export default function App() {
           />
         ) : (
           <>
-            {/* Where-you're-at message: behind / on-track / ahead + daily quote */}
-            {status === 'active' && <PaceStatusCard paceStatus={paceStatus} today={today} />}
+            {/*
+              An active week puts the work before the stats: where you stand,
+              then this week's checklist, then progress, pace and the graded
+              card. With progress and pace above the checklist, the first
+              checkbox ended 1.3 screens down (y=1084 at 375×812), so the daily
+              "open the app, tick a lesson" began with a scroll; now it ends at
+              y=776, on the first screen. The status card keeps the percentage
+              up there in one line, and screen-reader users reach the checklist
+              two cards sooner.
+            */}
+            {status === 'active' && (
+              <>
+                {/* Where-you're-at: behind / on-track / ahead, a progress line, daily quote */}
+                <PaceStatusCard paceStatus={paceStatus} progress={progress} today={today} />
+                <CurrentFocusCard
+                  week={currentWeek}
+                  completedSet={completedSet}
+                  onToggle={toggleLesson}
+                  catchUp={paceStatus?.behindItems}
+                />
+                <ProgressBar {...progress} />
+                <ForecastCard paceStatus={paceStatus} />
+                {!currentWeek?.isBuffer && (
+                  <GradedMilestonesAlert week={currentWeek} completedSet={completedSet} />
+                )}
+              </>
+            )}
 
-            {/* State machine: onboarding → future → active → completed */}
+            {/*
+              State machine: onboarding → future → active → completed. The
+              states without a week to work on keep their own card first.
+            */}
             {status === 'no-start-date' && (
               <StartDatePrompt
                 onSetStartDate={updateStartDate}
@@ -266,24 +297,9 @@ export default function App() {
               />
             )}
 
-            {/* Progress + focus are shown whenever there is a timeline to pace. */}
-            {(status === 'active' || status === 'completed' || status === 'no-start-date') && (
-              <ProgressBar completed={completedCount} total={totalLessons} percent={percent} />
-            )}
-
-            {status === 'active' && (
-              <>
-                <ForecastCard paceStatus={paceStatus} />
-                <CurrentFocusCard
-                  week={currentWeek}
-                  completedSet={completedSet}
-                  onToggle={toggleLesson}
-                  catchUp={paceStatus?.behindItems}
-                />
-                {!currentWeek?.isBuffer && (
-                  <GradedMilestonesAlert week={currentWeek} completedSet={completedSet} />
-                )}
-              </>
+            {/* Without a week to work on, overall progress follows the state's own card. */}
+            {(status === 'completed' || status === 'no-start-date') && (
+              <ProgressBar {...progress} />
             )}
 
             {/* Keyed by program so switching re-opens the new current week. */}

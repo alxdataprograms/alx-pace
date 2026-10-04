@@ -144,6 +144,13 @@ export const translations = {
     doneThisWeek: (done, total) => `${done}/${total} done this week`,
     gradedStillDue: (n) => `${n} graded ${n === 1 ? 'item' : 'items'} still due`,
     pacingStatusAria: 'Your pacing status',
+    // The progress card's figures as one line in the status card, which keeps
+    // the percentage on the first screen above the checklist. A screen reader
+    // gets the full sentence instead of the shorthand. The noun counts the
+    // total, a curriculum's fixed size, so its form never changes with ticks.
+    statusProgress: (p, done, total) => `${p}% · ${done} of ${total}`,
+    statusProgressAria: (p, done, total) =>
+      `${p}% of the curriculum complete, ${done} of ${total} items`,
 
     focusEyebrow: "This Week's Focus",
     focusAria: (weekLabel) => `This week's focus: ${weekLabel}`,
@@ -394,6 +401,10 @@ export const translations = {
     doneThisWeek: (done, total) => `${done}/${total} cette semaine`,
     gradedStillDue: (n) => `${frPlural(n, 'évaluation à rendre', 'évaluations à rendre')}`,
     pacingStatusAria: 'Ton état de progression',
+    // A no-break space keeps "41 %" together, the way French sets a percentage.
+    statusProgress: (p, done, total) => `${p}\u00a0% · ${done} sur ${total}`,
+    statusProgressAria: (p, done, total) =>
+      `${p} % du parcours terminé, ${done} sur ${total} éléments`,
 
     focusEyebrow: 'Objectif de la semaine',
     focusAria: (weekLabel) => `Objectif de la semaine : ${weekLabel}`,
@@ -628,6 +639,10 @@ export const translations = {
     gradedStillDue: (n) =>
       `${arCount(n, { one: 'تقييم واحد مستحق', two: 'تقييمان مستحقان', few: 'تقييمات مستحقة', many: 'تقييمًا مستحقًا' })}`,
     pacingStatusAria: 'حالة تقدّمك',
+    // عنصرًا agrees with the total, as in itemsComplete: every program has
+    // well over ten items.
+    statusProgress: (p, done, total) => `${p}٪ · ${done} من ${total}`,
+    statusProgressAria: (p, done, total) => `اكتمل ${p}٪ من المنهج، ${done} من ${total} عنصرًا`,
 
     focusEyebrow: 'تركيز هذا الأسبوع',
     focusAria: (weekLabel) => `تركيز هذا الأسبوع: ${weekLabel}`,

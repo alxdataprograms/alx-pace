@@ -51,10 +51,10 @@ runs after those gates pass on `main`.
 | **Program picker** | First visit asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
 | **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
 | **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
-| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes. |
+| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. |
 | **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
 | **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
-| **Progress** | Overall % complete across every item in the program, plus per-week counts. |
+| **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
 | **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); the current week auto-expands. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
