@@ -30,8 +30,12 @@ const VARIANTS = {
  *
  * `progress` is the same { completed, total, percent } the progress card gets.
  * Passing that one object to both is what keeps the two from ever disagreeing.
+ *
+ * `headingRef` marks the headline, the card's answer to "am I OK?", as the
+ * place App moves focus to when a start date set just now brings this card in
+ * (see App's takeStep).
  */
-export default function PaceStatusCard({ paceStatus, progress, today = new Date() }) {
+export default function PaceStatusCard({ paceStatus, progress, today = new Date(), headingRef }) {
   const { t, lang } = useLang()
   if (!paceStatus) return null
   const v = VARIANTS[paceStatus.status]
@@ -55,7 +59,9 @@ export default function PaceStatusCard({ paceStatus, progress, today = new Date(
         </span>
         {/* flex-1 so the progress line's bar can take the width the text leaves. */}
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold leading-snug">{v.headline(t, paceStatus)}</p>
+          <p ref={headingRef} tabIndex={-1} className="text-sm font-bold leading-snug">
+            {v.headline(t, paceStatus)}
+          </p>
           <p className="mt-0.5 text-xs font-medium text-ink-soft dark:text-paper/75">
             {parts.join(' · ')}
           </p>

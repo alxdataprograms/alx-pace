@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   ArrowLeft,
   BarChart3,
@@ -20,13 +20,32 @@ const TRACK_ICONS = { cc: Clapperboard, gd: PenTool }
  *   1. Data Analytics  vs  Creative Tech
  *   2. (Creative Tech only) Content Creation  vs  Graphic Design
  * Week and module counts come straight from the bundled schedules.
+ *
+ * `headingRef` lets App move focus to the heading when the picker opens from
+ * the hero's "change" (see App's takeStep).
  */
-export default function ProgramPicker({ program, onSelect, onCancel }) {
+export default function ProgramPicker({ program, onSelect, onCancel, headingRef }) {
   const { t } = useLang()
   const inCreativeTech = Boolean(program) && PROGRAMS[program]?.family === 'creative-tech'
   // Re-opening the picker from a Creative Tech track lands on the track step.
   const [step, setStep] = useState(inCreativeTech ? 'creative-tech' : 'family')
   const onFamilyStep = step === 'family'
+
+  /*
+    Changing step swaps every option on the card, the one just pressed
+    included, and focus fell to the page body: after "Creative Tech", or
+    Back, a screen-reader user was sent to the top of the page. The heading
+    takes focus instead and reads out the new question. Only on a change of
+    step; the step a picker opens on is App's to announce, or not.
+  */
+  const ownHeading = useRef(null)
+  const heading = headingRef ?? ownHeading
+  const shownStep = useRef(step)
+  useEffect(() => {
+    if (shownStep.current === step) return
+    shownStep.current = step
+    heading.current?.focus()
+  }, [step, heading])
 
   const meta = (id) => t.programMeta(SCHEDULES[id].totalWeeks, SCHEDULES[id].modules.length)
   const HeaderIcon = onFamilyStep ? Compass : Palette
@@ -36,7 +55,7 @@ export default function ProgramPicker({ program, onSelect, onCancel }) {
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime">
         <HeaderIcon size={28} strokeWidth={2.25} aria-hidden="true" />
       </div>
-      <h2 id="program-picker-title" className="text-lg font-bold">
+      <h2 id="program-picker-title" ref={heading} tabIndex={-1} className="text-lg font-bold">
         {onFamilyStep ? t.pickerTitle : t.pickerTrackTitle}
       </h2>
       <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft dark:text-paper/75">

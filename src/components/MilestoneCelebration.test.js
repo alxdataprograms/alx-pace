@@ -80,3 +80,97 @@ describe('the milestone dialogue', () => {
     expect(container.querySelector('blockquote').textContent).toBe(postIn('en', m))
   })
 })
+
+/*
+  Focus, while the dialogue is open and after it closes.
+
+  Measured in Chromium before this was fixed: the third Tab left the dialogue
+  for the page it covers, which stayed reachable underneath, and closing it
+  dropped focus on the page body, so a keyboard or screen-reader user started
+  again from the top. jsdom has no Tab navigation and ignores `inert`, so this
+  checks what produces the behaviour: the attribute on the page, the wrap at
+  each end, and where focus is handed back.
+*/
+describe('focus while the dialogue is open', () => {
+  const m = milestone('module:GD-3')
+  let open
+
+  /** A page with an opener button, and the dialogue laid over it as a sibling. */
+  function renderPage({ show, onDismiss = () => {} }) {
+    window.localStorage.setItem('alx-lang', 'en')
+    root ??= createRoot(container)
+    act(() => {
+      root.render(
+        createElement(
+          LanguageProvider,
+          null,
+          createElement('main', null, createElement('button', { type: 'button', id: 'opener' }, 'Share')),
+          show ? createElement(MilestoneCelebration, { milestone: m, onDismiss }) : null,
+        ),
+      )
+    })
+  }
+  const dialog = () => container.querySelector('[role="dialog"]')
+  const buttons = () => [...dialog().querySelectorAll('button')]
+  const press = (key, shiftKey = false) => {
+    const event = new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true })
+    act(() => document.activeElement.dispatchEvent(event))
+    return event
+  }
+
+  beforeEach(() => {
+    root = undefined
+    renderPage({ show: false })
+    open = () => {
+      container.querySelector('#opener').focus()
+      renderPage({ show: true })
+    }
+  })
+
+  it('opens on its primary action and makes the page behind it inert', () => {
+    open()
+    expect(document.activeElement.textContent).toBe(translations.en.milestoneShare)
+    expect(container.querySelector('main').hasAttribute('inert')).toBe(true)
+  })
+
+  it('wraps Tab from its last control to its first, and Shift+Tab back again', () => {
+    open()
+    const [first, , , last] = buttons()
+    expect(first.getAttribute('aria-label')).toBe(translations.en.milestoneDismiss)
+    expect(last.textContent).toBe(translations.en.milestoneDismiss)
+
+    last.focus()
+    expect(press('Tab').defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(first)
+
+    expect(press('Tab', true).defaultPrevented).toBe(true)
+    expect(document.activeElement).toBe(last)
+
+    // In between, Tab is the browser's: nothing is intercepted.
+    buttons()[1].focus()
+    expect(press('Tab').defaultPrevented).toBe(false)
+  })
+
+  it('hands focus back to whatever opened it, and lifts the inert page, on closing', () => {
+    open()
+    renderPage({ show: false })
+    expect(container.querySelector('main').hasAttribute('inert')).toBe(false)
+    expect(document.activeElement).toBe(container.querySelector('#opener'))
+  })
+
+  it('leaves focus where the learner put it when its dismiss handler changes', () => {
+    // A tick in another tab gives App a new dismiss handler. That used to
+    // re-run the effect that focuses the share button, mid-dialogue.
+    open()
+    const community = buttons()[2]
+    community.focus()
+    renderPage({ show: true, onDismiss: () => {} })
+    expect(document.activeElement).toBe(community)
+  })
+
+  it('gives its close X the 44px tap target', () => {
+    // 34×34 before. The class is the app's 44×44 minimum (index.css).
+    open()
+    expect(buttons()[0].classList).toContain('tap-target')
+  })
+})

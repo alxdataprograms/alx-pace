@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { getWeek } from './lib/schedule'
 import { computePacing, progressPercent } from './lib/pacing'
 import { achievedMilestones, milestoneIds, nextToCelebrate, pruneCelebrated } from './lib/milestones'
@@ -48,9 +48,58 @@ export default function App() {
   // learner taps "change" on the program row.
   const [pickingProgram, setPickingProgram] = useState(false)
   const showPicker = !schedule || pickingProgram
+
+  /*
+    Focus after a setup step.
+
+    The button a learner presses to choose a program or a start date goes
+    with its card: the picker gives way to the start-date card, and that to
+    the status card, the countdown or the graduation card. Focus fell to the
+    page body each time, which sends a screen-reader user back to the top of
+    the page after every decision. So a step hands focus, once, to the
+    heading of the card that takes its place. stepHeading is that heading:
+    the picker and those four cards each pass it to their own, and only one
+    of them is ever on screen. Nothing moves focus on load, or when a
+    countdown reaches its start day in a tab left open. (The picker's own
+    Creative Tech → track step is the picker's to handle.)
+  */
+  const stepHeading = useRef(null)
+  const stepTaken = useRef(false)
+  const takeStep = () => {
+    stepTaken.current = true
+  }
+
   const selectProgram = (id) => {
     updateProgram(id)
     setPickingProgram(false)
+    takeStep()
+  }
+  const setStartFromPrompt = (iso) => {
+    updateStartDate(iso)
+    takeStep()
+  }
+  // Reset starts the setup over, on the picker's question; the reset button
+  // itself is gone once there is nothing left to reset.
+  const resetAndRestart = () => {
+    resetProfile()
+    takeStep()
+  }
+  // The hero's "change" opens the picker on its heading. Cancel hands focus
+  // back to "change", which stays on screen.
+  const pickerOpener = useRef(null)
+  const openPicker = () => {
+    pickerOpener.current = document.activeElement
+    // Already open, nothing re-renders to spend a step on: go straight there.
+    if (pickingProgram) {
+      stepHeading.current?.focus()
+      return
+    }
+    setPickingProgram(true)
+    takeStep()
+  }
+  const cancelPicker = () => {
+    setPickingProgram(false)
+    if (pickerOpener.current?.isConnected) pickerOpener.current.focus()
   }
 
   const programName = program ? t.programs[program] : ''
@@ -167,6 +216,15 @@ export default function App() {
     dismissMilestone()
   }, [manualMilestone, milestone, dismissMilestone])
 
+  // See takeStep. Declared after shownMilestone, which it reads: a milestone
+  // dialogue that the step brought up (switching to a program with a module
+  // done but not yet celebrated) keeps the focus it took.
+  useEffect(() => {
+    if (!stepTaken.current) return
+    stepTaken.current = false
+    if (!shownMilestone) stepHeading.current?.focus()
+  })
+
   // Anonymous usage tallies (no-ops until GOATCOUNTER_SITE is configured).
   useEffect(() => {
     trackAppOpen()
@@ -243,14 +301,15 @@ export default function App() {
           programName={programName}
           onUpdateName={updateName}
           onUpdateStartDate={updateStartDate}
-          onChangeProgram={() => setPickingProgram(true)}
+          onChangeProgram={openPicker}
         />
 
         {showPicker ? (
           <ProgramPicker
             program={program}
             onSelect={selectProgram}
-            onCancel={schedule ? () => setPickingProgram(false) : undefined}
+            onCancel={schedule ? cancelPicker : undefined}
+            headingRef={stepHeading}
           />
         ) : (
           <>
@@ -267,7 +326,12 @@ export default function App() {
             {status === 'active' && (
               <>
                 {/* Where-you're-at: behind / on-track / ahead, a progress line, daily quote */}
-                <PaceStatusCard paceStatus={paceStatus} progress={progress} today={today} />
+                <PaceStatusCard
+                  paceStatus={paceStatus}
+                  progress={progress}
+                  today={today}
+                  headingRef={stepHeading}
+                />
                 <CurrentFocusCard
                   week={currentWeek}
                   completedSet={completedSet}
@@ -288,9 +352,10 @@ export default function App() {
             */}
             {status === 'no-start-date' && (
               <StartDatePrompt
-                onSetStartDate={updateStartDate}
+                onSetStartDate={setStartFromPrompt}
                 schedule={schedule}
                 programName={programName}
+                headingRef={stepHeading}
               />
             )}
 
@@ -301,6 +366,7 @@ export default function App() {
                 schedule={schedule}
                 program={program}
                 programName={programName}
+                headingRef={stepHeading}
               />
             )}
 
@@ -312,6 +378,7 @@ export default function App() {
                 totalGraded={schedule.totalGraded}
                 totalWeeks={schedule.totalWeeks}
                 unit={schedule.itemNoun}
+                headingRef={stepHeading}
               />
             )}
 
@@ -351,15 +418,26 @@ export default function App() {
         <Footer
           theme={theme}
           onToggleTheme={toggleTheme}
-          onReset={hasLearnerData ? resetProfile : undefined}
+          onReset={hasLearnerData ? resetAndRestart : undefined}
           showReminders={hasStartDate}
           programName={programName}
         />
       </main>
 
-      {/* Last in the tree so it lays over everything without needing a portal. */}
+      {/*
+        Last in the tree so it lays over everything without needing a portal;
+        the dialogue makes its siblings, the page, inert while it is open.
+        Keyed by milestone, so one that follows another (closing a re-share
+        while another is pending) opens as a dialogue of its own: announced,
+        on its primary action, still handing focus back to the original
+        opener when it closes.
+      */}
       {shownMilestone ? (
-        <MilestoneCelebration milestone={shownMilestone} onDismiss={closeMilestone} />
+        <MilestoneCelebration
+          key={shownMilestone.id}
+          milestone={shownMilestone}
+          onDismiss={closeMilestone}
+        />
       ) : null}
     </div>
   )

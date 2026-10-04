@@ -24,12 +24,15 @@ export default function ForecastCard({ paceStatus }) {
   // of signal; until then the empty state counts down to it.
   const hasData = Boolean(projectedFinish)
 
+  // Each tone has its own dark pair. The amber one had none, so in dark mode
+  // "≈ 11 weeks behind plan" kept amber-700, made for white, and measured
+  // 2.6:1 on the navy card; bright amber on its own tint is about 6.5:1.
   const deltaTone =
     finishDeltaDays == null || Math.abs(finishDeltaDays) <= 2
       ? 'bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime'
       : finishDeltaDays > 0
         ? 'bg-alxgreen/15 text-alxgreen-700 dark:bg-alxgreen/20 dark:text-alxgreen'
-        : 'bg-amber/15 text-amber-700'
+        : 'bg-amber/15 text-amber-700 dark:bg-amber/20 dark:text-amber'
 
   return (
     <section className="alx-card" aria-label={t.yourPace}>

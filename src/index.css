@@ -3,8 +3,18 @@
 @tailwind utilities;
 
 @layer base {
+  /*
+    Native controls follow the app's theme, not the phone's. This was
+    "light dark", which let the OS choose: on a phone in dark mode, with the
+    app in its default light theme, the date field drew its calendar icon for
+    a dark field, light on the app's white one, and the icon vanished.
+  */
   :root {
-    color-scheme: light dark;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
   }
 
   html {
@@ -42,6 +52,23 @@
   }
 
   html.dark :focus-visible {
+    outline-color: #c4e878;
+  }
+
+  /*
+    Navy surfaces stay navy in the light theme too (the hero, the graduation
+    card), so they carry their own scope. In it the ring is lime, as it is
+    everywhere in dark mode: cobalt measured 2.87:1 against navy-900, under
+    that floor. :where() keeps the rule no stronger than the plain ring
+    above, so a field that draws its own focus border (outline-none) still
+    does. Native controls take the dark scheme, so the hero's date editor
+    draws its calendar icon light on the navy field.
+  */
+  .on-navy {
+    color-scheme: dark;
+  }
+
+  :where(.on-navy) :focus-visible {
     outline-color: #c4e878;
   }
 

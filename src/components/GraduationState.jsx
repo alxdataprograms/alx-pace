@@ -1,7 +1,13 @@
 import { PartyPopper, Trophy } from 'lucide-react'
 import { useLang } from '../i18n/LanguageContext'
 
-/** Shown when the current date is past the program's final week. */
+/**
+ * Shown when the current date is past the program's final week.
+ *
+ * `headingRef` lets App move focus to the heading when a start date set just
+ * now lands past the final week (see App's takeStep). The card is navy in
+ * both themes, so it is an on-navy scope: that focus ring is lime.
+ */
 export default function GraduationState({
   completedCount,
   totalLessons,
@@ -9,13 +15,14 @@ export default function GraduationState({
   totalGraded,
   totalWeeks,
   unit = 'lesson',
+  headingRef,
 }) {
   const { t } = useLang()
   const percent = totalLessons ? Math.round((completedCount / totalLessons) * 100) : 0
   const finished = completedCount >= totalLessons && totalLessons > 0
 
   return (
-    <section className="relative overflow-hidden rounded-2xl border-2 border-lime bg-navy-900 p-6 text-center text-paper shadow-glow">
+    <section className="on-navy relative overflow-hidden rounded-2xl border-2 border-lime bg-navy-900 p-6 text-center text-paper shadow-glow">
       <div
         className="pointer-events-none absolute inset-0 opacity-25"
         style={{
@@ -28,7 +35,7 @@ export default function GraduationState({
         <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-2xl bg-lime text-navy-900">
           <Trophy size={32} strokeWidth={2.25} aria-hidden="true" />
         </div>
-        <h2 className="text-2xl font-bold">
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-bold">
           {finished ? t.completedTitle : t.finishLineTitle}{' '}
           <PartyPopper className="inline h-6 w-6" aria-hidden="true" />
         </h2>

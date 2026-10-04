@@ -106,9 +106,15 @@ export default function PersonalizationWidget({
     : null
 
   return (
+    /*
+      on-navy: the panel is navy in both themes, so its focus ring is lime and
+      its date editor uses dark native controls (see index.css). The region's
+      name is in the learner's language; it was the English "ALX Pace" in all
+      three.
+    */
     <section
-      className="relative overflow-hidden rounded-2xl bg-navy-900 p-5 text-paper shadow-card"
-      aria-label="ALX Pace"
+      className="on-navy relative overflow-hidden rounded-2xl bg-navy-900 p-5 text-paper shadow-card"
+      aria-label={firstRun ? t.introAria : t.profileAria}
     >
       {/* Brand glows, echoing the site hero */}
       <div
@@ -269,7 +275,7 @@ export default function PersonalizationWidget({
                     if (e.key === 'Enter') commitDate()
                     if (e.key === 'Escape') setEditingDate(false)
                   }}
-                  className="flex-1 rounded-xl border border-white/25 bg-white/10 px-2 py-1.5 text-white outline-none focus:border-lime [color-scheme:dark]"
+                  className="flex-1 rounded-xl border border-white/25 bg-white/10 px-2 py-1.5 text-white outline-none focus:border-lime"
                   aria-label={t.editStartDate}
                 />
                 <button

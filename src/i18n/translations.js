@@ -101,6 +101,11 @@ export const translations = {
     welcomeNew: 'Welcome to ALX\u00a0Pace',
     introLine: "Know exactly what to study each week, and whether you're on track.",
     introChips: ['Free', 'No login', 'Saved on this phone'],
+    // What a screen reader calls the hero region: an introduction before a
+    // program is chosen, the learner's own profile after. It was the English
+    // "ALX Pace" in every language.
+    introAria: 'About ALX Pace',
+    profileAria: 'Your profile',
     welcomeBack: () => `Welcome back, `,
     welcomeBackAfterName: `!`,
     weekSlogan: (week, slogan) => `Week ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
@@ -203,7 +208,9 @@ export const translations = {
 
     lightMode: 'Light mode',
     darkMode: 'Dark mode',
-    switchTheme: (target) => `Switch to ${target} mode`,
+    // The target already ends in "mode": this read "Switch to Dark mode mode".
+    switchTheme: (target) => `Switch to ${target}`,
+    languageAria: 'Language',
     resetConfirm: "Reset your program, name, start date and all checked lessons? This can't be undone.",
     resetYes: 'Yes, reset',
     resetButton: 'Reset Profile Data',
@@ -359,6 +366,8 @@ export const translations = {
     welcomeNew: 'Bienvenue sur ALX\u00a0Pace',
     introLine: 'Sache exactement ce que tu dois étudier chaque semaine, et si tu es dans le rythme.',
     introChips: ['Gratuit', 'Sans compte', 'Enregistré sur ce téléphone'],
+    introAria: 'À propos d’ALX Pace',
+    profileAria: 'Ton profil',
     welcomeBack: () => `Bon retour, `,
     // A narrow no-break space, as French sets "!": with an ordinary one, the
     // line broke there and left " !" and the rocket under the name.
@@ -464,6 +473,7 @@ export const translations = {
     lightMode: 'Mode clair',
     darkMode: 'Mode sombre',
     switchTheme: (target) => `Passer en ${target}`,
+    languageAria: 'Langue',
     resetConfirm:
       'Réinitialiser le programme, le nom, la date de début et toutes les leçons cochées ? Action irréversible.',
     resetYes: 'Oui, réinitialiser',
@@ -610,6 +620,8 @@ export const translations = {
     welcomeNew: 'مرحبًا بك في ALX\u00a0Pace',
     introLine: 'اعرف بالضبط ما عليك دراسته كل أسبوع، وما إذا كنت على الوتيرة الصحيحة.',
     introChips: ['مجاني', 'دون تسجيل دخول', 'محفوظ على هذا الهاتف'],
+    introAria: 'عن ALX Pace',
+    profileAria: 'ملفك الشخصي',
     welcomeBack: () => `أهلاً بعودتك، `,
     welcomeBackAfterName: `!`,
     weekSlogan: (week, slogan) => `الأسبوع ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
@@ -711,6 +723,7 @@ export const translations = {
     lightMode: 'الوضع الفاتح',
     darkMode: 'الوضع الداكن',
     switchTheme: (target) => `التبديل إلى ${target}`,
+    languageAria: 'اللغة',
     resetConfirm: 'إعادة تعيين البرنامج والاسم وتاريخ البداية وكل الدروس المكتملة؟ لا يمكن التراجع.',
     resetYes: 'نعم، أعد التعيين',
     resetButton: 'إعادة تعيين بياناتي',

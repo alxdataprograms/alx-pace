@@ -326,7 +326,7 @@ Design tokens sampled from the live **alxafrica.com** site (July 2026), typeface
 | --- | --- | --- |
 | Deep Navy | `#03134F` / `#020B33` | hero banner, dark-mode surfaces |
 | Cobalt | `#0452F0` (`#0345C9` for small text) | primary brand blue, CTAs, focus ring |
-| Lime | `#C4E878` / `#DAF2A7` | signature accent, chips, current-week highlight |
+| Lime | `#C4E878` / `#DAF2A7` | signature accent, chips, current-week highlight, focus ring on navy |
 | Violet | `#5F3DC4` | graded-milestone alerts, exams |
 | Green | `#02B75E` | integrated projects, completed weeks |
 | Amber | `#EAB308` | graded tests |
@@ -338,7 +338,11 @@ official assets from alxafrica.com (this is an internal ALX learner tool).
 
 Built for **375px+** smartphone browsers: 44px minimum tap targets, safe-area
 insets, WCAG-AA text contrast in both themes, `prefers-reduced-motion` support,
-and a theme-aware focus ring.
+and a theme-aware focus ring: cobalt on light surfaces, lime on navy ones (the
+hero is navy in both themes; mark such a surface `on-navy`). Native controls
+follow the app's theme, not the phone's. Each setup step hands focus to the
+next card's heading, and the milestone dialogue keeps focus inside it and hands
+it back when it closes.
 
 ---
 

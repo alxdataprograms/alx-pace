@@ -31,11 +31,15 @@ export default function CurrentFocusCard({ week, completedSet, onToggle, catchUp
   const done = week.lessons.filter((l) => completedSet.has(l.id)).length
   const total = week.lessons.length
   const Icon = isCatchUp ? RefreshCcw : Target
+  // The region's name gives the week in the learner's language. The sheet's
+  // own label is English ("Week 4"), and a French screen reader read
+  // "Objectif de la semaine : Week 4".
+  const weekName = t.weekRange(week.week, week.week)
 
   return (
     <section
       className="relative overflow-hidden rounded-2xl border-2 border-lime bg-white p-4 shadow-glow dark:bg-navy-900"
-      aria-label={t.focusAria(week.weekLabel)}
+      aria-label={t.focusAria(weekName)}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex items-center gap-2.5">

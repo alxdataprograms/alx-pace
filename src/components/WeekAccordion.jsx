@@ -123,8 +123,15 @@ export default function WeekAccordion({
                     {week.week}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
+                    {/*
+                      The chips flow under the label when the row runs short,
+                      and the note takes a second line, where both used to be
+                      cut: in French, Graphic Design's current catch-up week
+                      read "Sem…" beside "Rattrapage" and "En cours", and every
+                      catch-up note stopped at "pas de nouveau…".
+                    */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
                       <span className="alx-chip flex-none bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75">
                         <Coffee size={11} aria-hidden="true" /> {t.bufferChip}
                       </span>
@@ -134,9 +141,7 @@ export default function WeekAccordion({
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-ink-soft dark:text-paper/70">
-                      {t.bufferRoadmapNote}
-                    </p>
+                    <p className="text-xs text-ink-soft dark:text-paper/70">{t.bufferRoadmapNote}</p>
                   </div>
                 </div>
               )
@@ -147,12 +152,21 @@ export default function WeekAccordion({
                 key={week.week}
                 className={`alx-card overflow-hidden !p-0 ${isCurrent ? 'ring-2 ring-lime' : ''}`}
               >
+                {/*
+                  The focus ring is drawn inside the button. The card's
+                  overflow-hidden clipped the usual ring outside it, so a
+                  week reached by Tab showed no ring at all. The button takes
+                  the card's corner (16px, less its 1px border), so the ring
+                  follows the card's curve instead of being cut off by it.
+                */}
                 <button
                   type="button"
                   onClick={() => toggleWeek(week.week)}
                   aria-expanded={isOpen}
                   aria-controls={panelId}
-                  className="flex w-full items-center gap-3 p-3.5 text-start"
+                  className={`flex w-full items-center gap-3 p-3.5 text-start focus-visible:outline-offset-[-3px] ${
+                    isOpen ? 'rounded-t-[15px]' : 'rounded-[15px]'
+                  }`}
                 >
                   <span
                     className={`flex h-8 w-8 flex-none items-center justify-center rounded-lg text-xs font-bold ${
@@ -167,8 +181,13 @@ export default function WeekAccordion({
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <p className="truncate text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
+                    {/*
+                      Wraps the same way as a catch-up row: at 320px, French
+                      cut "Semaine 27.5" short beside its "½ semaine" chip.
+                      A row that fits looks exactly as it did.
+                    */}
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="text-sm font-bold">{t.weekRange(week.week, week.week)}</p>
                       {week.isHalf && (
                         <span className="alx-chip flex-none bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime">
                           {t.halfWeekChip}
@@ -180,7 +199,7 @@ export default function WeekAccordion({
                         </span>
                       )}
                     </div>
-                    <p className="truncate text-xs text-ink-soft dark:text-paper/70">
+                    <p className="text-xs text-ink-soft dark:text-paper/70">
                       {t.doneCount(done, total)}
                       {week.gradedItems.length > 0 && ` · ${t.gradedCount(week.gradedItems.length)}`}
                     </p>

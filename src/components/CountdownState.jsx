@@ -7,8 +7,18 @@ import { useLang } from '../i18n/LanguageContext'
  *
  * It names no finish date: the hero above shows "Finish by …" on this screen,
  * and a second, identical chip here only repeated it.
+ *
+ * `headingRef` lets App move focus to the heading when a start date set just
+ * now brings this card in (see App's takeStep).
  */
-export default function CountdownState({ pacing, firstWeek, schedule, program, programName }) {
+export default function CountdownState({
+  pacing,
+  firstWeek,
+  schedule,
+  program,
+  programName,
+  headingRef,
+}) {
   const { t, lang } = useLang()
   const days = pacing.daysUntilStart
   return (
@@ -19,7 +29,7 @@ export default function CountdownState({ pacing, firstWeek, schedule, program, p
       <p className="text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
         {t.getReady}
       </p>
-      <h2 className="mt-1 text-2xl font-bold">
+      <h2 ref={headingRef} tabIndex={-1} className="mt-1 text-2xl font-bold">
         {t.beginsIn}{' '}
         <span className="text-cobalt-600 dark:text-lime">{t.beginsInDays(days)}</span>
       </h2>

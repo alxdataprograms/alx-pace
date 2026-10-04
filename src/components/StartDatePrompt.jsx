@@ -8,8 +8,11 @@ import { useLang } from '../i18n/LanguageContext'
  * Onboarding fallback shown when no start date is set yet. Defensive guardrail:
  * the app is fully usable before any date exists, and nudges the learner to set
  * one to unlock pacing.
+ *
+ * `headingRef` lets App move focus to the heading when this card replaces the
+ * program picker (see App's takeStep).
  */
-export default function StartDatePrompt({ onSetStartDate, schedule, programName }) {
+export default function StartDatePrompt({ onSetStartDate, schedule, programName, headingRef }) {
   const { t, lang } = useLang()
   const today = toISODateString(new Date())
   const [value, setValue] = useState(today)
@@ -20,7 +23,9 @@ export default function StartDatePrompt({ onSetStartDate, schedule, programName 
       <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-cobalt/10 text-cobalt-600 dark:bg-lime/15 dark:text-lime">
         <Rocket size={28} strokeWidth={2.25} aria-hidden="true" />
       </div>
-      <h2 className="text-lg font-bold">{t.promptTitle}</h2>
+      <h2 ref={headingRef} tabIndex={-1} className="text-lg font-bold">
+        {t.promptTitle}
+      </h2>
       <p className="mx-auto mt-1 max-w-sm text-sm text-ink-soft dark:text-paper/75">{t.promptBody(programName, schedule.totalWeeks)}</p>
 
       <div className="mx-auto mt-4 flex max-w-sm flex-col gap-2 sm:flex-row">
@@ -28,7 +33,7 @@ export default function StartDatePrompt({ onSetStartDate, schedule, programName 
           type="date"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          className="flex-1 rounded-xl border border-ink/20 bg-white px-3 py-2.5 text-ink outline-none focus:border-cobalt dark:border-white/20 dark:bg-navy-950 dark:text-paper dark:focus:border-lime dark:[color-scheme:dark]"
+          className="flex-1 rounded-xl border border-ink/20 bg-white px-3 py-2.5 text-ink outline-none focus:border-cobalt dark:border-white/20 dark:bg-navy-950 dark:text-paper dark:focus:border-lime"
           aria-label={t.courseStartDate}
         />
         <button
