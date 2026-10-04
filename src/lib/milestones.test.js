@@ -14,6 +14,7 @@ import {
 } from './milestones'
 import { buildScheduleFromCsv } from './scheduleModel'
 import { PROGRAMS } from './programs'
+import { translations } from '../i18n/translations'
 
 /*
   Run against the REAL curriculum, not a fixture.
@@ -34,6 +35,17 @@ const GD = load('gd')
 
 const lessonsOf = (module) => module.weeks.flatMap((w) => w.lessons)
 const idsOf = (modules) => new Set(modules.flatMap(lessonsOf).map((l) => l.id))
+
+/** Every milestone a program has, as if the learner had ticked everything. */
+const everyMilestone = (schedule, programId) =>
+  achievedMilestones(schedule, new Set(schedule.lessons.map((l) => l.id)), programId)
+const milestoneOf = (schedule, programId, id) =>
+  everyMilestone(schedule, programId).find((m) => m.id === id)
+/** The two post templates of one language, as the dialogue passes them. */
+const postStrings = (lang) => ({
+  moduleDone: translations[lang].postModuleDone,
+  programmeDone: translations[lang].postProgrammeDone,
+})
 
 describe('achievedMilestones', () => {
   it('finds nothing when nothing is complete', () => {
@@ -141,6 +153,187 @@ describe('buildPostText', () => {
       const encoded = encodeURIComponent(buildPostText(m, t))
       expect(encoded.length, `${m.id} encodes to ${encoded.length} chars`).toBeLessThan(1500)
     }
+  })
+
+  it('stays that short in every language, for every program, now posts name a project', () => {
+    // Arabic letters encode to six characters each, and a Creative Tech module
+    // post carries two English titles, so the real strings are what count.
+    for (const [id, schedule] of [['da', SCHEDULE], ['cc', CC], ['gd', GD]]) {
+      for (const m of everyMilestone(schedule, id)) {
+        for (const lang of Object.keys(translations)) {
+          const encoded = encodeURIComponent(buildPostText(m, postStrings(lang)))
+          expect(encoded.length, `${lang} ${m.id} encodes to ${encoded.length} chars`).toBeLessThan(1500)
+        }
+      }
+    }
+  })
+})
+
+/*
+  The figures a learner publishes under their own name, often to employers.
+
+  A Graphic Design graduate was offered "33 weeks, 373 lessons" for a 32-week
+  programme whose 373 rows are 273 lessons, 70 activities and 30 graded
+  items, and "4 weeks" for modules the curriculum calls 3½.
+*/
+describe('the numbers a milestone carries', () => {
+  it('gives the programme its length, not its count of week entries', () => {
+    // GD's half week 13 and the buffer that starts half-way through it, 13.5,
+    // are two entries of the 32 weeks: counting entries said 33.
+    expect(GD.weeks).toHaveLength(33)
+    expect(milestoneOf(GD, 'gd', 'programme:gd').weeks).toBe(32)
+    expect(milestoneOf(CC, 'cc', 'programme:cc').weeks).toBe(22)
+    expect(milestoneOf(SCHEDULE, 'da', 'programme').weeks).toBe(14)
+  })
+
+  it('measures a module by the days it spans, so a half week counts as half', () => {
+    const weeks = (schedule, id) =>
+      everyMilestone(schedule, id)
+        .filter((m) => m.kind === 'module')
+        .map((m) => m.weeks)
+    // GD-4 and GD-8 each hold a half week: four entries, three and a half weeks.
+    expect(weeks(GD, 'gd')).toEqual([4, 4, 2, 3.5, 4, 3, 4, 3.5, 2, 2])
+    expect(weeks(CC, 'cc')).toEqual([4, 6, 4, 6, 2])
+  })
+
+  it('leaves every Data Analytics module the whole weeks it always had', () => {
+    expect(
+      everyMilestone(SCHEDULE, 'da')
+        .filter((m) => m.kind === 'module')
+        .map((m) => m.weeks),
+    ).toEqual(SCHEDULE.modules.map((m) => m.weeks.length))
+  })
+
+  it('counts Creative Tech rows as items and Data Analytics rows as lessons', () => {
+    expect(new Set(everyMilestone(GD, 'gd').map((m) => m.unit))).toEqual(new Set(['item']))
+    expect(new Set(everyMilestone(CC, 'cc').map((m) => m.unit))).toEqual(new Set(['item']))
+    expect(new Set(everyMilestone(SCHEDULE, 'da').map((m) => m.unit))).toEqual(new Set(['lesson']))
+  })
+
+  it('names a Creative Tech module’s mastery project, and none for Data Analytics', () => {
+    expect(milestoneOf(GD, 'gd', 'module:GD-3').masteryProject).toBe('Poster Design')
+    expect(milestoneOf(CC, 'cc', 'module:CC-5').masteryProject).toBe('Creator Venture Canvas')
+    expect(everyMilestone(SCHEDULE, 'da').map((m) => m.masteryProject)).toEqual([
+      null,
+      null,
+      null,
+      null,
+      null,
+    ])
+  })
+
+  it('keeps every programme total in the 11–99 band its Arabic noun is written for', () => {
+    // 27, 250 and 373 each end in 11–99, which counts the noun in the singular
+    // accusative (درساً, عنصرًا). A total ending in 00–10 would need another
+    // form, so a sheet edit that lands on one has to revisit the post.
+    for (const schedule of [SCHEDULE, CC, GD]) {
+      expect(schedule.totalLessons % 100).toBeGreaterThanOrEqual(11)
+    }
+  })
+})
+
+describe('what the post says, in every language', () => {
+  it('gives a Graphic Design graduate the real figures', () => {
+    const m = milestoneOf(GD, 'gd', 'programme:gd')
+    expect(translations.en.postProgrammeDone(m)).toBe(
+      'I have finished the ALX Graphic Design programme: 32 weeks, 373 items, all 10 modules.',
+    )
+    expect(translations.fr.postProgrammeDone(m)).toBe(
+      'J’ai terminé le parcours ALX Graphic Design : 32 semaines, 373 éléments, les 10 modules.',
+    )
+    expect(translations.ar.postProgrammeDone(m)).toBe(
+      'أنهيت برنامج ALX للتصميم الجرافيكي: 32 أسبوعاً، و373 عنصرًا، وكل الوحدات 10.',
+    )
+    expect(translations.en.milestoneProgrammeSub(m)).toBe('All 10 modules, 373 items, 32 weeks.')
+    expect(translations.fr.milestoneProgrammeSub(m)).toBe('Les 10 modules, 373 éléments, 32 semaines.')
+    expect(translations.ar.milestoneProgrammeSub(m)).toBe('كل الوحدات 10، و373 عنصرًا، و32 أسبوعاً.')
+  })
+
+  it('names the mastery project at the end of a Creative Tech module post', () => {
+    const m = milestoneOf(GD, 'gd', 'module:GD-3')
+    expect(translations.en.postModuleDone(m)).toBe(
+      'I have just finished Poster Design & Visual Composition — module 3 of 10 in the ALX Graphic Design programme, including my mastery project: Poster Design.',
+    )
+    expect(translations.fr.postModuleDone(m)).toBe(
+      'Je viens de terminer Poster Design & Visual Composition — module 3 sur 10 du parcours ALX Graphic Design, y compris mon projet de maîtrise : Poster Design.',
+    )
+    // The title stays in English: it is the name learners match on the ALX
+    // platform. It ends the sentence, where a Latin run in Arabic stays put.
+    expect(translations.ar.postModuleDone(m)).toBe(
+      'أنهيت للتو Poster Design & Visual Composition — الوحدة 3 من 10 في برنامج ALX للتصميم الجرافيكي، بما في ذلك مشروع الإتقان: Poster Design.',
+    )
+  })
+
+  it('says a half week the way each language does', () => {
+    const m = milestoneOf(GD, 'gd', 'module:GD-4')
+    expect(translations.en.milestoneModuleSub(m)).toBe('Module 4 of 10, 3½ weeks of it.')
+    expect(translations.fr.milestoneModuleSub(m)).toBe('Module 4 sur 10, 3 semaines et demie.')
+    expect(translations.ar.milestoneModuleSub(m)).toBe('الوحدة 4 من 10، 3 أسابيع ونصف.')
+  })
+
+  it('leaves every Data Analytics post and dialogue line word for word as it was', () => {
+    const da = (id) => milestoneOf(SCHEDULE, 'da', id)
+    // Captured from the build before Creative Tech posts were corrected.
+    expect(translations.en.postProgrammeDone(da('programme'))).toBe(
+      'I have finished the ALX Data Analytics programme: 14 weeks, 27 lessons, all 4 modules.',
+    )
+    expect(translations.fr.postProgrammeDone(da('programme'))).toBe(
+      'J’ai terminé le parcours ALX Data Analytics : 14 semaines, 27 leçons, les 4 modules.',
+    )
+    expect(translations.ar.postProgrammeDone(da('programme'))).toBe(
+      'أنهيت برنامج ALX لتحليل البيانات: 14 أسبوعاً، و27 درساً، وكل الوحدات 4.',
+    )
+    expect(translations.en.milestoneProgrammeSub(da('programme'))).toBe('All 4 modules, 27 lessons, 14 weeks.')
+    expect(translations.fr.milestoneProgrammeSub(da('programme'))).toBe('Les 4 modules, 27 leçons, 14 semaines.')
+    expect(translations.ar.milestoneProgrammeSub(da('programme'))).toBe('كل الوحدات 4، و27 درساً، و14 أسبوعاً.')
+    expect(translations.en.postModuleDone(da('module:DA-3'))).toBe(
+      'I have just finished SQL for Data Analytics — module 3 of 4 in the ALX Data Analytics programme.',
+    )
+    expect(translations.fr.postModuleDone(da('module:DA-3'))).toBe(
+      'Je viens de terminer SQL for Data Analytics — module 3 sur 4 du parcours ALX Data Analytics.',
+    )
+    expect(translations.ar.postModuleDone(da('module:DA-3'))).toBe(
+      'أنهيت للتو SQL for Data Analytics — الوحدة 3 من 4 في برنامج ALX لتحليل البيانات.',
+    )
+    expect(translations.en.milestoneModuleSub(da('module:DA-3'))).toBe('Module 3 of 4, 5 weeks of it.')
+    expect(translations.fr.milestoneModuleSub(da('module:DA-3'))).toBe('Module 3 sur 4, 5 semaines.')
+    expect(translations.ar.milestoneModuleSub(da('module:DA-3'))).toBe('الوحدة 3 من 4، 5 أسابيع.')
+  })
+})
+
+/*
+  On screen, the post is shown in runs so the English curriculum titles can be
+  isolated in Arabic, as the URL and the hashtag are. The runs must be the post
+  and nothing else, or what a learner reads stops being what they publish.
+*/
+describe('the post as the dialogue shows it', () => {
+  const langs = Object.keys(translations)
+
+  it.each(langs)('%s: the runs join back into exactly the posted body', (lang) => {
+    for (const [id, schedule] of [['da', SCHEDULE], ['cc', CC], ['gd', GD]]) {
+      for (const m of everyMilestone(schedule, id)) {
+        const { body, runs } = postParts(m, postStrings(lang))
+        expect(runs.map((r) => r.text).join(''), `${lang} ${m.id}`).toBe(body)
+        // The marks that locate the titles never reach anything posted.
+        expect(buildPostText(m, postStrings(lang))).not.toMatch(/[\uE000\uE001]/)
+      }
+    }
+  })
+
+  it('isolates the module title and the project name, though one contains the other', () => {
+    // GD-3 is "Poster Design & Visual Composition"; its project is "Poster
+    // Design". Searching the sentence for the project would find it inside the
+    // module's title, which is why the titles are marked instead.
+    const m = milestoneOf(GD, 'gd', 'module:GD-3')
+    const isolated = postParts(m, postStrings('ar'))
+      .runs.filter((r) => r.isolate)
+      .map((r) => r.text)
+    expect(isolated).toEqual(['Poster Design & Visual Composition', 'Poster Design'])
+  })
+
+  it('isolates nothing in a programme post, which names no curriculum title', () => {
+    const m = milestoneOf(GD, 'gd', 'programme:gd')
+    expect(postParts(m, postStrings('ar')).runs.some((r) => r.isolate)).toBe(false)
   })
 })
 

@@ -27,13 +27,14 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
 
   /*
     `post` is what gets copied and sent to LinkedIn — one string, hashtag and
-    all. `body` is only for display, because the hashtag has to be rendered as
-    an isolated LTR run to survive Arabic. The two must not drift, so the body
-    is derived from the post rather than built a second way.
+    all. The parts are only for display, because the hashtag, the URL and the
+    English curriculum titles each have to be rendered as an isolated LTR run
+    to survive Arabic. The two must not drift, so the parts come from the same
+    translation as the post rather than being built a second way.
   */
   const strings = { moduleDone: t.postModuleDone, programmeDone: t.postProgrammeDone }
   const post = buildPostText(milestone, strings)
-  const { body, url, hashtag } = postParts(milestone, strings)
+  const { runs, url, hashtag } = postParts(milestone, strings)
 
   /*
     Escape closes it, and focus starts on the primary action.
@@ -136,7 +137,21 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
           dir={t.dir}
           className="mt-3 whitespace-pre-line rounded-lg bg-navy-900/5 p-4 text-sm leading-relaxed text-ink dark:bg-white/5 dark:text-paper"
         >
-          {body}
+          {/*
+            The module and mastery-project titles stay in English in every
+            language, so each is isolated as an LTR run too, as the roadmap
+            already does with module titles. See titleRuns in
+            src/lib/milestones.js.
+          */}
+          {runs.map((run, i) =>
+            run.isolate ? (
+              <bdi key={i} dir="ltr">
+                {run.text}
+              </bdi>
+            ) : (
+              run.text
+            ),
+          )}
           {'\n\n'}
           {/*
             The URL and the hashtag are each isolated as their own LTR run, and

@@ -137,6 +137,15 @@ describe('buildScheduleFromCsv — activity layout', () => {
     expect(byTitle['Welcome'].id).toBe('gd-1-w1-welcome')
     expect(byTitle['Typography'].id).toBe('gd-2-w3.5-typography')
   })
+
+  it("names each module's mastery project as a post would, and null where there is none", () => {
+    expect(model.modules.map((m) => [m.code, m.masteryProject])).toEqual([
+      ['GD-1', 'Poster'],
+      ['GD-2', null],
+    ])
+    // The DA layout has graded tests and projects, but no mastery projects.
+    expect(buildScheduleFromCsv(CSV).modules.map((m) => m.masteryProject)).toEqual([null, null])
+  })
 })
 
 describe('buildScheduleFromCsv — program length', () => {

@@ -163,8 +163,9 @@ machine — no AI, no guessing, same bytes → same model every time.
   **production parser** against all three CSVs in plain Node and asserts program
   length (14 / 22 / 32 weeks), module counts, a gap-free day timeline, buffer and
   half weeks, forward-fill integrity, multi-line cell parsing, graded
-  classification, one mastery project per Creative Tech module, and id uniqueness
-  within and across programs. Run it with `npm run parser:check`.
+  classification, one mastery project per Creative Tech module (in its final
+  content week, named as a module post quotes it), and id uniqueness within and
+  across programs. Run it with `npm run parser:check`.
 
 ### The pacing formula
 

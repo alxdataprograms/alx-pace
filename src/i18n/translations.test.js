@@ -164,6 +164,39 @@ describe('the Arabic milestone post', () => {
   })
 })
 
+/*
+  The hero's week line cheers the slogan with "!" — except where the slogan
+  already ends its sentence. "Learn. Build. Repeat." had read
+  "Learn. Build. Repeat.!", in every language and in Data Analytics too.
+*/
+describe('the week slogan line', () => {
+  it.each(langs)('%s never stacks a mark on a slogan that already ends its sentence', (lang) => {
+    const t = translations[lang]
+    for (const slogan of [...t.slogans, ...t.slogansCreative]) {
+      const line = t.weekSlogan(5, slogan)
+      expect(line).not.toMatch(/[.!?؟]\s*[!?؟]$/)
+      // Either the slogan ends the line untouched, or it gained the cheer.
+      expect(line.endsWith(slogan) || line.endsWith('!')).toBe(true)
+    }
+  })
+
+  it('lets "Learn. Build. Repeat." keep its own full stop', () => {
+    expect(translations.en.weekSlogan(13.5, 'Learn. Build. Repeat.')).toBe('Week 13.5 — Learn. Build. Repeat.')
+    expect(translations.fr.weekSlogan(5, 'Apprendre. Créer. Recommencer.')).toBe(
+      'Semaine 5 — Apprendre. Créer. Recommencer.',
+    )
+    expect(translations.ar.weekSlogan(5, 'تعلّم. ابنِ. كرّر.')).toBe('الأسبوع 5 — تعلّم. ابنِ. كرّر.')
+  })
+
+  it('still cheers every other slogan exactly as before', () => {
+    expect(translations.en.weekSlogan(1, 'Do Hard Things')).toBe('Week 1 — Do Hard Things!')
+    expect(translations.fr.weekSlogan(1, 'Fais des choses difficiles')).toBe(
+      'Semaine 1 — Fais des choses difficiles !',
+    )
+    expect(translations.ar.weekSlogan(1, 'افعل الأشياء الصعبة')).toBe('الأسبوع 1 — افعل الأشياء الصعبة!')
+  })
+})
+
 describe('Arabic agreement in the catch-up status', () => {
   const ar = translations.ar
 

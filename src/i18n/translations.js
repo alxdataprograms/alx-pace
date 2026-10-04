@@ -52,6 +52,20 @@ const frPlural = (n, singular, plural) => `${n} ${n === 1 ? singular : plural}`
 // Arabic-Indic digits (١٤) for the week counts that used to be hard-coded.
 const arNum = (n) => String(n).replace(/\d/g, (d) => '٠١٢٣٤٥٦٧٨٩'[d])
 
+/*
+  The hero's week line closes the slogan with an exclamation mark, unless the
+  slogan already ends its own sentence: "Learn. Build. Repeat." had been
+  showing as "Learn. Build. Repeat.!".
+*/
+const endsSentence = (text) => /[.!?؟…]$/.test(text)
+
+/*
+  A module lasts whole weeks or a half more (Graphic Design's GD-4 and GD-8 are
+  3½), and each language says the half its own way: "3½ weeks", "3 semaines et
+  demie", "3 أسابيع ونصف". Whole weeks read exactly as they always have.
+*/
+const weeksOrHalf = (n, whole, half) => (Number.isInteger(n) ? whole(n) : half(Math.floor(n)))
+
 export const translations = {
   en: {
     dir: 'ltr',
@@ -79,7 +93,7 @@ export const translations = {
 
     welcomeBack: () => `Welcome back, `,
     welcomeBackAfterName: `!`,
-    weekSlogan: (week, slogan) => `Week ${week} — ${slogan}!`,
+    weekSlogan: (week, slogan) => `Week ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
     started: (date) => `Started ${date}`,
     setStartDate: 'Set your start date',
     todayHint: (date) => `(today: ${date})`,
@@ -200,8 +214,10 @@ export const translations = {
     // market, and a localised variant would simply not be found.
     milestoneModuleTitle: (m) => `${m.title} — done`,
     milestoneProgrammeTitle: 'You finished the programme',
-    milestoneModuleSub: (m) => `Module ${m.index} of ${m.total}, ${m.weeks} weeks of it.`,
-    milestoneProgrammeSub: (m) => `All ${m.total} modules, ${m.lessons} lessons, ${m.weeks} weeks.`,
+    milestoneModuleSub: (m) =>
+      `Module ${m.index} of ${m.total}, ${weeksOrHalf(m.weeks, (n) => `${n}`, (n) => `${n}½`)} weeks of it.`,
+    milestoneProgrammeSub: (m) =>
+      `All ${m.total} modules, ${m.lessons} ${pick(m.unit, 'lessons', 'items')}, ${m.weeks} weeks.`,
     milestoneShareIntro: 'Worth saying out loud. Post it as it is, or edit it once you get there.',
     milestoneShare: 'Share on LinkedIn',
     milestoneDismiss: 'Not now',
@@ -217,10 +233,17 @@ export const translations = {
     // Written in the first person, plainly. The pull is towards "Thrilled to
     // share that I have embarked on…", and that is what makes a campaign post
     // read as homework instead of as somebody saying something.
+    //
+    // A Creative Tech module post also names its mastery project, the piece of
+    // work a design or content learner can point an employer to. It goes last
+    // in every language so that in Arabic its English name ends the sentence,
+    // where a Latin run that starts and ends on a letter is never reordered
+    // (verify-parser checks the names do). Data Analytics modules have no
+    // mastery project, so their post reads exactly as it always has.
     postModuleDone: (m) =>
-      `I have just finished ${m.title} — module ${m.index} of ${m.total} in the ${postProgram('en', m)} programme.`,
+      `I have just finished ${m.title} — module ${m.index} of ${m.total} in the ${postProgram('en', m)} programme${m.masteryProject ? `, including my mastery project: ${m.masteryProject}` : ''}.`,
     postProgrammeDone: (m) =>
-      `I have finished the ${postProgram('en', m)} programme: ${m.weeks} weeks, ${m.lessons} lessons, all ${m.total} modules.`,
+      `I have finished the ${postProgram('en', m)} programme: ${m.weeks} weeks, ${m.lessons} ${pick(m.unit, 'lessons', 'items')}, all ${m.total} modules.`,
     dismiss: 'Dismiss',
 
     reminderTitle: (week, total) => `ALX Pace — Week ${week} of ${total}`,
@@ -323,7 +346,7 @@ export const translations = {
 
     welcomeBack: () => `Bon retour, `,
     welcomeBackAfterName: ` !`,
-    weekSlogan: (week, slogan) => `Semaine ${week} — ${slogan} !`,
+    weekSlogan: (week, slogan) => `Semaine ${week} — ${slogan}${endsSentence(slogan) ? '' : ' !'}`,
     started: (date) => `Commencé le ${date}`,
     setStartDate: 'Définis ta date de début',
     todayHint: (date) => `(aujourd'hui : ${date})`,
@@ -440,8 +463,10 @@ export const translations = {
 
     milestoneModuleTitle: (m) => `${m.title} — terminé`,
     milestoneProgrammeTitle: 'Tu as terminé le parcours',
-    milestoneModuleSub: (m) => `Module ${m.index} sur ${m.total}, ${m.weeks} semaines.`,
-    milestoneProgrammeSub: (m) => `Les ${m.total} modules, ${m.lessons} leçons, ${m.weeks} semaines.`,
+    milestoneModuleSub: (m) =>
+      `Module ${m.index} sur ${m.total}, ${weeksOrHalf(m.weeks, (n) => `${n} semaines`, (n) => `${frPlural(n, 'semaine', 'semaines')} et demie`)}.`,
+    milestoneProgrammeSub: (m) =>
+      `Les ${m.total} modules, ${m.lessons} ${pick(m.unit, 'leçons', 'éléments')}, ${m.weeks} semaines.`,
     milestoneShareIntro: 'À dire à voix haute. Publie-le tel quel, ou modifie-le une fois sur place.',
     milestoneShare: 'Partager sur LinkedIn',
     milestoneDismiss: 'Plus tard',
@@ -455,9 +480,9 @@ export const translations = {
     roadmapModuleDone: 'Terminé',
     roadmapProgrammeDone: 'Programme entièrement terminé',
     postModuleDone: (m) =>
-      `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ${postProgram('fr', m)}.`,
+      `Je viens de terminer ${m.title} — module ${m.index} sur ${m.total} du parcours ${postProgram('fr', m)}${m.masteryProject ? `, y compris mon projet de maîtrise : ${m.masteryProject}` : ''}.`,
     postProgrammeDone: (m) =>
-      `J’ai terminé le parcours ${postProgram('fr', m)} : ${m.weeks} semaines, ${m.lessons} leçons, les ${m.total} modules.`,
+      `J’ai terminé le parcours ${postProgram('fr', m)} : ${m.weeks} semaines, ${m.lessons} ${pick(m.unit, 'leçons', 'éléments')}, les ${m.total} modules.`,
     dismiss: 'Fermer',
 
     reminderTitle: (week, total) => `ALX Pace — Semaine ${week} sur ${total}`,
@@ -558,7 +583,7 @@ export const translations = {
 
     welcomeBack: () => `أهلاً بعودتك، `,
     welcomeBackAfterName: `!`,
-    weekSlogan: (week, slogan) => `الأسبوع ${week} — ${slogan}!`,
+    weekSlogan: (week, slogan) => `الأسبوع ${week} — ${slogan}${endsSentence(slogan) ? '' : '!'}`,
     started: (date) => `بدأت في ${date}`,
     setStartDate: 'حدّد تاريخ بدايتك',
     todayHint: (date) => `(اليوم: ${date})`,
@@ -671,8 +696,13 @@ export const translations = {
 
     milestoneModuleTitle: (m) => `${m.title} — اكتمل`,
     milestoneProgrammeTitle: 'لقد أكملت البرنامج',
-    milestoneModuleSub: (m) => `الوحدة ${m.index} من ${m.total}، ${m.weeks} أسابيع.`,
-    milestoneProgrammeSub: (m) => `كل الوحدات ${m.total}، و${m.lessons} درساً، و${m.weeks} أسبوعاً.`,
+    milestoneModuleSub: (m) =>
+      `الوحدة ${m.index} من ${m.total}، ${weeksOrHalf(m.weeks, (n) => `${n} أسابيع`, (n) => `${n} أسابيع ونصف`)}.`,
+    // Every programme total (27, 250, 373) has its last two digits in 11–99,
+    // which counts the noun in the singular accusative: درساً, عنصرًا.
+    // milestones.test.js fails if a sheet edit moves a total out of that range.
+    milestoneProgrammeSub: (m) =>
+      `كل الوحدات ${m.total}، و${m.lessons} ${pick(m.unit, 'درساً', 'عنصرًا')}، و${m.weeks} أسبوعاً.`,
     milestoneShareIntro: 'يستحق أن يُقال. انشره كما هو، أو عدّله بعد الوصول.',
     milestoneShare: 'المشاركة على لينكدإن',
     milestoneDismiss: 'لاحقاً',
@@ -686,9 +716,9 @@ export const translations = {
     roadmapModuleDone: 'مكتملة',
     roadmapProgrammeDone: 'اكتمل البرنامج بالكامل',
     postModuleDone: (m) =>
-      `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ${postProgram('ar', m)}.`,
+      `أنهيت للتو ${m.title} — الوحدة ${m.index} من ${m.total} في برنامج ${postProgram('ar', m)}${m.masteryProject ? `، بما في ذلك مشروع الإتقان: ${m.masteryProject}` : ''}.`,
     postProgrammeDone: (m) =>
-      `أنهيت برنامج ${postProgram('ar', m)}: ${m.weeks} أسبوعاً، و${m.lessons} درساً، وكل الوحدات ${m.total}.`,
+      `أنهيت برنامج ${postProgram('ar', m)}: ${m.weeks} أسبوعاً، و${m.lessons} ${pick(m.unit, 'درساً', 'عنصرًا')}، وكل الوحدات ${m.total}.`,
     dismiss: 'إغلاق',
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
