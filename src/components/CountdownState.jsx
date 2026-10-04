@@ -39,8 +39,9 @@ export default function CountdownState({
 
       {firstWeek && (
         <div className="mt-4 rounded-xl bg-tint p-3 text-start dark:bg-white/5">
+          {/* The week in the learner's language: the sheet's own label is English, "Week 1". */}
           <p className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-ink-soft dark:text-paper/75">
-            <Sparkles size={13} aria-hidden="true" /> {t.firstUp(firstWeek.weekLabel)}
+            <Sparkles size={13} aria-hidden="true" /> {t.firstUp(t.weekLabel(firstWeek))}
           </p>
           <p dir="ltr" className="mt-1 text-start text-sm font-semibold">
             {firstWeek.moduleCode}: {firstWeek.moduleTitle}

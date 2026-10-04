@@ -1,7 +1,12 @@
+import { readFileSync, readdirSync } from 'node:fs'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
 import { describe, it, expect } from 'vitest'
 
 import { translations } from './translations'
 import { formatShortDate } from '../lib/formatDate'
+import { SCHEDULES } from '../lib/schedule'
 
 /*
   Every user-facing string exists in all three languages, and has the same shape
@@ -273,8 +278,10 @@ describe('French counts', () => {
     expect(fr.lessonsComplete(27, 27)).toBe('27 leçons terminées sur 27')
     expect(fr.doneCount(1, 1)).toBe('1/1 fait')
     expect(fr.doneCount(3, 5)).toBe('3/5 faits')
-    expect(fr.paceValue(1.5)).toBe('1.5 leçon/semaine')
-    expect(fr.paceValue(3.1, 'item')).toBe('3.1 éléments/semaine')
+    // With a decimal comma, as French writes one (see "numbers as each
+    // language writes them" below).
+    expect(fr.paceValue(1.5)).toBe('1,5 leçon/semaine')
+    expect(fr.paceValue(3.1, 'item')).toBe('3,1 éléments/semaine')
     expect(fr.statusCatchUpWeek(1, 1, 0)).toBe(
       'Semaine de rattrapage\u00a0: 1\u00a0élément à terminer\u00a0· 1\u00a0jour\u00a0restant',
     )
@@ -283,8 +290,8 @@ describe('French counts', () => {
     )
     expect(fr.reminderBehind(3, 1)).toMatch(/· 1 évaluation cette semaine\.$/)
     expect(fr.reminderBehind(3, 2)).toMatch(/· 2 évaluations cette semaine\.$/)
-    expect(fr.milestonesDue(1, 'Week 5')).toContain('elle compte pour ta note')
-    expect(fr.milestonesDue(2, 'Week 4')).toContain('elles comptent pour ta note')
+    expect(fr.milestonesDue(1, { week: 5 })).toContain('elle compte pour ta note')
+    expect(fr.milestonesDue(2, { week: 4 })).toContain('elles comptent pour ta note')
   })
 
   it('never hedges with "(s)"', () => {
@@ -381,12 +388,14 @@ describe('the week-done copy', () => {
 
   it.each(langs)('%s names the week in its own words, kept with its number', (lang) => {
     const t = translations[lang]
+    // Its number as the language writes it: "13,5" in French.
+    const number = `\u00a0${t.number(13.5)}`
     for (const n of [1, 2, 3]) {
       const line = t.milestonesAllDone(n, 13.5)
-      expect(line).toMatch(/ 13\.5/)
+      expect(line).toContain(number)
       if (lang !== 'en') expect(line).not.toMatch(/Week/)
     }
-    expect(t.getAheadMore(4, 13.5, 'item')).toMatch(/ 13\.5$/)
+    expect(t.getAheadMore(4, 13.5, 'item').endsWith(number)).toBe(true)
   })
 })
 
@@ -461,8 +470,10 @@ describe('the pace card’s verdict', () => {
   })
 
   it.each(langs)('%s names the oldest open week in its own words, kept with its number', (lang) => {
-    const line = translations[lang].forecastOldestOpen(13.5)
-    expect(line).toMatch(/\u00a013\.5$/)
+    const t = translations[lang]
+    const line = t.forecastOldestOpen(13.5)
+    // Its number as the language writes it: "13,5" in French.
+    expect(line.endsWith(`\u00a0${t.number(13.5)}`)).toBe(true)
     if (lang !== 'en') expect(line).not.toMatch(/Week/)
   })
 
@@ -721,5 +732,171 @@ describe('the first week and "Already started?"', () => {
       expect(t.alreadyStartedDone(n, 'item')).not.toBe(t.alreadyStartedDone(n, 'lesson'))
     }
     expect(t.statusFirstWeek(1, 'item')).not.toBe(t.statusFirstWeek(1, 'lesson'))
+  })
+})
+
+/*
+  Numbers as each language writes them. French marks a decimal with a comma,
+  yet the pace card read "3.1 leçons/semaine" and Graphic Design's weeks
+  "Semaine 13.5". English and Arabic keep the point, Arabic in the Western
+  digits the rest of its UI uses: its locale, ar-u-nu-latn, writes "13.5" too.
+  A whole number reads as it always has in every language: nothing is grouped.
+*/
+describe('numbers as each language writes them', () => {
+  const { en, fr, ar } = translations
+  /** As read: no-break spaces as spaces, word joiners gone. */
+  const plain = (text) => text.replace(/[\u00a0\u202f]/g, ' ').replace(/\u2060/g, '')
+
+  it('marks a decimal with a comma in French, wherever a week or a pace has one', () => {
+    expect(fr.number(13.5)).toBe('13,5')
+    expect(fr.paceValue(3.1)).toBe('3,1 leçons/semaine')
+    expect(fr.paceValue(14.8, 'item')).toBe('14,8 éléments/semaine')
+    expect(fr.weekRange(13.5, 13.5)).toBe('Semaine 13,5')
+    expect(fr.weekRange(11, 13.5)).toBe('Semaines 11–13,5')
+    expect(fr.weekOf(13.5, 32)).toBe('Semaine 13,5 sur 32')
+    expect(fr.weekSlogan(13.5, 'Apprendre. Créer. Recommencer.')).toBe(
+      'Semaine 13,5 — Apprendre. Créer. Recommencer.',
+    )
+    expect(fr.reminderTitle(14.5, 32)).toBe('ALX Pace — Semaine 14,5 sur 32')
+    expect(plain(fr.forecastOldestOpen(14.5))).toBe('à rattraper dès la semaine 14,5')
+    expect(plain(fr.getAheadMore(2, 14.5))).toBe('+2 autres en semaine 14,5')
+    expect(plain(fr.milestonesAllDone(1, 13.5))).toBe(
+      'L’évaluation notée de la semaine 13,5 est terminée.',
+    )
+    expect(plain(fr.nextCatchUpWeek(13.5, '13 oct.'))).toBe(
+      'Prochaine semaine de rattrapage : semaine 13,5, à partir du 13 oct.',
+    )
+    expect(plain(fr.alreadyStartedAsk(14.5, 'Design graphique', 1, 13.5))).toBe(
+      'Tu es en semaine 14,5 du parcours Design graphique. As-tu déjà terminé les semaines 1 à 13,5 sur la plateforme ALX ?',
+    )
+    expect(plain(fr.alreadyStartedYes(1, 13.5))).toBe('Oui, cocher les semaines 1 à 13,5')
+  })
+
+  it('keeps the point in English and Arabic, Arabic in Western digits', () => {
+    expect(en.number(13.5)).toBe('13.5')
+    expect(en.paceValue(3.1)).toBe('3.1 lessons/week')
+    expect(en.weekOf(13.5, 32)).toBe('Week 13.5 of 32')
+    expect(ar.number(13.5)).toBe('13.5')
+    expect(ar.paceValue(3.1)).toBe('3.1 درس/أسبوع')
+    expect(ar.weekOf(13.5, 32)).toBe('الأسبوع 13.5 من 32')
+    expect(ar.weekRange(11, 13.5)).toBe('الأسابيع 11–13.5')
+  })
+
+  it.each(langs)('writes every week of every program in %s, and whole numbers as before', (lang) => {
+    const t = translations[lang]
+    const weeks = Object.values(SCHEDULES).flatMap((s) => s.weeks.map((w) => w.week))
+    for (const n of [...weeks, 0, 3.1, 14, 22, 32, 373, 1234]) {
+      // Only French's decimal mark differs, and nothing is grouped: "1234".
+      const expected = lang === 'fr' ? String(n).replace('.', ',') : String(n)
+      expect(t.number(n), `${lang} ${n}`).toBe(expected)
+    }
+  })
+})
+
+/*
+  A week as the sheet labels it, "Week 13 (½ week)" or "Week 13.5 (Buffer)",
+  in the learner's language. The sheet is English, and its label headed the
+  French and Arabic focus card, followed "Pour commencer" in the countdown, and
+  ended "2 à rendre en Week 4" in the graded card. English reads exactly as
+  the sheet does.
+*/
+describe('the week as the sheet labels it', () => {
+  const { en, fr, ar } = translations
+  const plain = (text) => text.replace(/\u00a0/g, ' ')
+  const weeks = Object.values(SCHEDULES).flatMap((s) => s.weeks)
+  const gdWeek = (n) => SCHEDULES.gd.weeks.find((w) => w.week === n)
+  const daWeek4 = SCHEDULES.da.weeks.find((w) => w.week === 4)
+
+  it('reads in English exactly as the sheet does, for every week of every program', () => {
+    for (const week of weeks) expect(plain(en.weekLabel(week))).toBe(week.weekLabel)
+  })
+
+  it.each(['fr', 'ar'])('names every week in %s, never in the sheet’s English', (lang) => {
+    const t = translations[lang]
+    for (const week of weeks) {
+      const label = plain(t.weekLabel(week))
+      expect(label, label).not.toMatch(/Week|week|Buffer/)
+      expect(label.startsWith(t.weekRange(week.week, week.week)), label).toBe(true)
+    }
+  })
+
+  it('names the kind of week in the words of the roadmap’s chips', () => {
+    expect(plain(fr.weekLabel(gdWeek(13)))).toBe('Semaine 13 (½ semaine)')
+    expect(plain(fr.weekLabel(gdWeek(13.5)))).toBe('Semaine 13,5 (rattrapage)')
+    expect(plain(fr.weekLabel(daWeek4))).toBe('Semaine 4')
+    expect(plain(ar.weekLabel(gdWeek(13)))).toBe('الأسبوع 13 (نصف أسبوع)')
+    expect(plain(ar.weekLabel(gdWeek(13.5)))).toBe('الأسبوع 13.5 (استدراك)')
+    expect(plain(ar.weekLabel(daWeek4))).toBe('الأسبوع 4')
+  })
+
+  it.each(langs)('keeps the number with its word, and the half with its week, in %s', (lang) => {
+    // The one ordinary space comes before the kind, where a line may break.
+    const t = translations[lang]
+    for (const week of weeks) {
+      const label = t.weekLabel(week)
+      expect(label.split(' ').length, label).toBe(week.isBuffer || week.isHalf ? 2 : 1)
+    }
+  })
+
+  it('counts the graded items due in that week, in its own words', () => {
+    expect(plain(en.milestonesDue(2, daWeek4))).toBe(
+      '2 due in Week 4 — these count toward your grade.',
+    )
+    expect(plain(en.milestonesDue(1, gdWeek(13)))).toBe(
+      '1 due in Week 13 (½ week) — these count toward your grade.',
+    )
+    // Inside a sentence, "semaine", as French has it everywhere else.
+    expect(plain(fr.milestonesDue(2, daWeek4))).toBe(
+      '2 à rendre en semaine 4 — elles comptent pour ta note.',
+    )
+    expect(plain(fr.milestonesDue(1, gdWeek(13)))).toBe(
+      '1 à rendre en semaine 13 (½ semaine) — elle compte pour ta note.',
+    )
+    expect(plain(ar.milestonesDue(2, daWeek4))).toBe('2 مستحقة في الأسبوع 4 — وهي تُحتسب في درجتك.')
+    expect(plain(ar.milestonesDue(1, gdWeek(13)))).toBe(
+      '1 مستحقة في الأسبوع 13 (نصف أسبوع) — وهي تُحتسب في درجتك.',
+    )
+  })
+})
+
+/*
+  The page's title follows the language (LanguageContext sets it). It stayed
+  index.html's English on the browser's tab, in its history and in bookmarks.
+  The brand leads it in every language, and English is index.html's own.
+*/
+describe('the page title', () => {
+  it.each(langs)('leads with the brand in %s', (lang) => {
+    expect(translations[lang].pageTitle).toMatch(/^ALX Pace — \S/)
+  })
+
+  it('is index.html’s own in English, and translated in French and Arabic', () => {
+    const html = readFileSync(fileURLToPath(new URL('../../index.html', import.meta.url)), 'utf8')
+    expect(html).toContain(`<title>${translations.en.pageTitle}</title>`)
+    expect(translations.fr.pageTitle).toBe('ALX Pace — Suivi à ton rythme')
+    expect(translations.ar.pageTitle).toBe('ALX Pace — متابعة بالوتيرة الذاتية')
+  })
+})
+
+/*
+  Every key is read somewhere in the app. One that nothing reads is a string
+  no learner sees, still kept up in three languages: changeProgram had
+  outlived whatever it once named. A key is read as `t.key`, or named as a
+  string where a component looks one up (GradedBadge's labelKey).
+*/
+describe('every key', () => {
+  const SRC = fileURLToPath(new URL('..', import.meta.url))
+  const source = readdirSync(SRC, { recursive: true, encoding: 'utf8' })
+    .map((f) => f.split('\\').join('/'))
+    .filter((f) => /\.jsx?$/.test(f) && !/\.test\.jsx?$/.test(f) && f !== 'i18n/translations.js')
+    .map((f) => readFileSync(join(SRC, f), 'utf8'))
+    .join('\n')
+
+  it('is read somewhere in the app', () => {
+    // A guard that reads nothing would pass on nothing.
+    expect(source).toContain('useLang()')
+    const unread = Object.keys(translations.en).filter(
+      (key) => !new RegExp(`\\.${key}\\b|['"]${key}['"]`).test(source),
+    )
+    expect(unread).toEqual([])
   })
 })

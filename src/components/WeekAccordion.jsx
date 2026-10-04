@@ -86,7 +86,11 @@ export default function WeekAccordion({
   const toggleWeek = toggleIn(setOpenWeeks)
   const toggleModule = toggleIn(setFoldedModules)
 
-  /** One week: a card that opens to its items, or a catch-up week's flat row. */
+  /**
+   * One week: a card that opens to its items, or a catch-up week's flat row.
+   * Its tile writes the number as the learner's language does: "13,5" in
+   * French, beside "Semaine 13,5".
+   */
   const weekRow = (week) => {
     const isOpen = openWeeks.has(week.week)
     const isCurrent = week.week === currentWeek
@@ -113,7 +117,7 @@ export default function WeekAccordion({
                 : 'bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75'
             }`}
           >
-            {week.week}
+            {t.number(week.week)}
           </span>
           <div className="min-w-0 flex-1">
             {/*
@@ -172,7 +176,7 @@ export default function WeekAccordion({
                     : 'bg-navy-900/5 text-ink-soft dark:bg-white/10 dark:text-paper/75'
             }`}
           >
-            {allDone ? <CheckCircle2 size={18} aria-hidden="true" /> : week.week}
+            {allDone ? <CheckCircle2 size={18} aria-hidden="true" /> : t.number(week.week)}
           </span>
 
           <div className="min-w-0 flex-1">

@@ -93,7 +93,20 @@ export default function CurrentFocusCard({
       aria-label={t.focusAria(weekName)}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
+        {/*
+          The heading names the week in the learner's language, as the sheet
+          labels it, its kind included: "Semaine 13,5 (rattrapage) · GD-4",
+          "الأسبوع 4 · DA-2". It was the sheet's English in every language, all
+          of it held left to right; now only the module code is.
+
+          It wraps when the row runs short, before the week's kind or after the
+          "·", into lines of even length ("Semaine 13 / (½ semaine) · GD-4"),
+          never inside the module code. It could neither wrap nor shrink: at
+          320px, "Week 13 (½ week) · GD-4" pushed the "0/4" beside it past the
+          card's edge, and the longer French and Arabic labels would have done
+          so at 375px.
+        */}
+        <div className="flex min-w-0 items-center gap-2.5">
           <span className="flex h-9 w-9 flex-none items-center justify-center rounded-xl bg-lime text-navy-900">
             <Icon size={20} strokeWidth={2.5} aria-hidden="true" />
           </span>
@@ -101,9 +114,11 @@ export default function CurrentFocusCard({
             <p className="text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
               {isCatchUp ? t.catchUpEyebrow : t.focusEyebrow}
             </p>
-            <h2 className="truncate text-base font-bold leading-tight">
-              <span dir="ltr">
-                {week.weekLabel} · {week.moduleCode}
+            <h2 className="text-balance text-base font-bold leading-tight">
+              {t.weekLabel(week)}
+              {'\u00a0· '}
+              <span dir="ltr" className="whitespace-nowrap">
+                {week.moduleCode}
               </span>
             </h2>
           </div>

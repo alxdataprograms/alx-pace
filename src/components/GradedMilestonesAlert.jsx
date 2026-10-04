@@ -50,8 +50,9 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
           <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
             {t.milestonesTitle}
           </h2>
+          {/* The week in the learner's words: "2 à rendre en semaine 4", not "en Week 4". */}
           <p className="text-xs text-ink-soft dark:text-paper/70">
-            {t.milestonesDue(items.length, week.weekLabel)}
+            {t.milestonesDue(items.length, week)}
           </p>
         </div>
       </div>

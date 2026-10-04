@@ -79,6 +79,23 @@ describe('the milestone dialogue', () => {
     )
     expect(container.querySelector('blockquote').textContent).toBe(postIn('en', m))
   })
+
+  /*
+    The post's link has no break a line can take for its first 273px, so it ran
+    past the grey box at 375px and past the screen's edge at 320px: off the
+    right in English and French, off the left in Arabic. It may now break
+    between any two characters where nothing else fits (overflow-wrap), and is
+    still read left to right. jsdom lays out no line, so this checks the two
+    attributes that do it.
+  */
+  it.each(Object.keys(translations))('lets the link wrap anywhere, still left to right (%s)', (lang) => {
+    render(milestone('module:GD-3'), lang)
+    const link = [...container.querySelectorAll('blockquote bdi')].find((b) =>
+      b.textContent.startsWith('https://'),
+    )
+    expect(link.getAttribute('dir')).toBe('ltr')
+    expect(link.classList).toContain('break-words')
+  })
 })
 
 /*

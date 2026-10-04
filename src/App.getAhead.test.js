@@ -168,7 +168,8 @@ describe('the graded card, once the week’s graded items are done', () => {
       completedLessons: JSON.stringify(done),
       'alx-celebrated': allCelebrated,
     })
-    expect(region(en.milestonesAria).textContent).toContain(en.milestonesDue(2, 'Week 4'))
+    const week4 = da.weeks.find((w) => w.week === 4)
+    expect(region(en.milestonesAria).textContent).toContain(en.milestonesDue(2, week4))
 
     act(() => vi.advanceTimersByTime(4 * 60_000))
     // Week 5's graded item was done before it began.

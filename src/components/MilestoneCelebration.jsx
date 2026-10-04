@@ -205,8 +205,16 @@ export function MilestoneCelebration({ milestone, onDismiss }) {
             in the same paragraph has exactly the same problem.
 
             <bdi> isolates them without changing a character of the text.
+
+            The URL may also break between any two of its characters, where
+            nothing else fits. It has no break a line can take before
+            ".../alx-", 273px into it, and so it ran past the grey box at
+            375px, and past the screen's edge at 320px: cut off on the right,
+            or in Arabic on the left. Wherever ".../alx-" fits, from 414px, it
+            still breaks there; and isolated, it reads left to right across
+            the lines it takes.
           */}
-          <bdi dir="ltr">{url}</bdi>
+          <bdi dir="ltr" className="break-words">{url}</bdi>
           {'\n\n'}
           <bdi dir="ltr">{hashtag}</bdi>
         </blockquote>

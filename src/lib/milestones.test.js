@@ -412,7 +412,8 @@ describe('the celebration renders the hashtag as an isolated run', () => {
     // A bare Latin URL in an RTL paragraph is reordered exactly like the
     // hashtag was. It was added to the post after that bug was fixed, so it
     // never went out broken — this is here so it cannot start.
-    expect(source).toMatch(/<bdi dir="ltr">\{url\}<\/bdi>/)
+    // Its class lets it wrap: a URL has no break a line can take for 273px.
+    expect(source).toMatch(/<bdi dir="ltr"[^>]*>\{url\}<\/bdi>/)
   })
 
   it('still copies the whole post, hashtag included, not the split display text', () => {
