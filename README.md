@@ -138,8 +138,8 @@ machine — no AI, no guessing, same bytes → same model every time.
 - **Build-time bundling:** the CSVs are imported with Vite's `?raw` suffix
   ([`src/lib/schedule.js`](src/lib/schedule.js)) so they are compiled straight into the
   bundle — the curriculum data needs no runtime `fetch` and is never missing or
-  stale. (The Poppins typeface loads from Google Fonts with a system-font
-  fallback, so the app remains fully functional without it.)
+  stale. The Poppins typeface is bundled too (`src/assets/fonts`, OFL), so
+  first paint waits on no third party and the app keeps its look offline.
 - **RFC 4180 parser** ([`src/lib/csvParser.js`](src/lib/csvParser.js)) handles the
   messy realities of a spreadsheet export: quoted cells containing commas and
   **newlines** (the Integrated Projects span two lines), escaped `""`, and mixed
@@ -320,7 +320,8 @@ src/
 ## Branding
 
 Design tokens sampled from the live **alxafrica.com** site (July 2026), typeface
-**Poppins** (via Google Fonts, with a system-sans fallback):
+**Poppins** (bundled under `src/assets/fonts`, with a system-sans fallback for
+scripts it does not cover, such as Arabic):
 
 | Token | Hex | Use |
 | --- | --- | --- |
