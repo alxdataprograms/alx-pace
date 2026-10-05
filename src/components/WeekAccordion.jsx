@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { AlarmClock, CheckCircle2, ChevronDown, CircleDot, Coffee, ListChecks, Share2 } from 'lucide-react'
 import LessonRow from './LessonRow'
+import SteadyText from './SteadyText'
 import { useLang } from '../i18n/LanguageContext'
 
 /**
@@ -14,7 +15,8 @@ import { useLang } from '../i18n/LanguageContext'
  * A week before the current one with items still open is overdue: amber
  * number, "N overdue" chip. It wore the same grey number as a week still to
  * come, so a learner who is behind could not see where the open items were
- * without opening the weeks one by one.
+ * without opening the weeks one by one. The chip is decided on arrival, as
+ * the folds are, and holds its place for the visit (see `chipped`).
  *
  * Creative Tech (`creativeTech`) is read by module, because its weeks are
  * long and its modules many. Graphic Design's Week 9 is 31 items, and opened
@@ -76,14 +78,37 @@ export default function WeekAccordion({
   })
 
   /*
+    The weeks that wear the "N overdue" chip: those overdue on arrival, and
+    again when the week turns at midnight. The chip is taller than the week's
+    label, and wraps onto a line of its own where the row runs short (Arabic
+    at 320px), so one that came and went with the ticks moved the rows below
+    it: ticking the last overdue lesson in the roadmap pulled its row up 4px,
+    or 28px, under the finger, and unticking one in a week gone by pushed it
+    down. So a chipped week keeps its chip for the visit, at the size of its
+    widest count, and unseen once nothing in the week is open; a week that
+    comes undone during the visit turns amber, and is chipped on the next.
+  */
+  const overdueWeeks = () =>
+    new Set(
+      currentWeek == null
+        ? []
+        : schedule.weeks
+            .filter((w) => w.week < currentWeek && w.lessons.some((l) => !completedSet.has(l.id)))
+            .map((w) => w.week),
+    )
+  const [chipped, setChipped] = useState(overdueWeeks)
+
+  /*
     The tab re-reads the clock, and the week can turn at midnight into a
     module folded on arrival. That module opens then, as a fresh visit lays it
-    out, so the week flagged "Current" is never hidden inside a folded row.
-    Every other fold, the learner's own included, stays as it is.
+    out, so the week flagged "Current" is never hidden inside a folded row,
+    and the overdue chips are decided afresh, as they are on arrival. Every
+    other fold, the learner's own included, stays as it is.
   */
   const [foldsFor, setFoldsFor] = useState(currentWeek)
   if (foldsFor !== currentWeek) {
     setFoldsFor(currentWeek)
+    setChipped(overdueWeeks())
     const holding = schedule.modules.find((m) => m.weeks.some((w) => w.week === currentWeek))
     if (holding && foldedModules.has(holding.code)) {
       const next = new Set(foldedModules)
@@ -215,10 +240,22 @@ export default function WeekAccordion({
                 </span>
               )}
               {/* The pace card's amber tone: ≥4.5:1 in both themes. */}
-              {overdue > 0 && (
-                <span className="alx-chip flex-none bg-amber/15 text-amber-700 dark:bg-amber/20 dark:text-amber">
+              {chipped.has(week.week) && (
+                <span
+                  aria-hidden={overdue > 0 ? undefined : 'true'}
+                  className={`alx-chip flex-none bg-amber/15 text-amber-700 dark:bg-amber/20 dark:text-amber ${
+                    overdue > 0 ? '' : 'invisible'
+                  }`}
+                >
                   <AlarmClock size={11} aria-hidden="true" />{' '}
-                  {t.overdueChip(overdue, schedule.itemNoun)}
+                  <SteadyText
+                    inline
+                    texts={Array.from({ length: total }, (_, i) =>
+                      t.overdueChip(i + 1, schedule.itemNoun),
+                    )}
+                  >
+                    {t.overdueChip(Math.max(overdue, 1), schedule.itemNoun)}
+                  </SteadyText>
                 </span>
               )}
             </div>

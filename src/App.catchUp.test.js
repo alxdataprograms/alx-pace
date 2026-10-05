@@ -4,7 +4,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import App from './App'
 import { LanguageProvider } from './i18n/LanguageContext'
@@ -227,7 +227,19 @@ describe('the roadmap marks the weeks gone by that still have items open', () =>
       (b) => b.querySelector('p')?.textContent === label,
     )
   const tile = (row) => row.querySelector('span')
-  const chips = (row) => [...row.querySelectorAll('.alx-chip')].map((c) => c.textContent.trim())
+  /** A row's chips as a learner sees them: none held unseen, each wording once. */
+  const chips = (row) =>
+    [...row.querySelectorAll('.alx-chip:not([aria-hidden="true"])')].map((chip) => {
+      const copy = chip.cloneNode(true)
+      for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+      return copy.textContent.trim()
+    })
+  const overdueChip = (row) => row.querySelector('.alx-chip.bg-amber\\/15')
+  /** Opens a week in the roadmap and returns its boxes. */
+  const boxesOf = (week) => {
+    click(container.querySelector(`button[aria-controls="week-panel-${week}"]`))
+    return [...document.getElementById(`week-panel-${week}`).querySelectorAll('[role="checkbox"]')]
+  }
 
   it('in amber, with how many are overdue, where they wore the grey of weeks to come', () => {
     renderDa(before(3))
@@ -271,6 +283,98 @@ describe('the roadmap marks the weeks gone by that still have items open', () =>
 
     render({ program: 'da', startDate: iso(10) })
     expect(overdueChips()).toHaveLength(0)
+  })
+
+  /*
+    The chip is taller than the week's label (68px against 64px), and in
+    Arabic at 320px it wraps onto a line of its own (92px). Coming and going
+    with the ticks, it moved the rows below it: the last overdue lesson ticked
+    in the roadmap pulled its row up 4px, or 28px, under the finger.
+  */
+  it('holds a week’s chip in place, unseen, once its overdue lessons are ticked in the roadmap', () => {
+    renderDa(before(3))
+    const row = weekRow(en.weekRange(5, 5))
+    const chip = overdueChip(row)
+    const [box] = boxesOf(5)
+    click(box)
+
+    expect(tile(row).className).toContain('bg-alxgreen')
+    expect(chips(row)).toEqual([])
+    // The same chip, holding the row's height: unseen and unread.
+    expect(overdueChip(row)).toBe(chip)
+    expect(chip.className).toContain('invisible')
+    expect(chip.getAttribute('aria-hidden')).toBe('true')
+
+    click(box)
+    expect(chips(row)).toEqual([en.overdueChip(1)])
+    expect(chip.getAttribute('aria-hidden')).toBeNull()
+  })
+
+  it('holds the chip at the size of every count its week can come to', () => {
+    renderDa(before(3))
+    // Week 3: four lessons, all open. The count runs down as they are ticked,
+    // and "2 en retard" wrapped at 320px where "1 en retard" fitted.
+    for (const lang of langs) {
+      const t = translations[lang]
+      if (lang !== 'en') {
+        act(() => root.unmount())
+        container.innerHTML = ''
+        renderDa(before(3), { 'alx-lang': lang })
+      }
+      const row = [...container.querySelectorAll('button[aria-controls^="week-panel-"]')].find(
+        (b) => b.querySelector('p')?.textContent === t.weekRange(3, 3),
+      )
+      const held = [...overdueChip(row).querySelectorAll('.invisible[aria-hidden="true"]')].map(
+        (span) => span.textContent,
+      )
+      expect(held, lang).toEqual([1, 2, 3, 4].map((n) => t.overdueChip(n, 'lesson')))
+    }
+  })
+
+  it('turns a week amber when it comes undone during the visit, and chips it on the next', () => {
+    // Day 24 is Week 4; Weeks 1–3 done.
+    const storage = {
+      program: 'da',
+      startDate: iso(-24),
+      completedLessons: JSON.stringify(before(4)),
+      'alx-celebrated': allCelebrated,
+    }
+    render(storage)
+    const row = () => weekRow(en.weekRange(2, 2))
+    click(boxesOf(2)[0])
+
+    expect(tile(row()).className).toContain('bg-amber')
+    expect(overdueChip(row())).toBeNull()
+
+    // The next visit lays the week out with its chip.
+    const done = window.localStorage.getItem('completedLessons')
+    act(() => root.unmount())
+    container.innerHTML = ''
+    render({ ...storage, completedLessons: done })
+    expect(chips(row())).toEqual([en.overdueChip(1)])
+  })
+
+  it('chips the week just gone when the week turns at midnight, in a tab left open', () => {
+    // 23:58 on day 27, the last day of Week 4, with Weeks 1–3 done.
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    try {
+      vi.setSystemTime(new Date(2026, 9, 31, 23, 58))
+      render({
+        program: 'da',
+        startDate: '2026-10-04',
+        completedLessons: JSON.stringify(before(4)),
+        'alx-celebrated': allCelebrated,
+      })
+      const week4 = () => weekRow(en.weekRange(4, 4))
+      expect(chips(week4())).toEqual([en.current])
+
+      // App re-reads the clock every minute: Week 5 is this week now.
+      act(() => vi.advanceTimersByTime(4 * 60_000))
+      expect(chips(week4())).toEqual([en.overdueChip(2)])
+      expect(chips(weekRow(en.weekRange(5, 5)))).toEqual([en.current])
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it.each(langs)('counts them in the learner’s language (%s)', (lang) => {
