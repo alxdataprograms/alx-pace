@@ -244,7 +244,7 @@ export const translations = {
     statusFirstWeek: (week, unit) =>
       `Week\u00a0${week} is under way. ${pick(unit, 'Study each lesson', 'Do each item')} on ALX, then tick it off here.`,
     statusAhead: (n, unit) =>
-      `You're ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} ahead of schedule. Excellent.`,
+      `You're ${n} ${n === 1 ? pick(unit, 'lesson', 'item') : pick(unit, 'lessons', 'items')} ahead. Excellent.`,
     // A catch-up week's status: time set aside for the open items, so a plan
     // for the days left rather than a nudge. `perDay` is 0 where it would only
     // repeat a count (see perDayToClear). No-break spaces hold each count to

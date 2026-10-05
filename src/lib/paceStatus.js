@@ -162,7 +162,7 @@ export function perDayToClear(open, daysLeft) {
   And whenever the status card says "ahead", items ticked in later weeks
   with nothing overdue, so does this: 'ahead' by less than a week counts
   no weeks ("Ahead of plan"). After a first "Get ahead" tick, the status
-  card read "You're 1 lesson ahead of schedule" over "On track for …".
+  card read "You're 1 lesson ahead" over "On track for …".
 
   Days, not week numbers, because Graphic Design's half weeks and the weeks
   labelled 13.5, 14.5, … begin mid-week. In weeks they are rounded: at least 1

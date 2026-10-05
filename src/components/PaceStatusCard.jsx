@@ -110,23 +110,24 @@ export default function PaceStatusCard({
     week's and the first week's do, so the rows being ticked below never move.
     Behind, ticking "Catch up first" counts it down to "Right on pace", or to
     the learner's lead if they were ahead too; "Already started?" goes there in
-    one tap. A week done, nothing overdue, each "Get ahead" tick adds one to
-    the lead, up to the items of the week it offers (`aheadRoom`). Measured:
-    the French "Parfaitement dans le rythme…" took two lines, "Tu as 1 leçon
-    d'avance." one, so the first "Get ahead" tick pulled its rows up 19px; and
-    in Arabic at 320px "behind" took three lines, "on track" two. A wording
-    shorter than the arrival's moves nothing now; one that may come longer is
-    held from the start, and costs a line only where it is longer.
+    one tap. Nothing overdue, each "Get ahead" tick adds one to the lead, as
+    far as the items it can offer (`aheadRoom`), whether the week was done on
+    arrival or is finished on the card. Measured: the French "Parfaitement
+    dans le rythme…" took two lines, "Tu as 1 leçon d'avance." one, so the
+    first "Get ahead" tick pulled its rows up 19px; in Arabic at 320px
+    "behind" took three lines, "on track" two. A wording shorter than the
+    arrival's moves nothing now; one that may come longer is held from the
+    start, and costs a line only where it is longer. English says the lead in
+    "You're 1 lesson ahead. Excellent.", which is never longer than "Right on
+    pace": "…ahead of schedule. Excellent." took a second line at 390px to
+    414px, which a learner on track would have seen held empty.
   */
   const [arrival] = useState(() => ({
     behind: paceStatus?.behindCount ?? 0,
     ahead: paceStatus?.aheadCount ?? 0,
+    // "Get ahead" is there, or comes once the week is finished on the card.
     getAhead: Boolean(
-      paceStatus &&
-        !paceStatus.isBuffer &&
-        paceStatus.behindCount === 0 &&
-        paceStatus.weekTotal > 0 &&
-        paceStatus.weekDone === paceStatus.weekTotal,
+      paceStatus && !paceStatus.isBuffer && paceStatus.behindCount === 0 && paceStatus.weekTotal > 0,
     ),
     room: aheadRoom,
   }))
@@ -213,16 +214,20 @@ export default function PaceStatusCard({
 /*
   Every headline the learner's own ticks on this screen can bring this visit,
   from what they were on arrival: the count behind, down to none (the lead,
-  or "Right on pace"); and, with "Get ahead" offered, the lead one, two and
-  as many items up as the week it offers holds.
+  or "Right on pace"); and, with "Get ahead" offered, the lead it can bring,
+  item by item and week after week, as far as `room`. Of those, the ones that
+  set the size: one and two, which Arabic writes out ("بدرس واحد"); ten,
+  which closes its plural of 3 to 10; and eleven, which opens its singular
+  ("درسًا"), as two digits do everywhere. Short of them, the room itself.
 */
 function reachableHeadlines(t, arrival, unit) {
   const said = (behind, ahead) =>
     behind > 0 ? t.statusBehind(behind, unit) : ahead > 0 ? t.statusAhead(ahead, unit) : t.statusOnTrack
   const texts = widestCounts(arrival.behind).map((n) => said(n, arrival.ahead))
   if (arrival.getAhead) {
-    for (const n of new Set([1, 2, arrival.room])) {
-      if (n > 0 && n <= arrival.room) texts.push(t.statusAhead(arrival.ahead + n, unit))
+    const { room } = arrival
+    for (const n of new Set([1, 2, Math.min(room, 10), Math.min(room, 11)])) {
+      if (n > 0 && n <= room) texts.push(t.statusAhead(arrival.ahead + n, unit))
     }
   }
   return [...new Set(texts)]
@@ -230,8 +235,8 @@ function reachableHeadlines(t, arrival, unit) {
 
 /*
   The headline held at its size (SteadyText) where the visit can bring it
-  another wording, and as it always was where it cannot: a learner part-way
-  through a week on track, or ahead, reads the same markup as before.
+  another wording, and as it always was where it cannot: in the first week,
+  say, or once the program has nothing left to get ahead to.
 */
 function SteadyHeadline({ texts, children }) {
   return texts.length > 1 ? <SteadyText texts={texts}>{children}</SteadyText> : children

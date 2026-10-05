@@ -139,13 +139,17 @@ export default function App() {
     () => contentWeeksAfter(schedule, pacing.currentWeek),
     [schedule, pacing.currentWeek],
   )
-  // How many items "Get ahead" offers: the open items of the first of those
-  // weeks with anything open, which the status card holds its headline for.
-  const aheadRoom = useMemo(() => {
-    const open = (w) => w.lessons.filter((l) => !completedSet.has(l.id)).length
-    const week = upcomingWeeks.find((w) => open(w) > 0)
-    return week ? open(week) : 0
-  }, [upcomingWeeks, completedSet])
+  // How far "Get ahead" can take the lead: every open item of those weeks,
+  // which it offers in turn, moving on as each week is ticked. The status card
+  // holds its headline for the leads that can bring.
+  const aheadRoom = useMemo(
+    () =>
+      upcomingWeeks.reduce(
+        (sum, w) => sum + w.lessons.filter((l) => !completedSet.has(l.id)).length,
+        0,
+      ),
+    [upcomingWeeks, completedSet],
+  )
   // The weeks before this one, which "Already started?" offers to tick; null
   // in the first week.
   const earlierWeeks = useMemo(

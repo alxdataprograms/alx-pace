@@ -277,33 +277,60 @@ describe('the headline through a visit', () => {
     expect(heldInPlace(headline())).not.toContain(en.statusOnTrack)
   })
 
-  it('a week done early: holds the lead each "Get ahead" tick brings, up to its week', () => {
+  it('a week done early: holds the lead each "Get ahead" tick brings, week after week', () => {
     // Data Analytics' Week 4 (day 24), done before the visit; "Get ahead"
-    // offers Week 5's one lesson.
+    // offers Week 5's one lesson, then Week 6's two, and on: 23 in all.
     const done = ids('da', (l) => l.week <= 4)
-    render(statusAt('da', 24, done), { aheadRoom: 1 })
+    render(statusAt('da', 24, done), { aheadRoom: 23 })
+    expect(heldInPlace(headline())).toEqual([
+      en.statusOnTrack,
+      ...[1, 2, 10, 11].map((n) => en.statusAhead(n, 'lesson')),
+    ])
+    // Its one lesson ticked, and one of Week 6's: two ahead, in the same space.
+    const twoAhead = [...done, ...ids('da', (l) => l.week === 5), SCHEDULES.da.weeks[5].lessons[0].id]
+    render(statusAt('da', 24, twoAhead), { aheadRoom: 23 })
+    expect(visible(headline())).toBe(en.statusAhead(2, 'lesson'))
+  })
+
+  it('holds no lead beyond what is left to get ahead to', () => {
+    // Week 13 done; Week 14's one lesson is all that is left.
+    render(statusAt('da', 87, ids('da', (l) => l.week <= 13)), { aheadRoom: 1 })
     expect(heldInPlace(headline())).toEqual([en.statusOnTrack, en.statusAhead(1, 'lesson')])
-    render(statusAt('da', 24, [...done, ...ids('da', (l) => l.week === 5)]), { aheadRoom: 1 })
-    expect(visible(headline())).toBe(en.statusAhead(1, 'lesson'))
   })
 
   it.each(langs)('holds the French two lines, and every language’s, for the lead (%s)', (lang) => {
     window.localStorage.setItem('alx-lang', lang)
     const t = translations[lang]
     // Graphic Design's Week 9 done before the visit: "Get ahead" offers
-    // Week 11's 14 items, so the lead can come to 1, 2 and 14.
-    render(statusAt('gd', 57, ids('gd', (l) => l.week <= 9)), { aheadRoom: 14 })
+    // Week 11's 14 items, then the weeks after.
+    render(statusAt('gd', 57, ids('gd', (l) => l.week <= 9)), { aheadRoom: 300 })
     expect(heldInPlace(headline())).toEqual([
       t.statusOnTrack,
       t.statusAhead(1, 'item'),
       t.statusAhead(2, 'item'),
-      t.statusAhead(14, 'item'),
+      t.statusAhead(10, 'item'),
+      t.statusAhead(11, 'item'),
     ])
   })
 
-  it('part-way through a week, on track or ahead, reads as before: nothing held', () => {
-    render(statusAt('da', 24, ids('da', (l) => l.week < 4)), { aheadRoom: 2 })
-    expect(heldInPlace(card())).toEqual([])
-    expect(headline().textContent).toBe(en.statusOnTrack)
+  it('part-way through a week: holds the lead that finishing the week and "Get ahead" can bring', () => {
+    // Week 4 open: finished on the card, it brings "Get ahead", and the lead.
+    // The first tick there took the French headline from two lines to one.
+    render(statusAt('da', 24, ids('da', (l) => l.week < 4)), { aheadRoom: 23 })
+    expect(visible(headline())).toBe(en.statusOnTrack)
+    expect(heldInPlace(headline())).toEqual([
+      en.statusOnTrack,
+      ...[1, 2, 10, 11].map((n) => en.statusAhead(n, 'lesson')),
+    ])
+  })
+
+  it('says the lead in English in no more words than "Right on pace", so holding it costs no line', () => {
+    // Measured in the browser: "…ahead of schedule. Excellent." took a second
+    // line at 390px to 414px, where "Right on pace" took one.
+    for (const unit of ['lesson', 'item']) {
+      for (const n of [1, 2, 12, 99]) {
+        expect(en.statusAhead(n, unit).length).toBeLessThanOrEqual(en.statusOnTrack.length)
+      }
+    }
   })
 })

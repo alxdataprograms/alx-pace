@@ -161,13 +161,15 @@ describe('the first week, before anything in the program is ticked', () => {
     expect(visible(headline())).toBe(en.statusFirstWeek(1, 'item'))
   })
 
-  it('leaves the card exactly as it was for a learner with a tick', () => {
+  it('leaves the how-to out for a learner with a tick', () => {
     render({ program: 'da', startDate: iso(-2), completedLessons: JSON.stringify([da.lessons[0].id]) })
-    expect(headline().textContent).toBe(en.statusOnTrack)
-    expect(heldInPlace(status())).toEqual([])
+    expect(visible(headline())).toBe(en.statusOnTrack)
+    // Held: the lead that finishing the week here and "Get ahead" can bring.
+    expect(heldInPlace(status())).not.toContain(en.statusFirstWeek(1, 'lesson'))
+    expect(heldInPlace(status())).toContain(en.statusAhead(1, 'lesson'))
     // Unticking it later in the visit does not bring the how-to back.
     click(focusBoxes()[0])
-    expect(headline().textContent).toBe(en.statusOnTrack)
+    expect(visible(headline())).toBe(en.statusOnTrack)
   })
 
   it('does not ask "Already started?": there is nothing before Week 1', () => {
