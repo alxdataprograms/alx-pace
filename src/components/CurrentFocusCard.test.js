@@ -915,6 +915,27 @@ describe('a week done early', () => {
       expect(visible(weekNote())).toBe(en.weekAllDone)
     })
 
+    it('unticking an earlier lesson there hides the note under the nudge, its place held', () => {
+      // "Everything in this week is done. Nicely paced." stayed in sight
+      // between an amber "Catch-up nudge" and "≈ 1 week behind".
+      renderLearner({
+        week: week4,
+        initiallyDone: doneThrough(4),
+        overdue: da.lessons.filter((l) => l.week < 4),
+        upcoming: contentWeeksAfter(da, 4),
+        unit: 'lesson',
+      })
+      expect(visible(weekNote())).toBe(en.weekAllDone)
+
+      fromRoadmap(da.lessons[0].id)
+      expect(visible(weekNote())).toBe('')
+      expect(weekNote().children).toHaveLength(1)
+      expect(weekNote().firstElementChild.className).toContain('invisible')
+      // Caught up again there, the note reads where it was.
+      fromRoadmap(da.lessons[0].id)
+      expect(visible(weekNote())).toBe(en.weekAllDone)
+    })
+
     it('ticking a "Get ahead" item there keeps its row, struck through, and pulls none in', () => {
       gdWeek9Done()
       const first = boxesIn(aheadSection())[0]

@@ -205,6 +205,7 @@ export default function CurrentFocusCard({
             onToggle={toggleThisWeek}
             unit={unit}
             noted={layout.weekDone && layout.cleared}
+            overdue={catchUp.length > 0}
           />
 
           {/* Keyed per week too: the rows it keeps reset with the week. */}
@@ -247,9 +248,10 @@ export default function CurrentFocusCard({
  * and unread, while a lesson unticked in the roadmap leaves the week undone:
  * gone, it would pull the roadmap up under the finger that unticked it. Not
  * while anything is overdue: "Nicely paced" read under "Catch up first" to a
- * learner six lessons behind, and a screen reader announced it.
+ * learner six lessons behind, and a screen reader announced it. An earlier
+ * lesson unticked in the roadmap hides it the same way, its place held.
  */
-function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
+function WeekList({ lessons, completedSet, onToggle, unit, noted, overdue }) {
   const { t } = useLang()
   const [kept, keep] = useKeptInPlace(onToggle)
   const [showDone, setShowDone] = useState(false)
@@ -329,7 +331,14 @@ function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
 
       {/* Always in the DOM, so the note is announced when it appears. */}
       <div role="status" aria-live="polite" className={noted ? 'mt-2' : ''}>
-        {noted && (allDone ? <AllClear text={t.weekAllDone} /> : <Held><AllClear text={t.weekAllDone} /></Held>)}
+        {noted &&
+          (allDone && !overdue ? (
+            <AllClear text={t.weekAllDone} />
+          ) : (
+            <Held>
+              <AllClear text={t.weekAllDone} />
+            </Held>
+          ))}
       </div>
     </>
   )
