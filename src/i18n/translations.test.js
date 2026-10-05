@@ -878,6 +878,50 @@ describe('the page title', () => {
 })
 
 /*
+  Arabic reads a count from a hundred up by its last two digits, as the number
+  is said, wherever a count can get there. "Already started?" was the first
+  place it did, and the status card just above it still said "108 عنصرًا" to
+  the same learner: Graphic Design's Week 9 opens with 108 items behind.
+*/
+describe('Arabic counts past a hundred', () => {
+  const { ar } = translations
+  /** As read: no-break spaces as spaces. */
+  const plain = (text) => text.replace(/\u00a0/g, ' ')
+
+  it('take the plural from 3 to 10 past each hundred', () => {
+    expect(ar.statusBehind(108, 'item')).toContain(' 108 عناصر من ')
+    expect(ar.statusBehind(305, 'lesson')).toContain(' 305 دروس من ')
+    expect(ar.statusAhead(110, 'item')).toContain('بـ110 عناصر ')
+    expect(plain(ar.statusCatchUpWeek(104, 5, 21))).toContain(' 104 عناصر للإنهاء')
+    expect(ar.catchUpFirstMore(107, 'item')).toMatch(/^107 عناصر أخرى متأخرة /)
+    expect(ar.reminderBehind(103, 1, 'item')).toMatch(/^103 عناصر للّحاق /)
+    expect(ar.reminderBuffer(109)).toContain(' 109 عناصر للإنهاء')
+    expect(ar.beginsInDays(103)).toBe('103 أيام')
+  })
+
+  it('take the genitive singular at a round hundred and one or two past it', () => {
+    expect(ar.statusBehind(100, 'item')).toContain(' 100 عنصر من ')
+    expect(ar.statusBehind(202, 'lesson')).toContain(' 202 درس من ')
+    expect(ar.statusAhead(101, 'item')).toContain('بـ101 عنصر ')
+    expect(plain(ar.statusCatchUpWeek(200, 5, 40))).toContain(' 200 عنصر للإنهاء')
+    expect(ar.catchUpFirstMore(101, 'item')).toMatch(/^101 عنصر آخر متأخر /)
+    expect(ar.reminderBehind(100, 1, 'lesson')).toMatch(/^100 درس للّحاق /)
+    expect(ar.reminderBuffer(102)).toContain(' 102 عنصر للإنهاء')
+    expect(ar.beginsInDays(100)).toBe('100 يوم')
+  })
+
+  it('take the singular accusative from 11 past each hundred, as below a hundred', () => {
+    expect(ar.statusBehind(113, 'item')).toContain(' 113 عنصرًا من ')
+    expect(ar.statusBehind(250, 'item')).toContain(' 250 عنصرًا من ')
+    // Below a hundred, every count reads as it always has.
+    expect(ar.statusBehind(5, 'item')).toContain(' 5 عناصر من ')
+    expect(ar.statusBehind(14, 'item')).toContain(' 14 عنصرًا من ')
+    expect(ar.statusBehind(2, 'item')).toContain(' عنصران من ')
+    expect(ar.beginsInDays(12)).toBe('12 يومًا')
+  })
+})
+
+/*
   Every key is read somewhere in the app. One that nothing reads is a string
   no learner sees, still kept up in three languages: changeProgram had
   outlived whatever it once named. A key is read as `t.key`, or named as a

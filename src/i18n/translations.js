@@ -10,12 +10,23 @@
  * match on the learning platform.
  */
 
-// Arabic count helper: 1 → singular word, 2 → dual word, 3-10 → "N plural",
-// 11+ → "N singular-accusative". Words supplied per use-site.
-const arCount = (n, { one, two, few, many }) => {
+/*
+  Arabic count helper: 1 → singular word, 2 → dual word, 3-10 → "N plural",
+  11-99 → "N singular-accusative". Words supplied per use-site.
+
+  A count from a hundred up takes its noun from its last two digits, as the
+  number is read aloud. 108 is "a hundred and eight", so its noun is the plural
+  of three to ten, "108 عناصر"; 113 the singular accusative of eleven to
+  ninety-nine, "113 عنصرًا"; a round hundred, or one or two past it, the
+  singular genitive, "200 عنصر": `single`, given wherever a count can reach
+  the hundreds (Graphic Design alone is 373 items), else the form for 11-99.
+*/
+const arCount = (n, { one, two, few, many, single = many }) => {
   if (n === 1) return one
   if (n === 2) return two
-  if (n >= 3 && n <= 10) return `${n} ${few}`
+  const rest = n < 100 ? n : n % 100
+  if (n >= 100 && rest <= 2) return `${n} ${single}`
+  if (rest >= 3 && rest <= 10) return `${n} ${few}`
   return `${n} ${many}`
 }
 
@@ -98,23 +109,6 @@ const endsSentence = (text) => /[.!?؟…]$/.test(text)
   demie", "3 أسابيع ونصف". Whole weeks read exactly as they always have.
 */
 const weeksOrHalf = (n, whole, half) => (Number.isInteger(n) ? whole(n) : half(Math.floor(n)))
-
-/*
-  A count from a hundred up takes its noun from its last two digits, as the
-  number is read aloud. 108 is "a hundred and eight", so its noun is the plural
-  of three to ten, "108 عناصر"; 113 the singular accusative of eleven to
-  ninety-nine, "113 عنصرًا"; a round hundred, or one or two past it, the
-  singular genitive, "200 عنصر". arCount reads every count from 11 up the
-  second way. "Already started?" is where counts in the hundreds are the rule
-  (Graphic Design's Weeks 1–8 are 108 items), so its count reads them this way.
-  `single` is that genitive singular.
-*/
-const arCountAll = (n, { single, ...forms }) => {
-  if (n < 100) return arCount(n, forms)
-  const rest = n % 100
-  if (rest <= 2) return `${n} ${single}`
-  return `${n} ${rest <= 10 ? forms.few : forms.many}`
-}
 
 /*
   The weeks "Already started?" offers to tick, inside a sentence: "Weeks 1–8",
@@ -879,7 +873,7 @@ export const translations = {
 
     getReady: 'استعدّ',
     beginsIn: 'تبدأ الدورة بعد',
-    beginsInDays: (n) => arCount(n, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا' }),
+    beginsInDays: (n) => arCount(n, { one: 'يوم واحد', two: 'يومين', few: 'أيام', many: 'يومًا', single: 'يوم' }),
     countdownBody: (slogan, program, weeks) =>
       `رحلتك في ${program} على مدى ${weeks} أسبوعًا جاهزة. ${slogan} — العدّ التنازلي جزء من الاجتهاد.`,
     firstUp: (weekLabel) => `نبدأ بـ · ${weekLabel}`,
@@ -901,7 +895,7 @@ export const translations = {
     moduleOf: (index, total) => `الوحدة ${index} من ${total}`,
 
     statusBehind: (n, unit) =>
-      `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} من الأسابيع السابقة ${arStillOpen(n)}.`,
+      `للحاق بالركب: ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسان', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))} من الأسابيع السابقة ${arStillOpen(n)}.`,
     statusOnTrack: 'أنت على الوتيرة الصحيحة — واصل التقدّم.',
     // "Put a mark on it": the tick, as "Already started?" names it too.
     // Unlike English and French, it keeps "the ALX platform" (منصة ALX),
@@ -909,11 +903,11 @@ export const translations = {
     statusFirstWeek: (week, unit) =>
       `بدأ الأسبوع\u00a0${week}. ${pick(unit, 'ادرس كل درس', 'أنجز كل عنصر')} على منصة ALX، ثم ضع علامة عليه هنا.`,
     statusAhead: (n, unit) =>
-      `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا' }))} عن الجدول. ممتاز.`,
+      `أنت متقدّم بـ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))} عن الجدول. ممتاز.`,
     // "N items to finish", as the catch-up week's reminder says it; the days
     // left agree as the lessons left do in reminderOnTrack.
     statusCatchUpWeek: (n, days, perDay) =>
-      `أسبوع استدراك: ${unbroken(arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' }))} للإنهاء\u00a0· ${unbroken(arCount(days, { one: 'يوم واحد متبقٍ', two: 'يومان متبقيان', few: 'أيام متبقية', many: 'يومًا متبقيًا' }))}${perDay ? ` (نحو\u00a0${perDay}\u00a0في\u00a0اليوم)` : ''}`,
+      `أسبوع استدراك: ${unbroken(arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))} للإنهاء\u00a0· ${unbroken(arCount(days, { one: 'يوم واحد متبقٍ', two: 'يومان متبقيان', few: 'أيام متبقية', many: 'يومًا متبقيًا' }))}${perDay ? ` (نحو\u00a0${perDay}\u00a0في\u00a0اليوم)` : ''}`,
     statusCatchUpWeekClear: 'أسبوع استدراك: لا شيء متأخّر.',
     weekOf: (week, total) => `الأسبوع ${week} من ${total}`,
     doneThisWeek: (done, total) => `أُنجز ${done}/${total} هذا الأسبوع`,
@@ -927,14 +921,14 @@ export const translations = {
 
     // The program in the words of promptBody, "مسار تحليل البيانات". "Put a mark
     // on" takes the genitive, and Graphic Design's Weeks 1–8 alone are 108
-    // items, so the count reads past a hundred (arCountAll).
+    // items, so the count reads past a hundred (arCount).
     alreadyStarted: 'بدأت بالفعل؟',
     alreadyStartedAsk: (week, program, from, to) =>
       `أنت في الأسبوع\u00a0${week} من مسار ${program}. هل أنهيت بالفعل ${arWeeks(from, to)} على منصة ALX؟`,
     alreadyStartedYes: (from, to) => `نعم، ضع علامة على ${arWeeks(from, to)}`,
     alreadyStartedNotYet: 'ليس بعد، اعرض ما بقي مفتوحًا',
     alreadyStartedDone: (n, unit) =>
-      `تم وضع علامة على ${arCountAll(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))}`,
+      `تم وضع علامة على ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))}`,
     undo: 'تراجع',
 
     focusEyebrow: 'تركيز هذا الأسبوع',
@@ -982,7 +976,7 @@ export const translations = {
     // Counted with its noun, which the adjectives after it agree with: "درس آخر
     // متأخر", "درسان آخران متأخران", "6 دروس أخرى متأخرة", "14 درسًا آخر متأخرًا".
     catchUpFirstMore: (n, unit) =>
-      `${arCount(n, pick(unit, { one: 'درس آخر متأخر', two: 'درسان آخران متأخران', few: 'دروس أخرى متأخرة', many: 'درسًا آخر متأخرًا' }, { one: 'عنصر آخر متأخر', two: 'عنصران آخران متأخران', few: 'عناصر أخرى متأخرة', many: 'عنصرًا آخر متأخرًا' }))} — راجع الخارطة أدناه`,
+      `${arCount(n, pick(unit, { one: 'درس آخر متأخر', two: 'درسان آخران متأخران', few: 'دروس أخرى متأخرة', many: 'درسًا آخر متأخرًا', single: 'درس آخر متأخر' }, { one: 'عنصر آخر متأخر', two: 'عنصران آخران متأخران', few: 'عناصر أخرى متأخرة', many: 'عنصرًا آخر متأخرًا', single: 'عنصر آخر متأخر' }))} — راجع الخارطة أدناه`,
     catchUpFirstDone: 'لا شيء متأخّر! تابع مع هذا الأسبوع.',
     nextCatchUpWeek: (week, date) =>
       `أسبوع الاستدراك القادم: الأسبوع\u00a0${week}، بدءًا من ${unbroken(date)}`,
@@ -1067,14 +1061,14 @@ export const translations = {
 
     reminderTitle: (week, total) => `ALX Pace — الأسبوع ${week} من ${total}`,
     reminderBehind: (behind, graded, unit) =>
-      `${arCount(behind, pick(unit, { one: 'درس واحد للّحاق', two: 'درسان للّحاق', few: 'دروس للّحاق', many: 'درسًا للّحاق' }, { one: 'عنصر واحد للّحاق', two: 'عنصران للّحاق', few: 'عناصر للّحاق', many: 'عنصرًا للّحاق' }))} · ${graded} تقييم مستحق هذا الأسبوع.`,
+      `${arCount(behind, pick(unit, { one: 'درس واحد للّحاق', two: 'درسان للّحاق', few: 'دروس للّحاق', many: 'درسًا للّحاق', single: 'درس للّحاق' }, { one: 'عنصر واحد للّحاق', two: 'عنصران للّحاق', few: 'عناصر للّحاق', many: 'عنصرًا للّحاق', single: 'عنصر للّحاق' }))} · ${graded} تقييم مستحق هذا الأسبوع.`,
     reminderGraded: (n) =>
       `${arCount(n, { one: 'تقييم محتسب مستحق', two: 'تقييمان محتسبان مستحقان', few: 'تقييمات محتسبة مستحقة', many: 'تقييمًا محتسبًا مستحقًا' })} هذا الأسبوع — حافظ على وتيرتك.`,
     reminderOnTrack: (left, unit) =>
       `أنت على المسار الصحيح — ${arCount(left, pick(unit, { one: 'درس واحد متبقٍ', two: 'درسان متبقيان', few: 'دروس متبقية', many: 'درسًا متبقيًا' }, { one: 'عنصر واحد متبقٍ', two: 'عنصران متبقيان', few: 'عناصر متبقية', many: 'عنصرًا متبقيًا' }))} هذا الأسبوع.`,
     reminderBuffer: (n) =>
       n > 0
-        ? `أسبوع استدراك — ${arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا' })} للإنهاء.`
+        ? `أسبوع استدراك — ${arCount(n, { one: 'عنصر واحد', two: 'عنصران', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' })} للإنهاء.`
         : 'أسبوع استدراك — لا شيء متأخّر.',
 
     edit: 'تعديل',
