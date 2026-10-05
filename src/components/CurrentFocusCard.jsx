@@ -262,14 +262,15 @@ function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
   /*
     What was done on arrival stays folded for the visit, but for rows touched
     here, which stay where the learner saw them. A row unticked in the roadmap
-    stays in the fold too, while anything in it is still done: back in the
-    list, it pushed the roadmap down under the finger that unticked it, by
-    151px for a Data Analytics week done before the visit. The toggle counts
-    what is still done; once nothing is, the rows come back, as they did.
+    stays in the fold too: back in the list, it pushed the roadmap down under
+    the finger that unticked it, by 151px for a Data Analytics week done before
+    the visit, and 288px once the fold gave up its last row. So the toggle says
+    what it holds: "Show 2 done", or "Show 2 (1 open)" once a lesson in it is
+    open again, never an open lesson behind "done". The label can take two
+    lines inside the toggle's 44px; the toggle never grows.
   */
-  const foldable = folds ? lessons.filter((l) => doneOnArrival.has(l.id) && !kept.has(l.id)) : []
-  const doneFolded = foldable.filter((l) => completedSet.has(l.id)).length
-  const folded = doneFolded > 0 ? foldable : []
+  const folded = folds ? lessons.filter((l) => doneOnArrival.has(l.id) && !kept.has(l.id)) : []
+  const openFolded = folded.filter((l) => !completedSet.has(l.id)).length
   const shown = showDone ? lessons : lessons.filter((l) => !folded.includes(l))
   const allDone = lessons.every((l) => completedSet.has(l.id))
 
@@ -297,7 +298,13 @@ function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
           className="mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 text-start text-xs font-semibold text-cobalt-600 hover:bg-navy-900/[0.04] dark:text-lime dark:hover:bg-white/[0.05]"
         >
           <CheckCircle2 size={16} className="flex-none" aria-hidden="true" />
-          <span className="flex-1">{showDone ? t.hideDone(unit) : t.showDone(doneFolded, unit)}</span>
+          <span className="flex-1">
+            {showDone
+              ? t.hideDone(unit)
+              : openFolded > 0
+                ? t.showFolded(folded.length, openFolded, unit)
+                : t.showDone(folded.length, unit)}
+          </span>
           <ChevronDown
             size={16}
             className={`flex-none transition-transform motion-reduce:transition-none ${

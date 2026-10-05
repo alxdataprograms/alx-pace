@@ -430,6 +430,21 @@ describe('the "Show N done" toggle', () => {
     expect(en.showDone(2, 'item')).toBe('Show 2 done')
     expect(en.hideDone('item')).toBe(en.hideDone())
   })
+
+  /*
+    A week done on arrival keeps its fold for the visit, and a lesson in it
+    unticked in the roadmap is open again inside it. The toggle says so: it
+    read "Show 1 done" over the one lesson of the week left to do.
+  */
+  it('says how much of the fold is open again, in every language', () => {
+    expect(en.showFolded(2, 1)).toBe('Show 2 (1 open)')
+    expect(en.showFolded(31, 3, 'item')).toBe('Show 31 (3 open)')
+    expect(fr.showFolded(2, 1)).toBe('Afficher 2 leçons (1 à faire)')
+    expect(fr.showFolded(1, 1, 'item')).toBe('Afficher 1 élément (1 à faire)')
+    expect(ar.showFolded(2, 1)).toBe('عرض درسين (المفتوح منها: 1)')
+    expect(ar.showFolded(5, 3)).toBe('عرض 5 دروس (المفتوح منها: 3)')
+    expect(ar.showFolded(31, 3, 'item')).toBe('عرض 31 عنصرًا (المفتوح منها: 3)')
+  })
 })
 
 /*

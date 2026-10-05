@@ -864,24 +864,44 @@ describe('a week done early', () => {
       expect(aheadHeading()).toBeUndefined()
     })
 
-    it('unticking a lesson there of a week done on arrival keeps it in the fold, which counts what is done', () => {
+    it('unticking a lesson there of a week done on arrival keeps it in the fold, which says it is open', () => {
       daWeek4(doneThrough(4))
       expect(toggleButton().textContent).toBe(en.showDone(2))
       fromRoadmap(week4.lessons[0].id)
-      // Not back in the list above the roadmap: the fold holds it still.
+      // Not back in the list above the roadmap: the fold holds it still, and
+      // no longer calls everything in it done.
       expect(boxes().map(nameOf)).toEqual(week5.lessons.map((l) => l.title))
-      expect(toggleButton().textContent).toBe(en.showDone(1))
+      expect(toggleButton().textContent).toBe(en.showFolded(2, 1))
+      expect(toggleButton().textContent).toBe('Show 2 (1 open)')
       // Opened, the week is there in full, the unticked lesson open.
       click(toggleButton())
       expect(boxes().slice(0, 2).map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'true'])
     })
 
-    it('brings the rows back once nothing in the fold is done, as before', () => {
+    it('keeps the fold for the visit once nothing in it is done, counting what is open', () => {
+      // The rows came back into the list with the fold's last done lesson,
+      // and pushed the roadmap down 288px under the finger unticking there.
       daWeek4(doneThrough(4))
+      const toggle = toggleButton()
       fromRoadmap(week4.lessons[0].id)
       fromRoadmap(week4.lessons[1].id)
-      expect(toggleButton()).toBeNull()
-      expect(boxes().slice(0, 2).map(nameOf)).toEqual(week4.lessons.map((l) => l.title))
+      expect(toggleButton()).toBe(toggle)
+      expect(toggle.textContent).toBe(en.showFolded(2, 2))
+      expect(boxes().map(nameOf)).toEqual(week5.lessons.map((l) => l.title))
+      // Ticked there again, it says "done" again.
+      fromRoadmap(week4.lessons[0].id)
+      fromRoadmap(week4.lessons[1].id)
+      expect(toggle.textContent).toBe(en.showDone(2))
+    })
+
+    it.each(Object.keys(translations))('says what the fold holds in %s', (lang) => {
+      window.localStorage.setItem('alx-lang', lang)
+      const t = translations[lang]
+      daWeek4(doneThrough(4))
+      fromRoadmap(week4.lessons[0].id)
+      expect(toggleButton().textContent).toBe(t.showFolded(2, 1, 'lesson'))
+      click(toggleButton())
+      expect(toggleButton().textContent).toBe(t.hideDone('lesson'))
     })
 
     it('undoing a week done on arrival there keeps "Get ahead", and the note’s place, unread', () => {

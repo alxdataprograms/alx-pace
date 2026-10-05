@@ -336,6 +336,8 @@ export const translations = {
     // The week's finished items, folded away. The unit is for the languages
     // that name what is folded; English needs no noun.
     showDone: (n) => `Show ${n} done`,
+    // The fold of a week done on arrival, once a lesson in it is open again.
+    showFolded: (n, open) => `Show ${n} (${open} open)`,
     hideDone: () => 'Hide done',
     weekAllDone: 'Everything in this week is done. Nicely paced.',
     // A long week's next graded item, and how many open items lead up to it,
@@ -668,6 +670,8 @@ export const translations = {
     showDone: (n, unit) =>
       `Afficher ${pick(unit, frPlural(n, 'leçon terminée', 'leçons terminées'), frPlural(n, 'élément terminé', 'éléments terminés'))}`,
     hideDone: (unit) => `Masquer les ${pick(unit, 'leçons terminées', 'éléments terminés')}`,
+    showFolded: (n, open, unit) =>
+      `Afficher ${pick(unit, frPlural(n, 'leçon', 'leçons'), frPlural(n, 'élément', 'éléments'))} (${open} à faire)`,
     weekAllDone: 'Tout est terminé pour cette semaine. Beau rythme.',
     // "Évaluation", the word the graded card uses. A no-break space keeps the
     // colon with it, as French sets one.
@@ -989,6 +993,9 @@ export const translations = {
     showDone: (n, unit) =>
       `عرض ${arCount(n, pick(unit, { one: 'درس واحد مكتمل', two: 'درسين مكتملين', few: 'دروس مكتملة', many: 'درسًا مكتملًا' }, { one: 'عنصر واحد مكتمل', two: 'عنصرين مكتملين', few: 'عناصر مكتملة', many: 'عنصرًا مكتملًا' }))}`,
     hideDone: (unit) => `إخفاء ${pick(unit, 'الدروس المكتملة', 'العناصر المكتملة')}`,
+    // "Of them, the open: 1", which needs no agreement with the count.
+    showFolded: (n, open, unit) =>
+      `عرض ${arCount(n, pick(unit, { one: 'درس واحد', two: 'درسين', few: 'دروس', many: 'درسًا', single: 'درس' }, { one: 'عنصر واحد', two: 'عنصرين', few: 'عناصر', many: 'عنصرًا', single: 'عنصر' }))} (المفتوح منها: ${open})`,
     weekAllDone: 'اكتمل كل ما في هذا الأسبوع. وتيرة رائعة.',
     // "At a distance of", as Arabic gives any distance: the noun after it is
     // counted as everywhere else, in the genitive (عنصرين, not عنصران).
