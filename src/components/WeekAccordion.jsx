@@ -75,6 +75,23 @@ export default function WeekAccordion({
     )
   })
 
+  /*
+    The tab re-reads the clock, and the week can turn at midnight into a
+    module folded on arrival. That module opens then, as a fresh visit lays it
+    out, so the week flagged "Current" is never hidden inside a folded row.
+    Every other fold, the learner's own included, stays as it is.
+  */
+  const [foldsFor, setFoldsFor] = useState(currentWeek)
+  if (foldsFor !== currentWeek) {
+    setFoldsFor(currentWeek)
+    const holding = schedule.modules.find((m) => m.weeks.some((w) => w.week === currentWeek))
+    if (holding && foldedModules.has(holding.code)) {
+      const next = new Set(foldedModules)
+      next.delete(holding.code)
+      setFoldedModules(next)
+    }
+  }
+
   const toggleIn = (setter) => (key) => {
     setter((prev) => {
       const next = new Set(prev)

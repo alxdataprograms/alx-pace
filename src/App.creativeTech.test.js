@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { act, createElement } from 'react'
 import { createRoot } from 'react-dom/client'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 import App from './App'
 import { LanguageProvider } from './i18n/LanguageContext'
@@ -213,6 +213,38 @@ describe('a finished Creative Tech module folds into one row', () => {
     expect(moduleRow('GD-3').getAttribute('aria-expanded')).toBe('true')
     expect(last.isConnected).toBe(true)
     expect(weekRow(9).getAttribute('aria-expanded')).toBe('true')
+  })
+
+  it('opens a folded module when the week turns into it at midnight, in a tab left open', () => {
+    // 23:58 on day 69, the last day of Week 10 (GD-3's catch-up week). The
+    // learner is a module ahead, through GD-4 (Weeks 11–13.5), which folds.
+    vi.useFakeTimers({ toFake: ['Date', 'setInterval', 'clearInterval'] })
+    try {
+      vi.setSystemTime(new Date(2026, 9, 13, 23, 58))
+      const storage = {
+        program: 'gd',
+        startDate: '2026-08-05',
+        completedLessons: JSON.stringify(idsWhere('gd', (l) => l.week < 14)),
+        'alx-celebrated': allCelebrated,
+      }
+      for (const [key, value] of Object.entries(storage)) window.localStorage.setItem(key, value)
+      root = createRoot(container)
+      act(() => {
+        root.render(createElement(LanguageProvider, null, createElement(App)))
+      })
+      // GD-3 holds this week, so it is open; GD-4 is finished and folded.
+      expect(moduleRow('GD-3').getAttribute('aria-expanded')).toBe('true')
+      expect(moduleRow('GD-4').getAttribute('aria-expanded')).toBe('false')
+
+      // App re-reads the clock every minute: Week 11 is this week now.
+      act(() => vi.advanceTimersByTime(4 * 60_000))
+      expect(moduleRow('GD-4').getAttribute('aria-expanded')).toBe('true')
+      expect(weekRow(11).textContent).toContain(en.current)
+      // The modules folded on arrival that hold no current week stay folded.
+      expect(moduleRow('GD-1').getAttribute('aria-expanded')).toBe('false')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it.each(langs)('reads in the learner’s language (%s), titles in the sheet’s English', (lang) => {
