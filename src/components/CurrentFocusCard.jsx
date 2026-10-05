@@ -185,6 +185,7 @@ export default function CurrentFocusCard({
             unit={unit}
             nextCatchUp={nextCatchUp}
             cleared={layout.cleared}
+            weekDone={done === total}
           />
 
           {/* Keyed per week too: whether it shows is decided on arrival. */}
@@ -203,7 +204,7 @@ export default function CurrentFocusCard({
             completedSet={completedSet}
             onToggle={toggleThisWeek}
             unit={unit}
-            noted={layout.weekDone}
+            noted={layout.weekDone && layout.cleared}
           />
 
           {/* Keyed per week too: the rows it keeps reset with the week. */}
@@ -241,10 +242,12 @@ export default function CurrentFocusCard({
  * it pushed the rows down the moment the last one was ticked, moving the
  * control just used, and appearing silently it said nothing to a screen reader.
  * Only long weeks had it; a week of any length gets it now. It shows where the
- * card lays it out (`noted`: the week was done on arrival, or by a tick in
- * this list), and keeps its place, unseen and unread, while a lesson unticked
- * in the roadmap leaves the week undone: gone, it would pull the roadmap up
- * under the finger that unticked it.
+ * card lays it out (`noted`: the week done on arrival, or by a tick in this
+ * list, with nothing overdue, as "Get ahead" is), and keeps its place, unseen
+ * and unread, while a lesson unticked in the roadmap leaves the week undone:
+ * gone, it would pull the roadmap up under the finger that unticked it. Not
+ * while anything is overdue: "Nicely paced" read under "Catch up first" to a
+ * learner six lessons behind, and a screen reader announced it.
  */
 function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
   const { t } = useLang()
@@ -655,7 +658,7 @@ function useHeldRows(open, limit, onToggle) {
  * one-glance answer it was, at its height, so nothing above the first overdue
  * item moves. It gives way to the all-clear.
  */
-function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCatchUp, cleared }) {
+function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCatchUp, cleared, weekDone }) {
   const { t, lang } = useLang()
   const { rows, more, moreOnArrival, tick } = useHeldRows(items, CATCH_UP_FIRST_LIMIT, onToggle)
 
@@ -706,14 +709,24 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
             </span>
           </p>
         )}
-        {/* Always in the DOM, so the all-clear is announced when it appears. */}
+        {/*
+          Always in the DOM, so the all-clear is announced when it appears. It
+          says what comes next: this week's lessons, or, with the week done
+          already, a rest or a head start ("Get ahead" follows below). "On to
+          this week" had pointed a learner who finished the week before
+          catching up at a week with nothing left in it. Held at the size of
+          both wordings, as the week can come undone below it.
+        */}
         <div role="status" aria-live="polite" className={cleared ? 'mt-2' : ''}>
           {cleared &&
             (items.length === 0 ? (
-              <AllClear text={t.catchUpFirstDone} />
+              <AllClear
+                text={weekDone ? t.catchUpAllClear : t.catchUpFirstDone}
+                texts={[t.catchUpFirstDone, t.catchUpAllClear]}
+              />
             ) : (
               <Held>
-                <AllClear text={t.catchUpFirstDone} />
+                <AllClear text={t.catchUpFirstDone} texts={[t.catchUpFirstDone, t.catchUpAllClear]} />
               </Held>
             ))}
         </div>
@@ -819,7 +832,8 @@ function GetAheadList({ week, completedSet, onToggle, unit }) {
   )
 }
 
-function AllClear({ text }) {
+/** A green all-clear; `texts`, every wording it can come to, holds its size. */
+function AllClear({ text, texts }) {
   return (
     <p className="flex items-start gap-2 rounded-xl bg-alxgreen/10 p-3 text-sm font-medium">
       <CheckCircle2
@@ -827,7 +841,7 @@ function AllClear({ text }) {
         className="mt-0.5 flex-none text-alxgreen-700 dark:text-alxgreen"
         aria-hidden="true"
       />
-      <span>{text}</span>
+      {texts ? <SteadyText texts={texts}>{text}</SteadyText> : <span>{text}</span>}
     </p>
   )
 }

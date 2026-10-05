@@ -203,7 +203,7 @@ describe('catch up first, in an ordinary week', () => {
     click(boxes()[1])
     expect(boxesIn(section())).toHaveLength(2)
     expect(open(section())).toHaveLength(0)
-    expect(status.textContent).toBe(en.catchUpFirstDone)
+    expect(visible(status)).toBe(en.catchUpFirstDone)
     // Below the rows, never above the ones just ticked.
     const list = section().querySelector('ul')
     expect(list.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -308,7 +308,7 @@ describe('catch up first, in an ordinary week', () => {
       click(second)
       expect(line()).toBeUndefined()
       expect(boxesIn(section())).toEqual([first, second])
-      expect(section().querySelector('[role="status"]').textContent).toBe(en.catchUpFirstDone)
+      expect(visible(section().querySelector('[role="status"]'))).toBe(en.catchUpFirstDone)
     })
 
     it('is not there without a catch-up week ahead, so never in Data Analytics', () => {
@@ -749,9 +749,30 @@ describe('a week done early', () => {
       en.catchUpFirst,
       en.thisWeek,
     ])
-    expect(weekNote().textContent).toBe(en.weekAllDone)
+    // No "Nicely paced" under "Catch up first": the note comes with "Get
+    // ahead", once nothing is overdue.
+    expect(visible(weekNote())).toBe('')
     expect(aheadHeading()).toBeUndefined()
   })
+
+  it('caught up here with the week done: the all-clear points ahead, and the note and "Get ahead" follow', () => {
+    const week7 = da.weeks.find((w) => w.week === 7)
+    const last = da.lessons.filter((l) => l.week === 6).pop()
+    renderLearner({
+      week: week7,
+      initiallyDone: doneThrough(7).filter((id) => id !== last.id),
+      overdue: da.lessons.filter((l) => l.week < 7),
+      upcoming: contentWeeksAfter(da, 7),
+      unit: 'lesson',
+    })
+    click(boxes()[0])
+    const [allClear, note] = container.querySelectorAll('[role="status"]')
+    // Not "On to this week": this week has nothing left in it.
+    expect(visible(allClear)).toBe(en.catchUpAllClear)
+    expect(visible(note)).toBe(en.weekAllDone)
+    expect(aheadHeading()).toBeDefined()
+  })
+
 
   it('finished during the visit: the rows stay put, and the note and "Get ahead" appear below them', () => {
     daWeek4(doneThrough(4).slice(0, -1))
@@ -898,7 +919,7 @@ describe('a week done early', () => {
       behindWeek7([last.id])
       click(boxes()[0])
       const status = container.querySelector('[role="status"]')
-      expect(status.textContent).toBe(en.catchUpFirstDone)
+      expect(visible(status)).toBe(en.catchUpFirstDone)
 
       fromRoadmap(da.lessons[0].id)
       expect(visible(status)).toBe('')
