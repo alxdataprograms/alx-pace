@@ -53,11 +53,15 @@ afterEach(() => {
 })
 
 /** Renders the card, or updates the one on screen, as App re-renders it. */
-function render(paceStatus) {
+function render(paceStatus, props = {}) {
   root ??= createRoot(container)
   act(() => {
     root.render(
-      createElement(LanguageProvider, null, createElement(PaceStatusCard, { paceStatus })),
+      createElement(
+        LanguageProvider,
+        null,
+        createElement(PaceStatusCard, { paceStatus, ...props }),
+      ),
     )
   })
 }
@@ -169,7 +173,7 @@ describe('every other week', () => {
     render(statusAt('gd', 72, done))
     expect(card().querySelector('.lucide-alarm-clock')).not.toBeNull()
     expect(card().className).toContain('amber')
-    expect(headline().textContent).toBe(en.statusBehind(11, 'item'))
+    expect(visible(headline())).toBe(en.statusBehind(11, 'item'))
     expect(subline().textContent).toBe(`${en.weekOf(11, 32)} · ${en.doneThisWeek(0, 14)}`)
   })
 
@@ -226,8 +230,8 @@ describe('the first week, before the first tick', () => {
 
   it('leaves the nudge to a learner past Week 1 with nothing ticked', () => {
     render(statusAt('gd', 57))
-    expect(headline().textContent).toBe(en.statusBehind(108, 'item'))
-    expect(heldInPlace(card())).toEqual([])
+    expect(visible(headline())).toBe(en.statusBehind(108, 'item'))
+    expect(heldInPlace(card())).not.toContain(en.statusFirstWeek(9, 'item'))
   })
 
   it.each(langs)('speaks the learner’s language, in items for Creative Tech (%s)', (lang) => {
@@ -235,5 +239,71 @@ describe('the first week, before the first tick', () => {
     const t = translations[lang]
     render(statusAt('gd', 2))
     expect(visible(headline())).toBe(t.statusFirstWeek(1, 'item'))
+  })
+})
+
+/*
+  The headline through a visit. It holds the size of every wording the
+  learner's own ticks on this screen can bring it, as the catch-up week's and
+  the first week's do, so the rows being ticked below never move. Measured
+  before: the first "Get ahead" tick took the French headline from two lines
+  to one, and the last "Catch up first" tick took the Arabic one at 320px from
+  three lines to two, each pulling the rows below up by 19px.
+*/
+describe('the headline through a visit', () => {
+  it('behind: holds every count down to none, and the "Right on pace" that clears it', () => {
+    render(statusAt('gd', 57))
+    expect(heldInPlace(headline())).toEqual([
+      en.statusBehind(108, 'item'),
+      en.statusBehind(2, 'item'),
+      en.statusBehind(1, 'item'),
+      en.statusOnTrack,
+    ])
+    // Weeks 1–8 ticked in one go ("Already started?"): the same space.
+    render(statusAt('gd', 57, ids('gd', (l) => l.week < 9)))
+    expect(visible(headline())).toBe(en.statusOnTrack)
+    expect(heldInPlace(headline())).toContain(en.statusBehind(108, 'item'))
+  })
+
+  it('behind and ahead too: clearing the backlog comes to the lead, held from the start', () => {
+    // Graphic Design's Week 11 (day 72): 11 of Week 9 open, Week 12's 10 done.
+    const week9 = SCHEDULES.gd.weeks.find((w) => w.week === 9).lessons
+    const done = [
+      ...ids('gd', (l) => l.week < 9 || l.week === 12),
+      ...week9.slice(0, 20).map((l) => l.id),
+    ]
+    render(statusAt('gd', 72, done))
+    expect(heldInPlace(headline())).toContain(en.statusAhead(10, 'item'))
+    expect(heldInPlace(headline())).not.toContain(en.statusOnTrack)
+  })
+
+  it('a week done early: holds the lead each "Get ahead" tick brings, up to its week', () => {
+    // Data Analytics' Week 4 (day 24), done before the visit; "Get ahead"
+    // offers Week 5's one lesson.
+    const done = ids('da', (l) => l.week <= 4)
+    render(statusAt('da', 24, done), { aheadRoom: 1 })
+    expect(heldInPlace(headline())).toEqual([en.statusOnTrack, en.statusAhead(1, 'lesson')])
+    render(statusAt('da', 24, [...done, ...ids('da', (l) => l.week === 5)]), { aheadRoom: 1 })
+    expect(visible(headline())).toBe(en.statusAhead(1, 'lesson'))
+  })
+
+  it.each(langs)('holds the French two lines, and every language’s, for the lead (%s)', (lang) => {
+    window.localStorage.setItem('alx-lang', lang)
+    const t = translations[lang]
+    // Graphic Design's Week 9 done before the visit: "Get ahead" offers
+    // Week 11's 14 items, so the lead can come to 1, 2 and 14.
+    render(statusAt('gd', 57, ids('gd', (l) => l.week <= 9)), { aheadRoom: 14 })
+    expect(heldInPlace(headline())).toEqual([
+      t.statusOnTrack,
+      t.statusAhead(1, 'item'),
+      t.statusAhead(2, 'item'),
+      t.statusAhead(14, 'item'),
+    ])
+  })
+
+  it('part-way through a week, on track or ahead, reads as before: nothing held', () => {
+    render(statusAt('da', 24, ids('da', (l) => l.week < 4)), { aheadRoom: 2 })
+    expect(heldInPlace(card())).toEqual([])
+    expect(headline().textContent).toBe(en.statusOnTrack)
   })
 })

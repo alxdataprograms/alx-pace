@@ -65,6 +65,9 @@ const VARIANTS = {
  *
  * In the first week, until anything in the program is ticked, the headline
  * says how Pace works (see FirstWeekHeadline).
+ *
+ * `aheadRoom` is how many items the focus card's "Get ahead" offers to tick,
+ * which the headline holds its size for (see reachableHeadlines).
  */
 export default function PaceStatusCard({
   paceStatus,
@@ -72,6 +75,7 @@ export default function PaceStatusCard({
   today = new Date(),
   headingRef,
   onCatchUp,
+  aheadRoom = 0,
 }) {
   const { t, lang } = useLang()
   const offerCatchUp =
@@ -99,6 +103,33 @@ export default function PaceStatusCard({
     Arriving mid-visit, they pushed the roadmap down under that finger.
   */
   const [offeredCatchUp] = useState(offerCatchUp)
+
+  /*
+    The headline holds the size of every wording the learner's own ticks on
+    this screen can bring it to this visit (SteadyText), as the catch-up
+    week's and the first week's do, so the rows being ticked below never move.
+    Behind, ticking "Catch up first" counts it down to "Right on pace", or to
+    the learner's lead if they were ahead too; "Already started?" goes there in
+    one tap. A week done, nothing overdue, each "Get ahead" tick adds one to
+    the lead, up to the items of the week it offers (`aheadRoom`). Measured:
+    the French "Parfaitement dans le rythme…" took two lines, "Tu as 1 leçon
+    d'avance." one, so the first "Get ahead" tick pulled its rows up 19px; and
+    in Arabic at 320px "behind" took three lines, "on track" two. A wording
+    shorter than the arrival's moves nothing now; one that may come longer is
+    held from the start, and costs a line only where it is longer.
+  */
+  const [arrival] = useState(() => ({
+    behind: paceStatus?.behindCount ?? 0,
+    ahead: paceStatus?.aheadCount ?? 0,
+    getAhead: Boolean(
+      paceStatus &&
+        !paceStatus.isBuffer &&
+        paceStatus.behindCount === 0 &&
+        paceStatus.weekTotal > 0 &&
+        paceStatus.weekDone === paceStatus.weekTotal,
+    ),
+    room: aheadRoom,
+  }))
 
   if (!paceStatus) return null
   const v = VARIANTS[paceStatus.isBuffer ? 'catch-up' : paceStatus.status]
@@ -134,7 +165,9 @@ export default function PaceStatusCard({
                 {v.headline(t, paceStatus)}
               </FirstWeekHeadline>
             ) : (
-              v.headline(t, paceStatus)
+              <SteadyHeadline texts={reachableHeadlines(t, arrival, paceStatus.unit)}>
+                {v.headline(t, paceStatus)}
+              </SteadyHeadline>
             )}
           </p>
           <p className="mt-0.5 text-xs font-medium text-ink-soft dark:text-paper/75">
@@ -175,6 +208,33 @@ export default function PaceStatusCard({
       </p>
     </section>
   )
+}
+
+/*
+  Every headline the learner's own ticks on this screen can bring this visit,
+  from what they were on arrival: the count behind, down to none (the lead,
+  or "Right on pace"); and, with "Get ahead" offered, the lead one, two and
+  as many items up as the week it offers holds.
+*/
+function reachableHeadlines(t, arrival, unit) {
+  const said = (behind, ahead) =>
+    behind > 0 ? t.statusBehind(behind, unit) : ahead > 0 ? t.statusAhead(ahead, unit) : t.statusOnTrack
+  const texts = widestCounts(arrival.behind).map((n) => said(n, arrival.ahead))
+  if (arrival.getAhead) {
+    for (const n of new Set([1, 2, arrival.room])) {
+      if (n > 0 && n <= arrival.room) texts.push(t.statusAhead(arrival.ahead + n, unit))
+    }
+  }
+  return [...new Set(texts)]
+}
+
+/*
+  The headline held at its size (SteadyText) where the visit can bring it
+  another wording, and as it always was where it cannot: a learner part-way
+  through a week on track, or ahead, reads the same markup as before.
+*/
+function SteadyHeadline({ texts, children }) {
+  return texts.length > 1 ? <SteadyText texts={texts}>{children}</SteadyText> : children
 }
 
 /*

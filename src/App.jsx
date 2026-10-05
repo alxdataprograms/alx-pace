@@ -139,6 +139,13 @@ export default function App() {
     () => contentWeeksAfter(schedule, pacing.currentWeek),
     [schedule, pacing.currentWeek],
   )
+  // How many items "Get ahead" offers: the open items of the first of those
+  // weeks with anything open, which the status card holds its headline for.
+  const aheadRoom = useMemo(() => {
+    const open = (w) => w.lessons.filter((l) => !completedSet.has(l.id)).length
+    const week = upcomingWeeks.find((w) => open(w) > 0)
+    return week ? open(week) : 0
+  }, [upcomingWeeks, completedSet])
   // The weeks before this one, which "Already started?" offers to tick; null
   // in the first week.
   const earlierWeeks = useMemo(
@@ -446,6 +453,7 @@ export default function App() {
                   today={today}
                   headingRef={stepHeading}
                   onCatchUp={goToCatchUp}
+                  aheadRoom={aheadRoom}
                 />
                 {/*
                   Past the first week with nothing in the program ticked, the
