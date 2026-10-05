@@ -498,6 +498,6 @@ describe('the post link', () => {
   ])('points a %s post at that program’s share page', (program, schedule) => {
     const m = achievedMilestones(schedule, idsOf([schedule.modules[0]]), program)[0]
     const { url } = postParts(m, { moduleDone: () => '', programmeDone: () => '' })
-    expect(url).toBe(`https://alxdataprograms.github.io/alx-pace/share/${program}/`)
+    expect(url).toBe(`https://alxprograms.github.io/alx-pace/share/${program}/`)
   })
 })

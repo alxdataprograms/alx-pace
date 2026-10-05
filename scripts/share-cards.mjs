@@ -42,7 +42,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url))
 
 // Mirrors src/lib/appUrl.js. Absolute on purpose: a crawler cannot resolve a
 // relative og:image or og:url (see the note in index.html).
-export const APP_URL = 'https://alxdataprograms.github.io/alx-pace/'
+export const APP_URL = 'https://alxprograms.github.io/alx-pace/'
 
 export const IMAGE_WIDTH = 1200
 export const IMAGE_HEIGHT = 627

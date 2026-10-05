@@ -99,7 +99,7 @@ describe("the bridge page's inlined encoder", () => {
   })
 
   it('points at the new home and carries no query string', () => {
-    expect(html).toContain('https://alxdataprograms.github.io/alx-pace/')
+    expect(html).toContain('https://alxprograms.github.io/alx-pace/')
     expect(html).toContain("'#alx-handoff='")
   })
 

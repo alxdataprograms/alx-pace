@@ -15,11 +15,12 @@ import { isProgramId } from './programs'
  * an Open Graph tag that a crawler cannot resolve at all.
  *
  * So: one constant, used by the post text and mirrored by the meta tags in
- * index.html. If the app ever moves, this and those tags change together — and
- * the bridge at the old address keeps handing learners over, exactly as it did
- * for the last move.
+ * index.html and the share pages (scripts/share-cards.mjs). If the app ever
+ * moves, they change together. What learners saved stays at the old address
+ * unless a page there hands it over, as the bridge did for the first move and
+ * nothing did when the account was renamed (see CLAUDE.md, "Deploy topology").
  */
-export const APP_URL = 'https://alxdataprograms.github.io/alx-pace/'
+export const APP_URL = 'https://alxprograms.github.io/alx-pace/'
 
 /**
  * The link a milestone post carries: the learner's program page.
