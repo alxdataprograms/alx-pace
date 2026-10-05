@@ -11,7 +11,7 @@ lives in the browser. Styled after **alxafrica.com**'s live brand system.
 | **Creative Tech** | Graphic Design | 32 weeks (10 buffer, 2 half weeks) | 10 | 373 lessons, activities & quizzes |
 
 <p>
-  <a href="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/alxdataprograms/alx-pace/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/alxprograms/alx-pace/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/alxprograms/alx-pace/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="React" src="https://img.shields.io/badge/React-18-149ECA?logo=react&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/Vite-5-646CFF?logo=vite&logoColor=white">
   <img alt="Tailwind" src="https://img.shields.io/badge/Tailwind-3-06B6D4?logo=tailwindcss&logoColor=white">

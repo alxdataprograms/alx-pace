@@ -65,7 +65,7 @@ describe('the milestone dialogue', () => {
     expect(isolated).toEqual([
       ['ltr', 'Poster Design & Visual Composition'],
       ['ltr', 'Poster Design'],
-      ['ltr', 'https://alxdataprograms.github.io/alx-pace/share/gd/'],
+      ['ltr', 'https://alxprograms.github.io/alx-pace/share/gd/'],
       ['ltr', '#LifeAtALX'],
     ])
     expect(quote.textContent).toBe(postIn('ar', m))

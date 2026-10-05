@@ -6,7 +6,7 @@
  *   2. Bind a KV namespace as `SUBS`.
  *   3. Set vars: SENDER_TOKEN  (long random string; same value as the GitHub
  *      repo secret PUSH_SENDER_TOKEN) and ALLOWED_ORIGIN — the exact origin
- *      the app is served from, e.g. https://alxdataprograms.github.io. Both
+ *      the app is served from, e.g. https://alxprograms.github.io. Both
  *      are required; there is no default, deliberately (see below).
  *   4. Put the worker URL in src/lib/pushConfig.js (PUSH_ENDPOINT) and in the
  *      repo secret PUSH_ENDPOINT.

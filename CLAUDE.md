@@ -47,10 +47,16 @@ lose data.
 
 | Repo | Remote | Serves |
 | --- | --- | --- |
-| `alxdataprograms/alx-pace` | `origin` | The app, at `https://alxdataprograms.github.io/alx-pace/` |
+| `alxprograms/alx-pace` | `origin` | The app, at `https://alxprograms.github.io/alx-pace/` |
 | `balogvn/alx-pace` | `oldhome` | The **bridge** at the app's former address, from the `bridge` branch |
 
 - The app deploys automatically on push to `main` via `.github/workflows/ci.yml`.
+- The app's account was renamed from `alxdataprograms` to `alxprograms` on
+  2026-10-05. GitHub Pages does not redirect after a rename, so
+  `https://alxdataprograms.github.io/alx-pace/` is gone, and the progress
+  learners saved there stayed in their browsers under that address. The owner
+  chose a fresh start over a second bridge. Renaming the account again moves
+  the app again: put a bridge at the old address first.
 - The bridge does **not**. `bridge/index.html` lives in this repo, but the copy
   that is *served* is on the `bridge` branch of `oldhome`. After changing
   anything under `bridge/`, republish that branch and trigger its Pages build,
