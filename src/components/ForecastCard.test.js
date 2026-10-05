@@ -241,6 +241,22 @@ describe('what the card says', () => {
   place is decided on arrival, and kept for the visit, unseen and unread while
   the verdict has none to give.
 */
+/*
+  Ahead by less than a week. The status card says "You're 1 lesson ahead of
+  schedule" after a first "Get ahead" tick, and this card read "On track for
+  …" beneath it. It says "Ahead of plan" now, in the green of ahead, and has
+  no finish to move: the planned date stands.
+*/
+describe('a lead of less than a week', () => {
+  it.each(langs)('reads "Ahead of plan", in green, with no projected finish (%s)', (lang) => {
+    renderCard({ forecast: 'ahead', forecastWeeks: 0, finishShiftDays: 0 }, lang)
+    const chip = card().querySelector('p.w-fit')
+    expect(read(chip)).toBe(translations[lang].forecastAheadSome)
+    expect(chip.className).toContain('alxgreen')
+    expect(card().querySelector('dl')).toBeNull()
+  })
+})
+
 describe('the projected finish through a visit', () => {
   it('keeps its place, unseen and unread, once the verdict has none to give', () => {
     renderCard(VERDICTS.behind)

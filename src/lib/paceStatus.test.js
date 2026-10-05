@@ -256,29 +256,63 @@ describe('the finish forecast', () => {
     it('measures Graphic Design’s half weeks in days', () => {
       // Week 13 lasts 4 days (84–87). Done through 12 on its last day: on track.
       expect(at('gd', 87, upTo('gd', 13)).forecast).toBe('on-track')
-      // Its catch-up week 13.5 begins on day 88 with Week 13 open: 4 days behind.
+      // Its catch-up week 13.5 begins on day 88 with Week 13 open: on track,
+      // as the catch-up week is the time set aside for it.
       const w13 = at('gd', 88, upTo('gd', 13))
-      expect([w13.forecast, w13.forecastWeeks, w13.finishShiftDays]).toEqual(['behind', 1, 4])
-      // Week 27.5 lasts 3 days (186–188): never less than a week behind.
-      const w27 = at('gd', 189, upTo('gd', 27.5))
-      expect([w27.forecast, w27.forecastWeeks, w27.finishShiftDays]).toEqual(['behind', 1, 3])
-      expect(w27.oldestOpenWeek).toBe(27.5)
-      // And 3 days ahead is under half a week: on track, the planned date.
+      expect([w13.forecast, w13.forecastWeeks, w13.finishShiftDays]).toEqual(['on-track', 0, 0])
+      // Week 27.5 lasts 3 days (186–188), and catch-up Week 28 follows. Week
+      // 27.5 open there is what the catch-up week is for: on track. Week 26.5
+      // open is 3 days late, and never less than a week behind.
+      expect(at('gd', 189, upTo('gd', 27.5)).forecast).toBe('on-track')
+      const w26 = at('gd', 189, upTo('gd', 26.5))
+      expect([w26.forecast, w26.forecastWeeks, w26.finishShiftDays]).toEqual(['behind', 1, 3])
+      expect(w26.oldestOpenWeek).toBe(26.5)
+      // And 3 days ahead is under half a week: ahead, as the status card says,
+      // with no weeks to count and the planned date.
       const ahead = at('gd', 179, through('gd', 27.5))
       expect(ahead.week).toBe(26.5)
-      expect([ahead.forecast, ahead.finishShiftDays]).toEqual(['on-track', 0])
+      expect(ahead.status).toBe('ahead')
+      expect([ahead.forecast, ahead.forecastWeeks, ahead.finishShiftDays]).toEqual(['ahead', 0, 0])
     })
 
-    it('counts the catch-up weeks gone by when behind', () => {
-      // Week 13.5 begins on day 88; Week 12 began on day 77 and is still open.
+    it('counts the catch-up weeks gone by when behind, and not the one under way', () => {
+      // Week 13.5 began on day 88; Week 12 began on day 77 and is still open.
+      // Its own 7 days are for clearing it: 11 days less 7, so 1 week behind.
       const s = at('gd', 90, upTo('gd', 12))
       expect(s.isBuffer).toBe(true)
       expect([s.forecast, s.forecastWeeks, s.oldestOpenWeek, s.finishShiftDays]).toEqual([
         'behind',
-        2,
+        1,
         12,
-        11,
+        4,
       ])
+      // Week 14.5 (day 95 on), Week 12 still open: the catch-up week gone by
+      // counts, 18 days.
+      const after = at('gd', 96, upTo('gd', 12))
+      expect(after.isBuffer).toBe(false)
+      expect([after.forecast, after.forecastWeeks, after.finishShiftDays]).toEqual(['behind', 3, 18])
+    })
+
+    it('does not put a learner a week further behind the moment a catch-up week begins', () => {
+      // Content Creation's Week 3 (days 14–20), Week 2 open: 1 week behind.
+      // Week 4, a catch-up week, begins on day 21 with nothing more ticked.
+      const before = at('cc', 20, upTo('cc', 2))
+      const during = at('cc', 21, upTo('cc', 2))
+      expect(during.isBuffer).toBe(true)
+      expect([before.forecast, before.forecastWeeks]).toEqual(['behind', 1])
+      expect([during.forecast, during.forecastWeeks]).toEqual(['behind', 1])
+      expect(during.finishShiftDays).toBe(before.finishShiftDays)
+    })
+
+    it('reads a lead of less than a week as ahead, as the status card does', () => {
+      // Data Analytics' Week 4 (day 24) done, and Week 5's lesson ticked: the
+      // status card says "1 lesson ahead". It said "On track" here.
+      const s = at('da', 24, [...through('da', 4), ...ids('da', (l) => l.week === 5)])
+      expect(s.status).toBe('ahead')
+      expect([s.forecast, s.forecastWeeks, s.finishShiftDays]).toEqual(['ahead', 1, -7])
+      const some = at('da', 24, [...through('da', 4), ids('da', (l) => l.week === 6)[0]])
+      expect(some.status).toBe('ahead')
+      expect([some.forecast, some.forecastWeeks, some.finishShiftDays]).toEqual(['ahead', 0, 0])
     })
   })
 
@@ -308,8 +342,13 @@ describe('the finish forecast', () => {
           const s = computePaceStatus(sch, done, pacing)
           const { forecast, status, forecastWeeks } = s
           const where = `${program} day ${day}, ${done.size} done`
-          check((forecast === 'behind') === (status === 'behind'), where, `${forecast} vs ${status}`)
+          // A catch-up week's own days are not late (forecastFrom): there the
+          // status card plans the week, and "behind" here still means behind there.
+          if (s.isBuffer) check(forecast !== 'behind' || status === 'behind', where, `${forecast} vs ${status}`)
+          else check((forecast === 'behind') === (status === 'behind'), where, `${forecast} vs ${status}`)
           check(forecast !== 'ahead' || status === 'ahead', where, `ahead vs ${status}`)
+          // And "ahead" there is "ahead" here, by less than a week if need be.
+          check(status !== 'ahead' || forecast === 'ahead' || forecast === 'finished', where, `${status} vs ${forecast}`)
           if (forecast === 'behind') {
             check(forecastWeeks <= Math.ceil(day / 7), where, `${forecastWeeks} weeks behind`)
             check(s.oldestOpenWeek === s.behindItems[0].week, where, 'oldest open week')

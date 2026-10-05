@@ -451,6 +451,8 @@ export const translations = {
     forecastOldestOpen: (week) => `oldest open: Week\u00a0${week}`,
     forecastOnTrack: (date) => `On track for ${date}`,
     forecastAhead: (n) => `≈ ${n} ${n === 1 ? 'week' : 'weeks'} ahead of plan`,
+    // Ahead, as the status card says, by less than a week.
+    forecastAheadSome: 'Ahead of plan',
     forecastFinished: 'Finished ahead of plan',
     // Only the items-a-week figure waits for a week's worth of ticks. The
     // verdict shows from the start, so these no longer promise a forecast.
@@ -763,6 +765,7 @@ export const translations = {
     forecastOldestOpen: (week) => `à rattraper dès la semaine\u00a0${frNum(week)}`,
     forecastOnTrack: (date) => `En bonne voie pour finir le ${date}`,
     forecastAhead: (n) => `≈ ${frPlural(n, 'semaine', 'semaines')} d'avance`,
+    forecastAheadSome: 'En avance sur le programme',
     forecastFinished: 'Terminé avant la fin prévue',
     noPaceYet: (unit) =>
       `Coche ${pick(unit, 'ta première leçon', 'ton premier élément')} pour voir ton rythme hebdomadaire.`,
@@ -1083,6 +1086,8 @@ export const translations = {
     forecastOldestOpen: (week) => `أقدم ما بقي مفتوحًا: الأسبوع\u00a0${week}`,
     forecastOnTrack: (date) => `على المسار الصحيح للانتهاء بحلول ${date}`,
     forecastAhead: (n) => `≈ متقدّم ${arByWeeks(n)}`,
+    // "Ahead of the schedule", as statusAhead says عن الجدول.
+    forecastAheadSome: 'متقدّم عن الجدول',
     forecastFinished: 'أنهيت قبل الموعد المخطّط',
     noPaceYet: (unit) => `أكمل أول ${pick(unit, 'درس', 'عنصر')} لك لعرض وتيرتك الأسبوعية.`,
     noPaceYetMore: (n, unit) =>

@@ -67,7 +67,10 @@ export function computePaceStatus(schedule, completedSet, pacing) {
   const paceNeeds = Math.max(0, paceMin - completedCount)
 
   const plannedEnd = plannedEndDate(pacing.startDate, schedule.totalDays)
-  const { forecast, forecastWeeks, finishShiftDays } = forecastFrom(schedule, thisWeek, oldestOpen)
+  const { forecast, forecastWeeks, finishShiftDays } = forecastFrom(schedule, thisWeek, oldestOpen, {
+    behindCount,
+    aheadCount,
+  })
   let projectedFinish = null
   if (plannedEnd && finishShiftDays != null) {
     projectedFinish = new Date(plannedEnd)
@@ -146,12 +149,20 @@ export function perDayToClear(open, daysLeft) {
   the status card and "Get ahead" have it):
 
     oldest open item in an earlier week → 'behind', by the planned days from
-      the start of that week to the start of this one;
+      the start of that week to the start of this one. A catch-up week is
+      the time the curriculum sets aside for what is still open, so its own
+      days are not late: the plan stands at its end. Items from the week just
+      before it are on track, and a learner does not fall a week further
+      behind the moment it begins, while the status card plans the week;
     in this week                       → 'on-track';
     in a later week                    → 'ahead', by the planned days of the
       weeks after this one that are already done. A catch-up week has nothing
       to tick, so passing one is not progress: only weeks with content count;
     nothing open                       → 'finished'.
+  And whenever the status card says "ahead", items ticked in later weeks
+  with nothing overdue, so does this: 'ahead' by less than a week counts
+  no weeks ("Ahead of plan"). After a first "Get ahead" tick, the status
+  card read "You're 1 lesson ahead of schedule" over "On track for …".
 
   Days, not week numbers, because Graphic Design's half weeks and the weeks
   labelled 13.5, 14.5, … begin mid-week. In weeks they are rounded: at least 1
@@ -165,18 +176,21 @@ export function perDayToClear(open, daysLeft) {
   day to the next with nothing ticked. Like the status card, it moves only
   when the learner ticks or the week turns.
 */
-function forecastFrom(schedule, thisWeek, oldestOpen) {
+function forecastFrom(schedule, thisWeek, oldestOpen, { behindCount, aheadCount }) {
   if (!oldestOpen) return { forecast: 'finished', forecastWeeks: 0, finishShiftDays: null }
   // No week to measure from: read as on track, as every figure above reads a
   // missing week as empty, rather than take the page down.
   if (!thisWeek) return { forecast: 'on-track', forecastWeeks: 0, finishShiftDays: 0 }
   if (oldestOpen.week < thisWeek.week) {
     const openWeek = schedule.weeks.find((w) => w.week === oldestOpen.week)
-    const days = thisWeek.startDay - openWeek.startDay
-    return {
-      forecast: 'behind',
-      forecastWeeks: Math.max(1, Math.round(days / 7)),
-      finishShiftDays: days,
+    const allowance = thisWeek.isBuffer ? thisWeek.days : 0
+    const days = thisWeek.startDay - openWeek.startDay - allowance
+    if (days > 0) {
+      return {
+        forecast: 'behind',
+        forecastWeeks: Math.max(1, Math.round(days / 7)),
+        finishShiftDays: days,
+      }
     }
   }
   if (oldestOpen.week > thisWeek.week) {
@@ -185,6 +199,9 @@ function forecastFrom(schedule, thisWeek, oldestOpen) {
       .reduce((sum, w) => sum + w.days, 0)
     const weeks = Math.round(days / 7)
     if (weeks > 0) return { forecast: 'ahead', forecastWeeks: weeks, finishShiftDays: -days }
+  }
+  if (behindCount === 0 && aheadCount > 0) {
+    return { forecast: 'ahead', forecastWeeks: 0, finishShiftDays: 0 }
   }
   return { forecast: 'on-track', forecastWeeks: 0, finishShiftDays: 0 }
 }

@@ -37,9 +37,11 @@ const TONE = {
  */
 export default function ForecastCard({ paceStatus }) {
   const { t, lang } = useLang()
+  // Behind or ahead by a week or more: the finish that puts the learner on.
   const showFinish =
     Boolean(paceStatus?.projectedFinish) &&
-    (paceStatus.forecast === 'behind' || paceStatus.forecast === 'ahead')
+    (paceStatus.forecast === 'behind' || paceStatus.forecast === 'ahead') &&
+    paceStatus.finishShiftDays !== 0
   /*
     Whether the projected finish has a place is decided on arrival, and kept
     for the visit: unseen and unread while the verdict has none to give. A
@@ -79,7 +81,7 @@ export default function ForecastCard({ paceStatus }) {
         <span className="inline-block">{t.forecastOldestOpen(oldestOpenWeek)}</span>
       </>
     ) : forecast === 'ahead' ? (
-      t.forecastAhead(forecastWeeks)
+      forecastWeeks > 0 ? t.forecastAhead(forecastWeeks) : t.forecastAheadSome
     ) : forecast === 'finished' ? (
       t.forecastFinished
     ) : (
