@@ -96,3 +96,94 @@ describe('the graded milestones card', () => {
     expect(byText(badgeLabel[first.gradedType]).parentElement.contains(checks[0])).toBe(true)
   })
 })
+
+/*
+  Every graded item of the week done. A learner who finished early met about
+  300px of crossed-out titles here, every visit until the week ended; now it is
+  one green line, the same as a week with nothing graded. Decided on arrival,
+  like the checklist's "Show N done", so the card never shrinks under a
+  learner's finger, and never claims more than is true.
+*/
+/** What a learner sees and a screen reader reads: no aria-hidden parts. */
+const visible = (el) => {
+  const copy = el.cloneNode(true)
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent
+}
+/** The wordings held in place, invisible and unread. */
+const heldInPlace = (el) =>
+  [...el.querySelectorAll('.invisible[aria-hidden="true"]')].map((s) => s.textContent)
+
+describe('a week whose graded items are all done', () => {
+  const en = translations.en
+  const [first, second] = week.gradedItems
+  const allDone = new Set([first.id, second.id])
+  const card = (completedSet, w = week) =>
+    createElement(LanguageProvider, null, createElement(GradedMilestonesAlert, { week: w, completedSet }))
+  /** Renders again on the same root, as App does when a tick changes completedSet. */
+  const rerender = (completedSet) => act(() => root.render(card(completedSet)))
+
+  it('is one green line when they were all done before the visit, the same line as a week with none', () => {
+    // Content Creation's Week 17 has nothing graded.
+    const none = SCHEDULES.cc.weeks.find((w) => w.week === 17)
+    expect(none.gradedItems).toEqual([])
+    render(
+      createElement(GradedMilestonesAlert, { week, completedSet: allDone }),
+      createElement(GradedMilestonesAlert, { week: none, completedSet: new Set() }),
+    )
+    const [line, reference] = container.querySelectorAll('section')
+    expect(line.textContent).toBe(en.milestonesAllDone(2, 4))
+    expect(line.textContent).toBe('Both graded items for Week 4 are done.')
+    expect(line.querySelector('li')).toBeNull()
+    expect(line.className).toBe(reference.className)
+    expect(line.getAttribute('aria-label')).toBe(reference.getAttribute('aria-label'))
+  })
+
+  it('stays the full card when the last one is ticked during the visit, so nothing below it moves', () => {
+    render(createElement(GradedMilestonesAlert, { week, completedSet: new Set([first.id]) }))
+    rerender(allDone)
+    expect(container.querySelectorAll('li')).toHaveLength(2)
+    expect(container.querySelector('section').getAttribute('aria-label')).toBe(en.milestonesAria)
+    expect(container.textContent).not.toContain(en.milestonesAllDone(2, 4))
+  })
+
+  /*
+    Unticked during the visit, most likely in the roadmap below, where this
+    week sits open too: the full card coming back pushed the roadmap down by
+    230px under that finger. The line says what is still due instead, at the
+    same size, in the graded card's violet, and never claims more than is true.
+  */
+  it('says what is still due if one is unticked, in the same line, so nothing below moves', () => {
+    render(createElement(GradedMilestonesAlert, { week, completedSet: allDone }))
+    const line = container.querySelector('section')
+    rerender(new Set([first.id]))
+    expect(container.querySelector('section')).toBe(line)
+    expect(container.querySelector('li')).toBeNull()
+    expect(visible(line)).toBe(en.gradedStillDue(1))
+    expect(line.className).toContain('violet')
+    expect(line.querySelector('.lucide-award')).not.toBeNull()
+    // Held at the size of every wording it can come to, unseen and unread.
+    expect(heldInPlace(line)).toEqual([
+      en.milestonesAllDone(2, 4),
+      en.gradedStillDue(1),
+      en.gradedStillDue(2),
+    ])
+
+    rerender(allDone)
+    expect(container.querySelector('section')).toBe(line)
+    expect(line.textContent).toBe(en.milestonesAllDone(2, 4))
+    expect(line.className).toContain('alxgreen')
+  })
+
+  it.each(Object.keys(translations))('says so in the learner’s language, with the week in it (%s)', (lang) => {
+    window.localStorage.setItem('alx-lang', lang)
+    const gd9 = SCHEDULES.gd.weeks.find((w) => w.week === 9) // three graded items
+    render(
+      createElement(GradedMilestonesAlert, {
+        week: gd9,
+        completedSet: new Set(gd9.gradedItems.map((i) => i.id)),
+      }),
+    )
+    expect(container.textContent).toBe(translations[lang].milestonesAllDone(3, 9))
+  })
+})

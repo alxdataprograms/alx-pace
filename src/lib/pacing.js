@@ -191,16 +191,25 @@ export function computePacing(startDateInput, now = new Date(), timeline = null)
 }
 
 /**
+ * The calendar date of day `day` of a course begun on `startDateInput`, at
+ * local midnight: day 0 is the start date itself, as in computePacing. Null
+ * without a valid start date.
+ */
+export function dateOfDay(startDateInput, day) {
+  const start = startDateInput instanceof Date ? startDateInput : parseISODate(startDateInput)
+  if (!start) return null
+  const date = atMidnight(start)
+  date.setDate(date.getDate() + day)
+  return date
+}
+
+/**
  * The planned "done by" date: the last day of the program (start +
  * totalDays - 1, since day 1 is the start date itself — 97 days for the
  * 14-week DA track). Null without a valid start date or program.
  */
 export function plannedEndDate(startDateInput, totalDays) {
-  const start = startDateInput instanceof Date ? startDateInput : parseISODate(startDateInput)
-  if (!start || !totalDays) return null
-  const end = atMidnight(start)
-  end.setDate(end.getDate() + totalDays - 1)
-  return end
+  return totalDays ? dateOfDay(startDateInput, totalDays - 1) : null
 }
 
 /**

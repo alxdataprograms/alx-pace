@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { Award, CheckCircle2 } from 'lucide-react'
 import GradedBadge from './GradedBadge'
+import SteadyText from './SteadyText'
 import { DONE_TEXT } from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -10,23 +12,37 @@ import { useLang } from '../i18n/LanguageContext'
  * Prominent, not alarming. Every Data Analytics week has graded items, so this
  * card is routine; its header carries the generic graded badge's own icon
  * rather than the warning triangle it once had, which read like an error.
+ *
+ * Once every one of them is done, the card is one green line, as for a week
+ * with none: "Both graded items for Week 4 are done." A learner who finished
+ * early met about 300px of crossed-out titles here instead, every visit until
+ * the week ended.
+ *
+ * Decided on arrival, like the checklist's "Show N done", and kept for the
+ * visit. Collapsing the moment the last one was ticked would pull everything
+ * below up by 230px or more — the roadmap, where this week sits open too —
+ * taking the row just ticked there out from under the learner's finger, and
+ * the full card coming back when one was unticked there pushed it down by as
+ * much. So an item unticked during the visit turns the line to what is still
+ * due, "1 graded item still due", in the graded card's violet: the line never
+ * claims more than is true, and holds the size of every wording it can come
+ * to. App keys the card by week, so the next visit, or the next week, decides
+ * afresh, and lists the item due in full.
  */
 export default function GradedMilestonesAlert({ week, completedSet }) {
   const { t } = useLang()
+  const items = week?.gradedItems || []
+  const allDone = items.length > 0 && items.every((l) => completedSet.has(l.id))
+  const [oneLine] = useState(allDone)
   if (!week) return null
-  const items = week.gradedItems || []
 
-  if (items.length === 0) {
-    return (
-      <section className="alx-card flex items-center gap-3 border-alxgreen/25 bg-alxgreen/5">
-        <CheckCircle2
-          size={20}
-          className="flex-none text-alxgreen-700 dark:text-alxgreen"
-          aria-hidden="true"
-        />
-        <p className="text-sm font-medium">{t.milestonesNone}</p>
-      </section>
-    )
+  if (items.length === 0) return <DoneLine text={t.milestonesNone} />
+  if (oneLine) {
+    const said = (open) =>
+      open === 0 ? t.milestonesAllDone(items.length, week.week) : t.gradedStillDue(open)
+    const open = items.filter((l) => !completedSet.has(l.id)).length
+    if (open === 0) return <DoneLine text={said(0)} />
+    return <DoneLine done={false} text={said(open)} texts={[0, ...items.map((_, i) => i + 1)].map(said)} />
   }
 
   return (
@@ -42,8 +58,9 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
           <h2 className="text-sm font-bold uppercase tracking-wide text-violet-700 dark:text-violet-300">
             {t.milestonesTitle}
           </h2>
+          {/* The week in the learner's words: "2 à rendre en semaine 4", not "en Week 4". */}
           <p className="text-xs text-ink-soft dark:text-paper/70">
-            {t.milestonesDue(items.length, week.weekLabel)}
+            {t.milestonesDue(items.length, week)}
           </p>
         </div>
       </div>
@@ -92,6 +109,31 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
           )
         })}
       </ul>
+    </section>
+  )
+}
+
+/**
+ * The card as one calm green line: nothing graded this week, or nothing left.
+ * Not `done`, an item unticked during the visit: the graded card's violet and
+ * award, at the same size, held over every wording in `texts` (SteadyText).
+ */
+function DoneLine({ text, done = true, texts }) {
+  const Icon = done ? CheckCircle2 : Award
+  return (
+    <section
+      className={`alx-card flex items-center gap-3 ${
+        done ? 'border-alxgreen/25 bg-alxgreen/5' : 'border-violet/30 bg-violet/5'
+      }`}
+    >
+      <Icon
+        size={20}
+        className={`flex-none ${
+          done ? 'text-alxgreen-700 dark:text-alxgreen' : 'text-violet-700 dark:text-violet-300'
+        }`}
+        aria-hidden="true"
+      />
+      <p className="text-sm font-medium">{texts ? <SteadyText texts={texts}>{text}</SteadyText> : text}</p>
     </section>
   )
 }

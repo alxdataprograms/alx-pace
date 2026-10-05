@@ -4,8 +4,16 @@ import { useLang } from '../i18n/LanguageContext'
 /**
  * Overall curriculum progress. Shows % complete and the raw count, with an
  * accessible progressbar role for screen readers.
+ *
+ * `currentModule` (Creative Tech, in an active week; see moduleProgress) adds
+ * a caption under the bar: "Module 3 of 10 · Poster Design & Visual
+ * Composition", and how much of it is done, "0/31". Graphic Design's bar moves
+ * about 3% a week over 32 weeks, and "module 3 of 10", the unit the app
+ * celebrates, appeared only in the dialogue at a module's end, so a learner
+ * had no near goal in sight. The module's title is the sheet's own, in English
+ * in every language. Data Analytics passes none, and its card is as it was.
  */
-export default function ProgressBar({ completed, total, percent }) {
+export default function ProgressBar({ completed, total, percent, currentModule }) {
   const { t } = useLang()
   return (
     <section className="alx-card" aria-label={t.overallProgress}>
@@ -45,6 +53,25 @@ export default function ProgressBar({ completed, total, percent }) {
           style={{ width: `${percent}%` }}
         />
       </div>
+
+      {/*
+        The count sits at the end of the first line, under the percentage it
+        details, so a title that wraps never strands it, or a "·", on a line
+        of its own.
+      */}
+      {currentModule && (
+        <p className="mt-2.5 flex items-baseline justify-between gap-3 text-xs text-ink-soft dark:text-paper/70">
+          <span className="min-w-0">
+            <span className="font-semibold text-ink dark:text-paper">
+              {t.moduleOf(currentModule.index, currentModule.total)}
+            </span>
+            {'\u00a0'}· <span dir="ltr">{currentModule.title}</span>
+          </span>
+          <span className="flex-none font-semibold tabular-nums text-ink dark:text-paper">
+            {currentModule.done}/{currentModule.items}
+          </span>
+        </p>
+      )}
     </section>
   )
 }

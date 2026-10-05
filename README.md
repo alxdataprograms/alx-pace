@@ -51,11 +51,15 @@ runs after those gates pass on `main`.
 | **Program picker** | The first screen says what Pace is (*Free · No login · Saved on this phone*), then asks *Data Analytics or Creative Tech?* — and for Creative Tech, *Content Creation or Graphic Design?* Change it any time from the hero card; each program's ticks are kept separately. |
 | **Zero-login state** | Program, name, start date and completed lessons persist in `localStorage`. |
 | **Pacing engine** | Enter a start date → the app computes the current week of *your* program and shows exactly what to work on. The week advances live at midnight, even with the tab left open. |
-| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. |
-| **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks. |
-| **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently. |
-| **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"). |
-| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week auto-expands and is flagged *Current*. |
+| **Current Focus** | The precise Module + Week + lessons for *this* week, with checkboxes, directly under the status card so the first lesson is on the first screen. A long Creative Tech week stays open in full under one line naming its next graded item: *Next checkpoint: Quiz 1: Poster Design · 9 items away*. |
+| **Already started?** | Past Week 1 with nothing in the program ticked (a learner who found Pace mid-course), a card under the status card asks *You're in Week 9 of Graphic Design. Have you already finished Weeks 1–8 on the ALX platform?* *Yes, tick Weeks 1–8* ticks them all in one go, records any module that completes as already celebrated (no share dialogue for work done weeks ago), and says *Marked 108 items done*, with *Undo*. *Not yet, show me what's open* puts the card away for the visit and goes to *Catch up first*. In Week 1, the status card says how Pace works instead: *Week 1 is under way. Study each lesson on ALX, then tick it off here.* Nothing new is saved: once anything in the program is ticked, the next visit shows neither. |
+| **Catch up first** | Behind in an ordinary week, the focus card opens with the three oldest items still open from earlier weeks, each labelled with its week, above this week's lessons; the status card's *Catch up now* goes straight there. In Creative Tech it ends by naming the next catch-up week: *Next catch-up week: Week 10, from Oct 27*. |
+| **Catch-up weeks** | Creative Tech buffer weeks turn the focus card into a catch-up list: the oldest still-open items from earlier weeks, under a heading for each week (*Week 12 · GD-4 — 10 open*), six at a time, with *Show all 14* to open the rest in place. The status card plans the week instead of nudging: *Catch-up week: 14 items to clear · 5 days left (about 3 a day)*. |
+| **Get ahead** | Once this week is done, the focus card says so and lists the first three open items of the next week with anything to tick (catch-up weeks skipped), so there is always something to tick; from the next visit, the week's ticks fold behind *Show N done*. A learner with anything overdue catches up first instead. |
+| **Graded Milestones** | Evaluation quizzes, graded tests, integrated projects, module quizzes and mastery projects due this week are surfaced prominently; once all of them were done before a visit, the card is one green line. |
+| **Progress** | Overall % complete across every item in the program, plus per-week counts. In an active week the status card also shows it in one line ("41% · 11 of 27"), and in Creative Tech the progress card names the module of the week (*Module 3 of 10 · Poster Design & Visual Composition*, 0/31). |
+| **Your pace** | Where the learner stands against the plan, by the status card's own rule (see [The finish forecast](#the-finish-forecast)): *On track for Dec 16, 2026*, *≈ 4 weeks behind · oldest open: Week 3* or *≈ 2 weeks ahead of plan*, with the finish that puts them on, from the first visit. Lessons (or items) a week follow once a week's worth is ticked. |
+| **Full roadmap** | Collapsible week / module browser (buffer and ½ weeks flagged); once the course has begun, the current week is flagged *Current* (and in Data Analytics auto-expands), and each earlier week with items still open is marked *N overdue* in amber. In Creative Tech, each finished module folds into one row (*GD-3 Poster Design & Visual Composition · Weeks 9–10 · 31/31 ✓*, with its Share button) that opens to its weeks; the current module stays open. |
 | **Edge states** | No program → picker · future start date → countdown · past the final week → graduation · no date → onboarding · storage reset → clean defaults. |
 | **Theming** | Light (default, matching alxafrica.com) and deep-navy dark mode, persisted. |
 
@@ -194,6 +198,27 @@ target finish date is always `start + totalDays − 1`.
 Dates are parsed as **local** dates (not UTC) so the calendar day never shifts in
 negative timezones.
 
+### The finish forecast
+
+Implemented in [`src/lib/paceStatus.js`](src/lib/paceStatus.js). It reads where
+the learner stands, not how fast they tick: weeks differ too much in weight (Data
+Analytics' Weeks 1–4 hold 13 of its 27 lessons) for a rate to say when anyone
+finishes.
+
+```
+oldest open item in an earlier week  →  behind by  startDay(this week) − startDay(its week)
+oldest open item in this week        →  on track
+oldest open item in a later week     →  ahead by   the days of the weeks with content
+                                                     after this one, already done
+nothing open                         →  finished
+projected finish = planned end, moved by those days    (shown as ≈ weeks; at least 1 behind)
+```
+
+The current week counts neither way, as in the status card: it is in progress,
+so it is never late, and finishing it early is not yet ahead. A catch-up week has
+nothing to tick, so passing one never puts a learner ahead. The forecast moves
+only when the learner ticks or the week turns.
+
 ---
 
 ## localStorage contract
@@ -206,7 +231,7 @@ negative timezones.
 | `completedLessons` | JSON array of lesson ids | `[]` | yes |
 | `alx-theme` | `"light"` \| `"dark"` | `"light"` | yes |
 | `alx-lang` | `"en"` \| `"fr"` \| `"ar"` | browser language | yes |
-| `alx-celebrated` | JSON array of milestone ids already shown (`module:DA-1`, `module:CC-2`, `programme` for DA, `programme:cc` / `programme:gd`) | `[]` | yes (unioned) |
+| `alx-celebrated` | JSON array of milestone ids already shown, or passed over by *Already started?* (`module:DA-1`, `module:CC-2`, `programme` for DA, `programme:cc` / `programme:gd`) | `[]` | yes (unioned) |
 | `alx-reminders` | reminder mode | unset | **no** — see below |
 | `alx-metrics-day` | analytics dedupe stamp | unset | **no** — see below |
 | `alx-handoff-done` | ISO date the handoff ran | unset | n/a |
