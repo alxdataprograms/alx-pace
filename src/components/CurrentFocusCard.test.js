@@ -718,6 +718,22 @@ describe('a week done early', () => {
     expect(open(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(0, 4).map((l) => l.title))
   })
 
+  it('moves on to the next week once the week it offers is all ticked here', () => {
+    const [week1, week2, week3] = da.weeks
+    renderLearner({ week: week1, initiallyDone: doneThrough(1), upcoming: contentWeeksAfter(da, 1), unit: 'lesson' })
+    expect(aheadHeading().textContent).toBe(`${en.getAhead} · ${en.weekRange(2, 2)} · ${week2.moduleCode}`)
+    const [a, b] = boxesIn(aheadSection())
+    expect(boxesIn(aheadSection())).toHaveLength(2)
+    click(a)
+    click(b)
+    // Both stay where they were, struck through, and Week 3's lessons join
+    // below, under their week: the next one is never only in the roadmap.
+    expect(boxesIn(aheadSection()).slice(0, 2)).toEqual([a, b])
+    const sub = aheadSection().querySelector('h4')
+    expect(sub.textContent).toBe(`${en.weekRange(3, 3)} · ${week3.moduleCode}`)
+    expect(open(aheadSection()).map(nameOf)).toEqual(week3.lessons.slice(0, 2).map((l) => l.title))
+  })
+
   it('moves on past a week already done', () => {
     daWeek4(doneThrough(5))
     expect(aheadHeading().textContent).toBe(`${en.getAhead} · ${en.weekRange(6, 6)} · DA-3`)
@@ -772,7 +788,6 @@ describe('a week done early', () => {
     expect(visible(note)).toBe(en.weekAllDone)
     expect(aheadHeading()).toBeDefined()
   })
-
 
   it('finished during the visit: the rows stay put, and the note and "Get ahead" appear below them', () => {
     daWeek4(doneThrough(4).slice(0, -1))

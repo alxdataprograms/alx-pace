@@ -1,4 +1,4 @@
-import { useId, useLayoutEffect, useRef, useState } from 'react'
+import { Fragment, useId, useLayoutEffect, useRef, useState } from 'react'
 import {
   CalendarClock,
   CheckCircle2,
@@ -609,8 +609,8 @@ function CatchUpList({ items, completedSet, onToggle, introRef }) {
  * `more` counts the open items not on screen; `moreOnArrival` what it was on
  * arrival, which decides whether the line that counts them has a place.
  */
-function useHeldRows(open, limit, onToggle) {
-  const [rows, setRows] = useState(() => open.slice(0, limit))
+function useHeldRows(open, limit, onToggle, initial) {
+  const [rows, setRows] = useState(() => initial ?? open.slice(0, limit))
   const [moreOnArrival] = useState(() => open.length - Math.min(open.length, limit))
   const onScreen = new Set(rows.map((l) => l.id))
   const tick = (lesson) => {
@@ -763,7 +763,10 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
  * chosen when it is offered and kept while it shows, and once something is
  * ticked here, the section stays, on that week, until the next visit, so the
  * tick can be undone where it happened even if the week above stops being
- * done.
+ * done. Once that week has nothing left to join, the next week's items do,
+ * under their own "Week 6 · DA-3": a learner who ticked both of Week 2's
+ * lessons here ended on two struck-through rows, with the next one only in the
+ * roadmap.
  */
 function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
   const [week, setWeek] = useState(null)
@@ -780,7 +783,7 @@ function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
   return (
     <GetAheadList
       key={week.week}
-      week={week}
+      weeks={weeks.filter((w) => w.week >= week.week)}
       completedSet={completedSet}
       onToggle={(id) => {
         setTicked(true)
@@ -791,15 +794,34 @@ function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
   )
 }
 
-function GetAheadList({ week, completedSet, onToggle, unit }) {
+function GetAheadList({ weeks, completedSet, onToggle, unit }) {
   const { t } = useLang()
-  const open = week.lessons.filter((l) => !completedSet.has(l.id))
-  const { rows, more, moreOnArrival, tick } = useHeldRows(open, GET_AHEAD_LIMIT, onToggle)
+  const [week] = weeks
+  const isOpen = (l) => !completedSet.has(l.id)
+  // The week it offers first; the next weeks' items join once it runs out.
+  const first = week.lessons.filter(isOpen)
+  const { rows, tick } = useHeldRows(
+    weeks.flatMap((w) => w.lessons.filter(isOpen)),
+    GET_AHEAD_LIMIT,
+    onToggle,
+    first.slice(0, GET_AHEAD_LIMIT),
+  )
+  const onScreen = new Set(rows.map((l) => l.id))
+  // "+11 more in Week 11": the week it offers, as on arrival.
+  const more = first.filter((l) => !onScreen.has(l.id)).length
+  const [moreOnArrival] = useState(() => Math.max(0, first.length - GET_AHEAD_LIMIT))
   const moreLine = (n) => (
     <p className="mt-1 px-1.5 text-xs font-semibold text-cobalt-600 dark:text-lime">
       {t.getAheadMore(n, week.week, unit)}
     </p>
   )
+  // The rows in the order they joined, under the week each comes from.
+  const groups = []
+  for (const lesson of rows) {
+    const group = groups[groups.length - 1]
+    if (group?.week === lesson.week) group.lessons.push(lesson)
+    else groups.push({ week: lesson.week, moduleCode: lesson.moduleCode, lessons: [lesson] })
+  }
 
   return (
     <div className="mt-4 border-t border-navy-900/10 pt-3 dark:border-white/10">
@@ -817,16 +839,27 @@ function GetAheadList({ week, completedSet, onToggle, unit }) {
           </span>
         </span>
       </h3>
-      <ul className="-mx-1 space-y-0.5">
-        {rows.map((lesson) => (
-          <LessonRow
-            key={lesson.id}
-            lesson={lesson}
-            checked={completedSet.has(lesson.id)}
-            onToggle={() => tick(lesson)}
-          />
-        ))}
-      </ul>
+      {groups.map((group, i) => (
+        <Fragment key={`${group.week}-${i}`}>
+          {i > 0 && (
+            <h4 className="mb-1 mt-3 px-1.5 text-xs font-bold uppercase tracking-widest text-cobalt-600 dark:text-lime">
+              <span className="whitespace-nowrap">
+                {t.weekRange(group.week, group.week)} · <span dir="ltr">{group.moduleCode}</span>
+              </span>
+            </h4>
+          )}
+          <ul className="-mx-1 space-y-0.5">
+            {group.lessons.map((lesson) => (
+              <LessonRow
+                key={lesson.id}
+                lesson={lesson}
+                checked={completedSet.has(lesson.id)}
+                onToggle={() => tick(lesson)}
+              />
+            ))}
+          </ul>
+        </Fragment>
+      ))}
       {moreOnArrival > 0 && (more > 0 ? moreLine(more) : <Held>{moreLine(moreOnArrival)}</Held>)}
     </div>
   )
