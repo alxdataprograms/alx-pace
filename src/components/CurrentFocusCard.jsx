@@ -440,18 +440,6 @@ function NextCheckpoint({ week, completedSet, unit }) {
 }
 
 /**
- * A catch-up week's rows: the first `limit` of the oldest open items, plus
- * anything ticked on the list this visit (`kept`) — still shown, struck
- * through, so it can be unticked from the same spot (see useKeptInPlace).
- * Ticking one pulls the next in, and the kept rows survive a change of
- * `limit` ("Show all").
- */
-function useCatchUp(items, limit, onToggle) {
-  const [kept, keep] = useKeptInPlace(onToggle)
-  return { shown: withKept(items.slice(0, limit), kept), keep }
-}
-
-/**
  * A catch-up week's list: the oldest items still open from earlier weeks,
  * under the week each comes from.
  *
@@ -464,7 +452,7 @@ function useCatchUp(items, limit, onToggle) {
  * "Show all 14" opens the whole list where it is ("Show fewer" closes it).
  *
  * A tick stays in place, struck through, under its week, open in full or not
- * (useKeptInPlace), and the week's count drops with it.
+ * (useHeldRows), and the week's count drops with it.
  *
  * `introRef` marks the opening sentence ("…clear the 14 items still open…"),
  * where "Not yet, show me what's open" goes: the margin above it is the one
@@ -474,7 +462,26 @@ function useCatchUp(items, limit, onToggle) {
 function CatchUpList({ items, completedSet, onToggle, introRef }) {
   const { t } = useLang()
   const [showAll, setShowAll] = useState(false)
-  const { shown, keep } = useCatchUp(items, showAll ? items.length : CATCH_UP_LIMIT, onToggle)
+  /*
+    Its rows hold as "Catch up first"'s do (useHeldRows): the first six on
+    arrival, and the next oldest as each is ticked here. A row ticked in the
+    roadmap below stays put, struck through, and pulls nothing in: the list
+    was rebuilt from what was open on every tick there, and a week's heading
+    coming in, or "Show all" going, moved the roadmap's rows by 30 to 118px.
+    Open in full, it lists everything still open as well; a row ticked there
+    stays when it closes, where it was.
+  */
+  const { rows, tick: tickHeld } = useHeldRows(items, CATCH_UP_LIMIT, onToggle)
+  const [tickedOpen, setTickedOpen] = useState(() => new Map())
+  const held = withKept(rows, tickedOpen)
+  const onScreen = new Set(held.map((l) => l.id))
+  const shown = showAll ? withKept(held, new Map(items.filter((l) => !onScreen.has(l.id)).map((l) => [l.id, l]))) : held
+  const keep = (lesson) => {
+    if (onScreen.has(lesson.id)) return tickHeld(lesson)
+    setTickedOpen((prev) => new Map(prev).set(lesson.id, lesson))
+    onToggle(lesson.id)
+  }
+  const hidden = items.filter((l) => !onScreen.has(l.id)).length
   const listId = useId()
   const showAllButton = useRef(null)
   const closing = useRef(false)
@@ -578,12 +585,15 @@ function CatchUpList({ items, completedSet, onToggle, introRef }) {
         ))}
       </div>
       {/*
-        There while more is open than the first six, whether the list is open
-        in full or not, so it can close what it opened. Ticking the open items
-        down to six takes it away: its place is below every row, so nothing
-        moves, and the ticking finger is on a row, not on it.
+        There when more was open on arrival than the first six, and for the
+        visit, so it can close what it opened. With nothing left beyond the
+        rows on screen it keeps its place, unseen and out of reach: going, it
+        pulled the roadmap below up under a finger ticking there.
       */}
-      {items.length > CATCH_UP_LIMIT && (
+      {onArrival.all > CATCH_UP_LIMIT && !showAll && hidden === 0 && (
+        <div aria-hidden="true" className="invisible mt-2 min-h-[44px]" />
+      )}
+      {onArrival.all > CATCH_UP_LIMIT && (showAll || hidden > 0) && (
         <button
           ref={showAllButton}
           type="button"

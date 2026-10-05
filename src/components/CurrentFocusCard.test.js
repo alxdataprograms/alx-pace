@@ -31,12 +31,15 @@ afterEach(() => {
   container.remove()
 })
 
+// Ticks an item from outside the card, as the roadmap below it does.
+let tickOutside
 /**
  * Holds completion state the way useLearnerProfile does, and recomputes
  * `catchUp` from it. Any other prop goes to the card as it is.
  */
 function Harness({ week, pool, ...rest }) {
   const [done, setDone] = useState(() => new Set())
+  tickOutside = (id) => act(() => toggle(id))
   const toggle = (id) =>
     setDone((prev) => {
       const next = new Set(prev)
@@ -455,6 +458,46 @@ describe('a catch-up week’s list, grouped by week', () => {
     render({ week: buffer, pool: pool.slice(0, 6) })
     expect(toggle()).toBeNull()
     expect(boxes()).toHaveLength(6)
+  })
+
+  /*
+    The list was rebuilt from what was open on every tick in the roadmap below
+    it: rows left it, a week's heading joined it, and "Show all" went, moving
+    the roadmap's rows by 30 to 118px under the finger ticking there.
+  */
+  it('holds its rows and headings when items are ticked in the roadmap below', () => {
+    render({ week: buffer, pool })
+    const shownFirst = boxes()
+    // Ticked there: the row stays, struck through, and nothing joins.
+    tickOutside(pool[0].id)
+    expect(boxes()).toEqual(shownFirst)
+    expect(shownFirst[0].getAttribute('aria-checked')).toBe('true')
+    // Week 13's items, beyond the six, ticked there: no heading comes in.
+    for (const l of pool.filter((l) => l.week === 13)) tickOutside(l.id)
+    expect(boxes()).toEqual(shownFirst)
+    expect(headings()).toHaveLength(1)
+    expect(headings()[0]).toContain(en.catchUpWeekOpen(9))
+    // A tick on the list itself still brings the next oldest in.
+    click(shownFirst[1])
+    expect(boxes()).toHaveLength(7)
+    expect(open()).toHaveLength(5)
+  })
+
+  it('keeps the place of "Show all" once nothing more is left to show', () => {
+    render({ week: buffer, pool })
+    const button = toggle()
+    const after = button.nextSibling
+    // Everything beyond the six ticked in the roadmap: nothing left to show.
+    for (const l of pool.slice(6)) tickOutside(l.id)
+    expect(toggle()).toBeNull()
+    const held = button.parentNode ? null : [...container.querySelectorAll('.invisible.min-h-\\[44px\\]')]
+    expect(held).toHaveLength(1)
+    expect(held[0].getAttribute('aria-hidden')).toBe('true')
+    expect(held[0].className).toContain('mt-2')
+    expect(held[0].nextSibling).toBe(after)
+    // Unticked there again, it is back, counting what is open.
+    tickOutside(pool[13].id)
+    expect(toggle().textContent).toBe(en.catchUpShowAll(7))
   })
 
   it('holds its sizes as the counts drop, every wording they can come to held, unread', () => {
