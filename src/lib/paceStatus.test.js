@@ -36,6 +36,12 @@ describe('computePaceStatus', () => {
     expect(computePaceStatus(schedule, new Set(), { status: 'future' })).toBeNull()
   })
 
+  it('reads a week the schedule does not have as empty, rather than throwing', () => {
+    const s = computePaceStatus(schedule, new Set(['a']), activePacing({ currentWeek: 4 }))
+    expect(s.weekTotal).toBe(0)
+    expect(s.forecast).toBe('on-track')
+  })
+
   it('flags "behind" for unfinished lessons in earlier weeks', () => {
     const s = computePaceStatus(schedule, new Set(['a']), activePacing())
     expect(s.status).toBe('behind')

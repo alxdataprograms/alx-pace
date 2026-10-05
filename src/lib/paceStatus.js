@@ -167,6 +167,9 @@ export function perDayToClear(open, daysLeft) {
 */
 function forecastFrom(schedule, thisWeek, oldestOpen) {
   if (!oldestOpen) return { forecast: 'finished', forecastWeeks: 0, finishShiftDays: null }
+  // No week to measure from: read as on track, as every figure above reads a
+  // missing week as empty, rather than take the page down.
+  if (!thisWeek) return { forecast: 'on-track', forecastWeeks: 0, finishShiftDays: 0 }
   if (oldestOpen.week < thisWeek.week) {
     const openWeek = schedule.weeks.find((w) => w.week === oldestOpen.week)
     const days = thisWeek.startDay - openWeek.startDay
