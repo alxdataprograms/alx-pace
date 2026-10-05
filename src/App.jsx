@@ -268,7 +268,16 @@ export default function App() {
     items, which were open before, and those records, which were not there.
     Anything ticked or celebrated meanwhile stays, and so does every other
     program's progress, which shares both lists.
+
+    Either answer lays out afresh the cards below it, the checklist and the
+    pace card, as a new visit would (`laidOut` is in their keys). Ticks made
+    elsewhere leave what those cards lay out as it was on arrival, so that
+    nothing moves under the finger in the roadmap (see CurrentFocusCard); kept
+    so here, "Catch up first" would stay on screen, every row struck through,
+    for weeks the learner has just said are done. Nothing below this card is
+    under the finger that answered it.
   */
+  const [laidOut, setLaidOut] = useState(0)
   const tickWeeksBefore = useCallback(() => {
     const ids = earlierWeeks.items.filter((l) => !completedSet.has(l.id)).map((l) => l.id)
     const crossed = milestonesCrossed(schedule, completedSet, ids, program, celebrated)
@@ -276,6 +285,7 @@ export default function App() {
     if (crossed.length > 0) {
       setCelebrated((prev) => [...(Array.isArray(prev) ? prev : []), ...crossed])
     }
+    setLaidOut((n) => n + 1)
     return { ids, crossed }
   }, [earlierWeeks, completedSet, schedule, program, celebrated, setLessonsCompleted, setCelebrated])
 
@@ -287,6 +297,7 @@ export default function App() {
           Array.isArray(prev) ? prev.filter((id) => !crossed.includes(id)) : prev,
         )
       }
+      setLaidOut((n) => n + 1)
     },
     [setLessonsCompleted, setCelebrated],
   )
@@ -456,7 +467,12 @@ export default function App() {
                     onNotYet={showWhatsOpen}
                   />
                 )}
+                {/*
+                  Keyed like the status card: what the card lays out is decided
+                  on arrival in each week (see CurrentFocusCard).
+                */}
                 <CurrentFocusCard
+                  key={`focus:${program}:${pacing.currentWeek}:${laidOut}`}
                   week={currentWeek}
                   completedSet={completedSet}
                   onToggle={toggleLesson}
@@ -467,7 +483,10 @@ export default function App() {
                   nextCatchUp={paceStatus?.nextCatchUp}
                 />
                 <ProgressBar {...progress} currentModule={weekModule} />
-                <ForecastCard paceStatus={paceStatus} />
+                <ForecastCard
+                  key={`forecast:${program}:${pacing.currentWeek}:${laidOut}`}
+                  paceStatus={paceStatus}
+                />
                 {/*
                   Keyed like the status card: whether the week's graded items
                   were all done on arrival is decided afresh for a new week.

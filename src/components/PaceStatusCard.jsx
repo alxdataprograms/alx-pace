@@ -87,15 +87,18 @@ export default function PaceStatusCard({
   const [firstStepsOnArrival] = useState(firstSteps)
 
   /*
-    Once offered, the button's row stays for the rest of the visit. Ticking the
-    last overdue item turns this card to "Right on pace"; had the button gone
-    with it, the card would have shrunk by the row's 52px and pulled the
-    checklist below up with it, taking the row just ticked out from under the
-    learner's finger. So the row says "All caught up" instead, until the card is
-    mounted afresh: the next visit, or another week or program (App keys it).
+    Offered on arrival, and its row then stays for the rest of the visit.
+    Ticking the last overdue item turns this card to "Right on pace"; had the
+    button gone with it, the card would have shrunk by the row's 52px and
+    pulled the checklist below up with it, taking the row just ticked out from
+    under the learner's finger. So the row says "All caught up" instead, until
+    the card is mounted afresh: the next visit, or another week or program
+    (App keys it). Arrival decides, as it does "Catch up first", the section
+    the button goes to: a learner who falls behind during the visit, by
+    unticking an earlier lesson in the roadmap, finds both on the next visit.
+    Arriving mid-visit, they pushed the roadmap down under that finger.
   */
-  const [offeredCatchUp, setOfferedCatchUp] = useState(offerCatchUp)
-  if (offerCatchUp && !offeredCatchUp) setOfferedCatchUp(true)
+  const [offeredCatchUp] = useState(offerCatchUp)
 
   if (!paceStatus) return null
   const v = VARIANTS[paceStatus.isBuffer ? 'catch-up' : paceStatus.status]
@@ -143,7 +146,7 @@ export default function PaceStatusCard({
             One tap now reaches the oldest open items: a 44px button in the
             app's in-card action style, below the card's figures.
           */}
-          {offerCatchUp ? (
+          {offeredCatchUp && offerCatchUp ? (
             <button
               type="button"
               onClick={onCatchUp}

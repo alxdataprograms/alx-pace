@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { CalendarCheck, Gauge } from 'lucide-react'
 import { useLang } from '../i18n/LanguageContext'
 import { formatHumanDate } from '../lib/formatDate'
@@ -36,6 +37,19 @@ const TONE = {
  */
 export default function ForecastCard({ paceStatus }) {
   const { t, lang } = useLang()
+  const showFinish =
+    Boolean(paceStatus?.projectedFinish) &&
+    (paceStatus.forecast === 'behind' || paceStatus.forecast === 'ahead')
+  /*
+    Whether the projected finish has a place is decided on arrival, and kept
+    for the visit: unseen and unread while the verdict has none to give. A
+    learner behind who cleared the last overdue item in the roadmap below
+    turned the verdict to "On track", and the row going pulled the roadmap up
+    under that finger; one who unticked an earlier lesson there brought the row
+    in, and pushed it down. App keys the card by week, so the next week, or
+    the next visit, decides afresh.
+  */
+  const [finishShown] = useState(showFinish)
   if (!paceStatus) return null
 
   const {
@@ -71,7 +85,6 @@ export default function ForecastCard({ paceStatus }) {
     ) : (
       t.forecastOnTrack(formatHumanDate(plannedEnd, lang).replace(/ /g, '\u00a0'))
     )
-  const showFinish = projectedFinish && (forecast === 'behind' || forecast === 'ahead')
 
   return (
     <section className="alx-card" aria-label={t.yourPace}>
@@ -96,14 +109,19 @@ export default function ForecastCard({ paceStatus }) {
         </p>
       )}
 
-      {showFinish && (
-        <dl className="mt-3 text-sm">
+      {finishShown && (
+        <dl
+          className={`mt-3 text-sm ${showFinish ? '' : 'invisible'}`}
+          aria-hidden={showFinish ? undefined : 'true'}
+        >
           <div className="flex items-center justify-between gap-3">
             <dt className="flex items-center gap-1.5 text-ink-soft dark:text-paper/75">
               <CalendarCheck size={15} className="flex-none" aria-hidden="true" />
               {t.projectedFinishLabel}
             </dt>
-            <dd className="font-semibold">{formatHumanDate(projectedFinish, lang)}</dd>
+            <dd className="font-semibold">
+              {formatHumanDate(showFinish ? projectedFinish : plannedEnd, lang)}
+            </dd>
           </div>
         </dl>
       )}

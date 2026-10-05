@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Award, CheckCircle2 } from 'lucide-react'
 import GradedBadge from './GradedBadge'
+import SteadyText from './SteadyText'
 import { DONE_TEXT } from './LessonRow'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -17,25 +18,32 @@ import { useLang } from '../i18n/LanguageContext'
  * early met about 300px of crossed-out titles here instead, every visit until
  * the week ended.
  *
- * Decided on arrival, like the checklist's "Show N done". Collapsing the
- * moment the last one was ticked would pull everything below up by 230px or
- * more — the roadmap, where this week sits open too — taking the row just
- * ticked there out from under the learner's finger. App keys the card by week,
- * so the next visit, or the next week, decides afresh. An item unticked in
- * the meantime brings the full card back for the rest of the visit: the line
- * never claims more than is true, and ticking the item again, to undo a
- * mis-tap, does not shrink the card a second time.
+ * Decided on arrival, like the checklist's "Show N done", and kept for the
+ * visit. Collapsing the moment the last one was ticked would pull everything
+ * below up by 230px or more — the roadmap, where this week sits open too —
+ * taking the row just ticked there out from under the learner's finger, and
+ * the full card coming back when one was unticked there pushed it down by as
+ * much. So an item unticked during the visit turns the line to what is still
+ * due, "1 graded item still due", in the graded card's violet: the line never
+ * claims more than is true, and holds the size of every wording it can come
+ * to. App keys the card by week, so the next visit, or the next week, decides
+ * afresh, and lists the item due in full.
  */
 export default function GradedMilestonesAlert({ week, completedSet }) {
   const { t } = useLang()
   const items = week?.gradedItems || []
   const allDone = items.length > 0 && items.every((l) => completedSet.has(l.id))
-  const [oneLine, setOneLine] = useState(allDone)
-  if (oneLine && !allDone) setOneLine(false)
+  const [oneLine] = useState(allDone)
   if (!week) return null
 
   if (items.length === 0) return <DoneLine text={t.milestonesNone} />
-  if (oneLine && allDone) return <DoneLine text={t.milestonesAllDone(items.length, week.week)} />
+  if (oneLine) {
+    const said = (open) =>
+      open === 0 ? t.milestonesAllDone(items.length, week.week) : t.gradedStillDue(open)
+    const open = items.filter((l) => !completedSet.has(l.id)).length
+    if (open === 0) return <DoneLine text={said(0)} />
+    return <DoneLine done={false} text={said(open)} texts={[0, ...items.map((_, i) => i + 1)].map(said)} />
+  }
 
   return (
     <section
@@ -105,16 +113,27 @@ export default function GradedMilestonesAlert({ week, completedSet }) {
   )
 }
 
-/** The card as one calm green line: nothing graded this week, or nothing left. */
-function DoneLine({ text }) {
+/**
+ * The card as one calm green line: nothing graded this week, or nothing left.
+ * Not `done`, an item unticked during the visit: the graded card's violet and
+ * award, at the same size, held over every wording in `texts` (SteadyText).
+ */
+function DoneLine({ text, done = true, texts }) {
+  const Icon = done ? CheckCircle2 : Award
   return (
-    <section className="alx-card flex items-center gap-3 border-alxgreen/25 bg-alxgreen/5">
-      <CheckCircle2
+    <section
+      className={`alx-card flex items-center gap-3 ${
+        done ? 'border-alxgreen/25 bg-alxgreen/5' : 'border-violet/30 bg-violet/5'
+      }`}
+    >
+      <Icon
         size={20}
-        className="flex-none text-alxgreen-700 dark:text-alxgreen"
+        className={`flex-none ${
+          done ? 'text-alxgreen-700 dark:text-alxgreen' : 'text-violet-700 dark:text-violet-300'
+        }`}
         aria-hidden="true"
       />
-      <p className="text-sm font-medium">{text}</p>
+      <p className="text-sm font-medium">{texts ? <SteadyText texts={texts}>{text}</SteadyText> : text}</p>
     </section>
   )
 }

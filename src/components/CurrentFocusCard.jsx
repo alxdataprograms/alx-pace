@@ -76,11 +76,40 @@ export default function CurrentFocusCard({
   nextCatchUp = null,
 }) {
   const { t } = useLang()
+  const done = week ? week.lessons.filter((l) => completedSet.has(l.id)).length : 0
+  const total = week ? week.lessons.length : 0
+
+  /*
+    What the card lays out: whether this week is done (the note under its
+    list, and "Get ahead") and whether nothing is overdue any more ("Catch up
+    first"'s all-clear, and "Get ahead" again). Decided on arrival, and changed
+    only by a tick on the card itself, which changes what lies below the finger
+    that made it. A tick anywhere else, in the roadmap below, changes boxes and
+    counts here but never what is laid out: a section that came or went in
+    this card moved the roadmap's rows under the finger ticking there, by up
+    to 437px in Safari, which has no scroll anchoring. App keys the card's
+    sections by week, so the next week, or the next visit, decides afresh.
+  */
+  const [layout, setLayout] = useState(() => ({
+    weekDone: total > 0 && done === total,
+    cleared: catchUp.length === 0,
+  }))
+  const toggleThisWeek = (id) => {
+    const nowDone = !completedSet.has(id)
+    const weekDone = week.lessons.every((l) => (l.id === id ? nowDone : completedSet.has(l.id)))
+    setLayout((prev) => ({ ...prev, weekDone }))
+    onToggle(id)
+  }
+  const toggleOverdue = (id) => {
+    // Ticking the last item open clears them; unticking any reopens them.
+    const cleared = !completedSet.has(id) && catchUp.every((l) => l.id === id)
+    setLayout((prev) => ({ ...prev, cleared }))
+    onToggle(id)
+  }
+
   if (!week) return null
 
   const isCatchUp = week.isBuffer && week.lessons.length === 0
-  const done = week.lessons.filter((l) => completedSet.has(l.id)).length
-  const total = week.lessons.length
   const Icon = isCatchUp ? RefreshCcw : Target
   // The region's name gives the week in the learner's language. The sheet's
   // own label is English ("Week 4"), and a French screen reader read
@@ -151,10 +180,11 @@ export default function CurrentFocusCard({
             key={`catch-up-${week.moduleCode}-${week.week}`}
             items={catchUp}
             completedSet={completedSet}
-            onToggle={onToggle}
+            onToggle={toggleOverdue}
             headingRef={catchUpRef}
             unit={unit}
             nextCatchUp={nextCatchUp}
+            cleared={layout.cleared}
           />
 
           {/* Keyed per week too: whether it shows is decided on arrival. */}
@@ -171,8 +201,9 @@ export default function CurrentFocusCard({
             key={`${week.moduleCode}-${week.week}`}
             lessons={week.lessons}
             completedSet={completedSet}
-            onToggle={onToggle}
+            onToggle={toggleThisWeek}
             unit={unit}
+            noted={layout.weekDone}
           />
 
           {/* Keyed per week too: the rows it keeps reset with the week. */}
@@ -181,7 +212,7 @@ export default function CurrentFocusCard({
             weeks={upcoming}
             completedSet={completedSet}
             onToggle={onToggle}
-            offered={done === total && catchUp.length === 0}
+            offered={layout.weekDone && layout.cleared}
             unit={unit}
           />
         </>
@@ -209,9 +240,13 @@ export default function CurrentFocusCard({
  * The "week done" note sits BELOW the list in a polite live region: above it,
  * it pushed the rows down the moment the last one was ticked, moving the
  * control just used, and appearing silently it said nothing to a screen reader.
- * Only long weeks had it; a week of any length gets it now.
+ * Only long weeks had it; a week of any length gets it now. It shows where the
+ * card lays it out (`noted`: the week was done on arrival, or by a tick in
+ * this list), and keeps its place, unseen and unread, while a lesson unticked
+ * in the roadmap leaves the week undone: gone, it would pull the roadmap up
+ * under the finger that unticked it.
  */
-function WeekList({ lessons, completedSet, onToggle, unit }) {
+function WeekList({ lessons, completedSet, onToggle, unit, noted }) {
   const { t } = useLang()
   const [kept, keep] = useKeptInPlace(onToggle)
   const [showDone, setShowDone] = useState(false)
@@ -221,14 +256,35 @@ function WeekList({ lessons, completedSet, onToggle, unit }) {
   const listId = useId()
 
   const folds = lessons.length > LONG_WEEK || doneOnArrival.size === lessons.length
-  const folded = folds
-    ? lessons.filter((l) => doneOnArrival.has(l.id) && completedSet.has(l.id) && !kept.has(l.id))
-    : []
+  /*
+    What was done on arrival stays folded for the visit, but for rows touched
+    here, which stay where the learner saw them. A row unticked in the roadmap
+    stays in the fold too, while anything in it is still done: back in the
+    list, it pushed the roadmap down under the finger that unticked it, by
+    151px for a Data Analytics week done before the visit. The toggle counts
+    what is still done; once nothing is, the rows come back, as they did.
+  */
+  const foldable = folds ? lessons.filter((l) => doneOnArrival.has(l.id) && !kept.has(l.id)) : []
+  const doneFolded = foldable.filter((l) => completedSet.has(l.id)).length
+  const folded = doneFolded > 0 ? foldable : []
   const shown = showDone ? lessons : lessons.filter((l) => !folded.includes(l))
   const allDone = lessons.every((l) => completedSet.has(l.id))
 
+  /*
+    The toggle sits above the rows it shows, so it stays while they are open.
+    Unticking the last of them, here or in the roadmap, left it nothing to
+    fold and took it away, and every row below moved up by its 48px, the one
+    just unticked among them: a Data Analytics week of one lesson, done on
+    arrival, did that on a single untick. With nothing left to fold it keeps
+    its place, empty and out of reach, until the next visit. Folded rows that
+    are unticked in the roadmap while the toggle is closed take its place
+    themselves, so it goes as it always has.
+  */
+  const toggleHeld = folded.length === 0 && showDone
+
   return (
     <>
+      {toggleHeld && <div aria-hidden="true" className="invisible mb-1 min-h-[44px]" />}
       {folded.length > 0 && (
         <button
           type="button"
@@ -238,7 +294,7 @@ function WeekList({ lessons, completedSet, onToggle, unit }) {
           className="mb-1 flex min-h-[44px] w-full items-center gap-2 rounded-xl px-2.5 text-start text-xs font-semibold text-cobalt-600 hover:bg-navy-900/[0.04] dark:text-lime dark:hover:bg-white/[0.05]"
         >
           <CheckCircle2 size={16} className="flex-none" aria-hidden="true" />
-          <span className="flex-1">{showDone ? t.hideDone(unit) : t.showDone(folded.length, unit)}</span>
+          <span className="flex-1">{showDone ? t.hideDone(unit) : t.showDone(doneFolded, unit)}</span>
           <ChevronDown
             size={16}
             className={`flex-none transition-transform motion-reduce:transition-none ${
@@ -262,10 +318,19 @@ function WeekList({ lessons, completedSet, onToggle, unit }) {
       </ul>
 
       {/* Always in the DOM, so the note is announced when it appears. */}
-      <div role="status" aria-live="polite" className={allDone ? 'mt-2' : ''}>
-        {allDone && <AllClear text={t.weekAllDone} />}
+      <div role="status" aria-live="polite" className={noted ? 'mt-2' : ''}>
+        {noted && (allDone ? <AllClear text={t.weekAllDone} /> : <Held><AllClear text={t.weekAllDone} /></Held>)}
       </div>
     </>
+  )
+}
+
+/** A line's place held for the visit after it has gone: unseen and unread. */
+function Held({ children }) {
+  return (
+    <div aria-hidden="true" className="invisible">
+      {children}
+    </div>
   )
 }
 
@@ -356,26 +421,15 @@ function NextCheckpoint({ week, completedSet, unit }) {
 }
 
 /**
- * The shared rule of the lists that refill: the first `limit` of `items`, plus
+ * A catch-up week's rows: the first `limit` of the oldest open items, plus
  * anything ticked on the list this visit (`kept`) — still shown, struck
  * through, so it can be unticked from the same spot (see useKeptInPlace).
- * Ticking one pulls the next in. `more` counts the items beyond the first
- * `limit`.
- */
-function windowOf(items, limit, kept) {
-  return {
-    shown: withKept(items.slice(0, limit), kept),
-    more: items.length - Math.min(items.length, limit),
-  }
-}
-
-/**
- * The catch-up lists: windowOf the oldest open items, with their own kept rows,
- * which survive a change of `limit` ("Show all").
+ * Ticking one pulls the next in, and the kept rows survive a change of
+ * `limit` ("Show all").
  */
 function useCatchUp(items, limit, onToggle) {
   const [kept, keep] = useKeptInPlace(onToggle)
-  return { ...windowOf(items, limit, kept), keep }
+  return { shown: withKept(items.slice(0, limit), kept), keep }
 }
 
 /**
@@ -539,6 +593,34 @@ function CatchUpList({ items, completedSet, onToggle, introRef }) {
 }
 
 /**
+ * The rows of a list that refills as the learner ticks it: the first `limit`
+ * of `open` on arrival and, for each one ticked here, the next open item not
+ * on screen yet, so `limit` stay open to work on. Nothing else adds a row or
+ * takes one away for the rest of the visit. A row ticked here stays where it
+ * is, struck through, so a mis-tap can be undone on the spot (see
+ * useKeptInPlace); so does a row ticked anywhere else. These lists sit above
+ * the roadmap, and a row that left one, or a list that left the card, moved
+ * the roadmap's rows under the finger ticking there: by up to 437px in
+ * Safari, which has no scroll anchoring.
+ *
+ * `more` counts the open items not on screen; `moreOnArrival` what it was on
+ * arrival, which decides whether the line that counts them has a place.
+ */
+function useHeldRows(open, limit, onToggle) {
+  const [rows, setRows] = useState(() => open.slice(0, limit))
+  const [moreOnArrival] = useState(() => open.length - Math.min(open.length, limit))
+  const onScreen = new Set(rows.map((l) => l.id))
+  const tick = (lesson) => {
+    if (open.some((l) => l.id === lesson.id)) {
+      const next = open.find((l) => l.id !== lesson.id && !onScreen.has(l.id))
+      if (next) setRows((prev) => [...prev, next])
+    }
+    onToggle(lesson.id)
+  }
+  return { rows, more: open.filter((l) => !onScreen.has(l.id)).length, moreOnArrival, tick }
+}
+
+/**
  * "Catch up first": an ordinary week opens with the oldest items still open
  * from earlier weeks, when there are any.
  *
@@ -550,16 +632,19 @@ function CatchUpList({ items, completedSet, onToggle, introRef }) {
  *
  * So the three oldest come first, each labelled with its week and module in
  * the learner's language (the sheet's own label is English). Oldest first, as
- * in a catch-up week, because each week builds on the ones before it. It is
- * the catch-up week's rule at a smaller size (useCatchUp): a tick stays where
- * it is, struck through, and the next oldest joins below it, so three stay
- * open. This week's lessons follow under their own heading.
+ * in a catch-up week, because each week builds on the ones before it. A tick
+ * stays where it is, struck through, and the next oldest joins below it, so
+ * three stay open (useHeldRows). This week's lessons follow under their own
+ * heading.
  *
- * Shown only while something is overdue, or was ticked here this visit, so a
- * learner on track or ahead sees the card exactly as before. Clearing the last
- * overdue item here keeps the section until the next visit: the rows stay
- * under the learner's finger, and the all-clear appears below them in a
- * polite live region, where it moves nothing.
+ * Decided on arrival, as the status card's "Catch up now" is: a learner on
+ * track or ahead sees the card exactly as before, for the whole visit, and
+ * one who is behind keeps the section until the next visit. Clearing the last
+ * overdue item here (`cleared`, which only a tick here sets) brings the
+ * all-clear, below the rows in a polite live region, where it moves nothing.
+ * Cleared from the roadmap, the rows say so, struck through, and nothing
+ * moves: the line counting the rest, and the all-clear once it has shown,
+ * keep their places, unseen and unread, while they have nothing to say.
  *
  * In Creative Tech, where the curriculum sets whole weeks aside for catching
  * up, the section ends by naming the next of them (`nextCatchUp`): "Next
@@ -568,14 +653,18 @@ function CatchUpList({ items, completedSet, onToggle, introRef }) {
  * goes here, under "+48 more overdue", where a learner meets the size of the
  * backlog, rather than in the status card above: that card stays the
  * one-glance answer it was, at its height, so nothing above the first overdue
- * item moves. It leaves with the last overdue item, for the all-clear.
+ * item moves. It gives way to the all-clear.
  */
-function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCatchUp }) {
+function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCatchUp, cleared }) {
   const { t, lang } = useLang()
-  const { shown, more, keep } = useCatchUp(items, CATCH_UP_FIRST_LIMIT, onToggle)
+  const { rows, more, moreOnArrival, tick } = useHeldRows(items, CATCH_UP_FIRST_LIMIT, onToggle)
 
-  if (shown.length === 0) return null
-  const cleared = items.length === 0
+  if (rows.length === 0) return null
+  const moreLine = (n) => (
+    <p className="mt-1 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber">
+      {t.catchUpFirstMore(n, unit)}
+    </p>
+  )
 
   return (
     <>
@@ -593,12 +682,12 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
           {t.catchUpFirst}
         </h3>
         <ul className="space-y-0.5">
-          {shown.map((lesson) => (
+          {rows.map((lesson) => (
             <LessonRow
               key={lesson.id}
               lesson={lesson}
               checked={completedSet.has(lesson.id)}
-              onToggle={() => keep(lesson)}
+              onToggle={() => tick(lesson)}
               meta={
                 <>
                   {t.weekRange(lesson.week, lesson.week)} ·{' '}
@@ -608,11 +697,7 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
             />
           ))}
         </ul>
-        {more > 0 && (
-          <p className="mt-1 px-2.5 text-xs font-semibold text-amber-700 dark:text-amber">
-            {t.catchUpFirstMore(more, unit)}
-          </p>
-        )}
+        {moreOnArrival > 0 && (more > 0 ? moreLine(more) : <Held>{moreLine(moreOnArrival)}</Held>)}
         {nextCatchUp && !cleared && (
           <p className="mt-1 flex items-start gap-1.5 px-2.5 text-xs font-medium text-ink-soft dark:text-paper/75">
             <CalendarClock size={14} className="mt-px flex-none" aria-hidden="true" />
@@ -623,7 +708,14 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
         )}
         {/* Always in the DOM, so the all-clear is announced when it appears. */}
         <div role="status" aria-live="polite" className={cleared ? 'mt-2' : ''}>
-          {cleared && <AllClear text={t.catchUpFirstDone} />}
+          {cleared &&
+            (items.length === 0 ? (
+              <AllClear text={t.catchUpFirstDone} />
+            ) : (
+              <Held>
+                <AllClear text={t.catchUpFirstDone} />
+              </Held>
+            ))}
         </div>
       </div>
 
@@ -650,22 +742,51 @@ function CatchUpFirst({ items, completedSet, onToggle, headingRef, unit, nextCat
  * Not offered while anything is overdue (that learner has "Catch up first"
  * above instead, and "get ahead" would contradict it), or after the
  * programme's last week with content: there is nothing ahead to get to.
+ * `offered` is the card's to decide (see CurrentFocusCard's layout): on
+ * arrival, and by ticks on the card, never by ticks in the roadmap below.
  *
- * The catch-up lists' rule again: a tick stays in place, struck through, and
- * the next open item joins below it. Once something is ticked here, the
- * section stays, on that week, until the next visit, so the tick can be
- * undone where it happened even if the week above stops being done.
+ * The catch-up lists' rule again (useHeldRows): a tick stays in place, struck
+ * through, and the next open item joins below it. The week it offers is
+ * chosen when it is offered and kept while it shows, and once something is
+ * ticked here, the section stays, on that week, until the next visit, so the
+ * tick can be undone where it happened even if the week above stops being
+ * done.
  */
 function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
-  const { t } = useLang()
-  const [kept, keep] = useKeptInPlace(onToggle)
-  const week =
-    (kept.size > 0 && weeks.find((w) => w.lessons.some((l) => kept.has(l.id)))) ||
-    weeks.find((w) => w.lessons.some((l) => !completedSet.has(l.id)))
+  const [week, setWeek] = useState(null)
+  const [ticked, setTicked] = useState(false)
+  const showing = offered || ticked
+  if (showing && !week) {
+    const next = weeks.find((w) => w.lessons.some((l) => !completedSet.has(l.id)))
+    if (next) setWeek(next)
+  } else if (!showing && week) {
+    setWeek(null)
+  }
+  if (!showing || !week) return null
 
-  if (!week || (!offered && kept.size === 0)) return null
+  return (
+    <GetAheadList
+      key={week.week}
+      week={week}
+      completedSet={completedSet}
+      onToggle={(id) => {
+        setTicked(true)
+        onToggle(id)
+      }}
+      unit={unit}
+    />
+  )
+}
+
+function GetAheadList({ week, completedSet, onToggle, unit }) {
+  const { t } = useLang()
   const open = week.lessons.filter((l) => !completedSet.has(l.id))
-  const { shown, more } = windowOf(open, GET_AHEAD_LIMIT, kept)
+  const { rows, more, moreOnArrival, tick } = useHeldRows(open, GET_AHEAD_LIMIT, onToggle)
+  const moreLine = (n) => (
+    <p className="mt-1 px-1.5 text-xs font-semibold text-cobalt-600 dark:text-lime">
+      {t.getAheadMore(n, week.week, unit)}
+    </p>
+  )
 
   return (
     <div className="mt-4 border-t border-navy-900/10 pt-3 dark:border-white/10">
@@ -684,20 +805,16 @@ function GetAhead({ weeks, completedSet, onToggle, offered, unit }) {
         </span>
       </h3>
       <ul className="-mx-1 space-y-0.5">
-        {shown.map((lesson) => (
+        {rows.map((lesson) => (
           <LessonRow
             key={lesson.id}
             lesson={lesson}
             checked={completedSet.has(lesson.id)}
-            onToggle={() => keep(lesson)}
+            onToggle={() => tick(lesson)}
           />
         ))}
       </ul>
-      {more > 0 && (
-        <p className="mt-1 px-1.5 text-xs font-semibold text-cobalt-600 dark:text-lime">
-          {t.getAheadMore(more, week.week, unit)}
-        </p>
-      )}
+      {moreOnArrival > 0 && (more > 0 ? moreLine(more) : <Held>{moreLine(moreOnArrival)}</Held>)}
     </div>
   )
 }

@@ -229,6 +229,18 @@ describe('"Already started?" for a learner who joins mid-course', () => {
     expect(document.activeElement).toBe(card().querySelector('p[tabindex="-1"]'))
   })
 
+  it('lays the checklist out afresh: "Catch up first" goes with Yes, and comes back with Undo', () => {
+    joinGd()
+    const catchUp = () =>
+      [...container.querySelectorAll('h3')].find((h) => h.textContent === en.catchUpFirst)
+    expect(catchUp()).toBeDefined()
+    press(buttonNamed(en.alreadyStartedYes(1, 8)))
+    // Not left on screen, every row struck through, for weeks just said done.
+    expect(catchUp()).toBeUndefined()
+    press(buttonNamed(en.undo))
+    expect(catchUp()).toBeDefined()
+  })
+
   it('leaves a tick made after Yes when undoing', () => {
     joinGd()
     press(buttonNamed(en.alreadyStartedYes(1, 8)))

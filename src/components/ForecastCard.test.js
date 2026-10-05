@@ -90,24 +90,30 @@ const langs = Object.keys(translations)
   A Data Analytics learner's card, on track unless told otherwise: what
   computePaceStatus hands it. The planned end is Nov 25, 2026.
 */
+const statusWith = (over = {}) => ({
+  completedCount: 11,
+  pacePerWeek: 1.1,
+  paceNeeds: 0,
+  unit: 'lesson',
+  plannedEnd: new Date(2026, 10, 25),
+  forecast: 'on-track',
+  forecastWeeks: 0,
+  oldestOpenWeek: 4,
+  finishShiftDays: 0,
+  projectedFinish: new Date(2026, 10, 25),
+  ...over,
+})
 function renderCard(over = {}, lang) {
   if (lang) window.localStorage.setItem('alx-lang', lang)
-  const paceStatus = {
-    completedCount: 11,
-    pacePerWeek: 1.1,
-    paceNeeds: 0,
-    unit: 'lesson',
-    plannedEnd: new Date(2026, 10, 25),
-    forecast: 'on-track',
-    forecastWeeks: 0,
-    oldestOpenWeek: 4,
-    finishShiftDays: 0,
-    projectedFinish: new Date(2026, 10, 25),
-    ...over,
-  }
   root = createRoot(container)
+  rerenderCard(over)
+}
+/** As App re-renders the card on screen, a tick later. */
+function rerenderCard(over = {}) {
   act(() => {
-    root.render(createElement(LanguageProvider, null, createElement(ForecastCard, { paceStatus })))
+    root.render(
+      createElement(LanguageProvider, null, createElement(ForecastCard, { paceStatus: statusWith(over) })),
+    )
   })
 }
 
@@ -223,5 +229,43 @@ describe('what the card says', () => {
     const parts = `${t.forecastBehind(4)} · ${t.forecastOldestOpen(3)}`
     expect(read(chip())).toBe(parts.replace(/\u00a0/g, ' '))
     expect(read(card())).toContain(formatHumanDate(new Date(2026, 11, 23), lang))
+  })
+})
+
+/*
+  The projected finish through a visit. Behind or ahead it gives the finish
+  the gap puts the learner on, and on track it has none to give. A learner
+  behind who clears the last overdue lesson in the roadmap below turns the
+  verdict to "On track", and the row going pulled the roadmap up under that
+  finger; unticking an earlier lesson there brought it in. Whether it has a
+  place is decided on arrival, and kept for the visit, unseen and unread while
+  the verdict has none to give.
+*/
+describe('the projected finish through a visit', () => {
+  it('keeps its place, unseen and unread, once the verdict has none to give', () => {
+    renderCard(VERDICTS.behind)
+    const row = card().querySelector('dl')
+    expect(row.getAttribute('aria-hidden')).toBeNull()
+    expect(row.className).not.toContain('invisible')
+
+    rerenderCard(VERDICTS['on track'])
+    expect(card().querySelector('dl')).toBe(row)
+    expect(row.getAttribute('aria-hidden')).toBe('true')
+    expect(row.className).toContain('invisible')
+    expect(read(card().querySelector('p.w-fit'))).toBe(en.forecastOnTrack('Nov 25, 2026'))
+
+    // Behind again, it reads where it was.
+    rerenderCard(VERDICTS.behind)
+    expect(row.getAttribute('aria-hidden')).toBeNull()
+    expect(row.className).not.toContain('invisible')
+  })
+
+  it('does not come in during the visit, for a learner on track on arrival', () => {
+    renderCard(VERDICTS['on track'])
+    // An earlier lesson unticked in the roadmap below: behind now. The chip
+    // says so; the row waits for the next visit rather than push the roadmap.
+    rerenderCard(VERDICTS.behind)
+    expect(card().querySelector('dl')).toBeNull()
+    expect(read(card().querySelector('p.w-fit'))).toContain(en.forecastBehind(4))
   })
 })

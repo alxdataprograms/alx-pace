@@ -104,6 +104,16 @@ describe('the graded milestones card', () => {
   like the checklist's "Show N done", so the card never shrinks under a
   learner's finger, and never claims more than is true.
 */
+/** What a learner sees and a screen reader reads: no aria-hidden parts. */
+const visible = (el) => {
+  const copy = el.cloneNode(true)
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent
+}
+/** The wordings held in place, invisible and unread. */
+const heldInPlace = (el) =>
+  [...el.querySelectorAll('.invisible[aria-hidden="true"]')].map((s) => s.textContent)
+
 describe('a week whose graded items are all done', () => {
   const en = translations.en
   const [first, second] = week.gradedItems
@@ -137,15 +147,32 @@ describe('a week whose graded items are all done', () => {
     expect(container.textContent).not.toContain(en.milestonesAllDone(2, 4))
   })
 
-  it('brings the full card back if one is unticked, so the line never claims more than is true', () => {
+  /*
+    Unticked during the visit, most likely in the roadmap below, where this
+    week sits open too: the full card coming back pushed the roadmap down by
+    230px under that finger. The line says what is still due instead, at the
+    same size, in the graded card's violet, and never claims more than is true.
+  */
+  it('says what is still due if one is unticked, in the same line, so nothing below moves', () => {
     render(createElement(GradedMilestonesAlert, { week, completedSet: allDone }))
+    const line = container.querySelector('section')
     rerender(new Set([first.id]))
-    expect(container.querySelectorAll('li')).toHaveLength(2)
-    expect(container.textContent).not.toContain(en.milestonesAllDone(2, 4))
-    // Ticking it again in the same visit keeps the full card: nothing shrinks
-    // under the learner's finger.
+    expect(container.querySelector('section')).toBe(line)
+    expect(container.querySelector('li')).toBeNull()
+    expect(visible(line)).toBe(en.gradedStillDue(1))
+    expect(line.className).toContain('violet')
+    expect(line.querySelector('.lucide-award')).not.toBeNull()
+    // Held at the size of every wording it can come to, unseen and unread.
+    expect(heldInPlace(line)).toEqual([
+      en.milestonesAllDone(2, 4),
+      en.gradedStillDue(1),
+      en.gradedStillDue(2),
+    ])
+
     rerender(allDone)
-    expect(container.querySelectorAll('li')).toHaveLength(2)
+    expect(container.querySelector('section')).toBe(line)
+    expect(line.textContent).toBe(en.milestonesAllDone(2, 4))
+    expect(line.className).toContain('alxgreen')
   })
 
   it.each(Object.keys(translations))('says so in the learner’s language, with the week in it (%s)', (lang) => {

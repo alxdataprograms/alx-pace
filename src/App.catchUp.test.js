@@ -180,6 +180,30 @@ describe('"Catch up now" in the status card', () => {
     expect(heading(en.thisWeek)).toBeUndefined()
   })
 
+  /*
+    Offered on arrival, as "Catch up first" is. A learner who falls behind
+    during the visit, unticking an earlier lesson in the roadmap, finds both on
+    the next visit: arriving mid-visit, they pushed the roadmap down under the
+    finger that unticked it.
+  */
+  it('is not offered mid-visit to a learner who falls behind in the roadmap', () => {
+    // Day 24 is Week 4; Weeks 1–3 are done.
+    render({
+      program: 'da',
+      startDate: iso(-24),
+      completedLessons: JSON.stringify(before(4)),
+      'alx-celebrated': allCelebrated,
+    })
+    click(container.querySelector('button[aria-controls="week-panel-1"]'))
+    const box = document.getElementById('week-panel-1').querySelector('[role="checkbox"]')
+    click(box)
+    expect(box.getAttribute('aria-checked')).toBe('false')
+    // The status card says so, and nothing comes in above the roadmap.
+    expect(region(en.pacingStatusAria).textContent).toContain(en.statusBehind(1, 'lesson'))
+    expect(buttonNamed(en.catchUpNow)).toBeUndefined()
+    expect(heading(en.catchUpFirst)).toBeUndefined()
+  })
+
   it('is not offered in a catch-up week: its whole card is the catch-up list already', () => {
     // Day 90 is Graphic Design's Week 13.5; Weeks 12 and 13 are still open.
     const gd = SCHEDULES.gd

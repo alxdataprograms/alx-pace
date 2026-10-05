@@ -171,8 +171,11 @@ describe('catch up first, in an ordinary week', () => {
     expect(open(section()).map(nameOf)).toEqual(overdue.slice(1, 4).map((l) => l.title))
     expect(section().textContent).toContain(en.catchUpFirstMore(overdue.length - 4))
 
+    // Unticked, it is open again where it was, and the row it pulled in stays
+    // too: nothing leaves the section during the visit.
     click(first)
-    expect(boxesIn(section()).map(nameOf)).toEqual(overdue.slice(0, 3).map((l) => l.title))
+    expect(boxesIn(section())[0]).toBe(first)
+    expect(open(section()).map(nameOf)).toEqual(overdue.slice(0, 4).map((l) => l.title))
   })
 
   it.each(Object.keys(translations))('labels each item with its week and module in %s', (lang) => {
@@ -709,8 +712,10 @@ describe('a week done early', () => {
     expect(open(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(1, 4).map((l) => l.title))
     expect(aheadSection().textContent).toContain(en.getAheadMore(week11.lessons.length - 4, 11, 'item'))
 
+    // Unticked, it is open again where it was, and the row it pulled in stays.
     click(first)
-    expect(boxesIn(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(0, 3).map((l) => l.title))
+    expect(boxesIn(aheadSection())[0]).toBe(first)
+    expect(open(aheadSection()).map(nameOf)).toEqual(week11.lessons.slice(0, 4).map((l) => l.title))
   })
 
   it('moves on past a week already done', () => {
@@ -777,6 +782,157 @@ describe('a week done early', () => {
     expect(aheadHeading()).toBeUndefined()
   })
 
+  /** Ticks or unticks `id` as the roadmap below would: from outside the card. */
+  const fromRoadmap = (id) =>
+    act(() =>
+      setFromOutside((prev) => {
+        const next = new Set(prev)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      }),
+    )
+
+  it('keeps the place of "Show 1 done" when its one lesson is unticked, so the row stays put', () => {
+    renderLearner({
+      week: week5,
+      initiallyDone: doneThrough(5),
+      upcoming: contentWeeksAfter(da, 5),
+      unit: 'lesson',
+    })
+    click(toggleButton())
+    const row = boxes()[0]
+    expect(nameOf(row)).toBe(week5.lessons[0].title)
+    const slot = row.closest('ul').previousElementSibling
+    expect(slot).toBe(toggleButton())
+
+    click(row)
+    // Nothing left to fold: the toggle is gone from sight and from the
+    // keyboard, its 48px kept, so the row just unticked does not move up.
+    expect(row.isConnected).toBe(true)
+    expect(row.getAttribute('aria-checked')).toBe('false')
+    expect(toggleButton()).toBeNull()
+    const held = row.closest('ul').previousElementSibling
+    expect(held.getAttribute('aria-hidden')).toBe('true')
+    expect(held.className).toContain('invisible')
+    expect(held.className).toContain('min-h-[44px]')
+    expect(held.querySelector('button, [tabindex]')).toBeNull()
+  })
+
+  describe('a tick in the roadmap below changes no section of the card', () => {
+    it('finishing the week there brings neither the note nor "Get ahead" until the next visit', () => {
+      daWeek4(doneThrough(4).slice(0, -1))
+      fromRoadmap(week4.lessons[1].id)
+      expect(boxes().every((b) => b.getAttribute('aria-checked') === 'true')).toBe(true)
+      expect(visible(weekNote())).toBe('')
+      expect(aheadHeading()).toBeUndefined()
+    })
+
+    it('unticking a lesson there of a week done on arrival keeps it in the fold, which counts what is done', () => {
+      daWeek4(doneThrough(4))
+      expect(toggleButton().textContent).toBe(en.showDone(2))
+      fromRoadmap(week4.lessons[0].id)
+      // Not back in the list above the roadmap: the fold holds it still.
+      expect(boxes().map(nameOf)).toEqual(week5.lessons.map((l) => l.title))
+      expect(toggleButton().textContent).toBe(en.showDone(1))
+      // Opened, the week is there in full, the unticked lesson open.
+      click(toggleButton())
+      expect(boxes().slice(0, 2).map((b) => b.getAttribute('aria-checked'))).toEqual(['false', 'true'])
+    })
+
+    it('brings the rows back once nothing in the fold is done, as before', () => {
+      daWeek4(doneThrough(4))
+      fromRoadmap(week4.lessons[0].id)
+      fromRoadmap(week4.lessons[1].id)
+      expect(toggleButton()).toBeNull()
+      expect(boxes().slice(0, 2).map(nameOf)).toEqual(week4.lessons.map((l) => l.title))
+    })
+
+    it('undoing a week done on arrival there keeps "Get ahead", and the note’s place, unread', () => {
+      daWeek4(doneThrough(4))
+      fromRoadmap(week4.lessons[0].id)
+      expect(aheadHeading()).toBeDefined()
+      expect(visible(weekNote())).toBe('')
+      expect(weekNote().querySelector('[aria-hidden="true"]').className).toContain('invisible')
+      // Ticked there again, the note reads where it was.
+      fromRoadmap(week4.lessons[0].id)
+      expect(visible(weekNote())).toBe(en.weekAllDone)
+    })
+
+    it('ticking a "Get ahead" item there keeps its row, struck through, and pulls none in', () => {
+      gdWeek9Done()
+      const first = boxesIn(aheadSection())[0]
+      fromRoadmap(week11.lessons[0].id)
+      expect(boxesIn(aheadSection())[0]).toBe(first)
+      expect(first.getAttribute('aria-checked')).toBe('true')
+      expect(boxesIn(aheadSection())).toHaveLength(3)
+    })
+
+    const week7 = da.weeks.find((w) => w.week === 7)
+    const behindWeek7 = (open) =>
+      renderLearner({
+        week: week7,
+        initiallyDone: doneThrough(6).filter((id) => !open.includes(id)),
+        overdue: da.lessons.filter((l) => l.week < 7),
+        upcoming: contentWeeksAfter(da, 7),
+        unit: 'lesson',
+      })
+    const headings = () => [...container.querySelectorAll('h3')].map((h) => h.textContent)
+
+    it('clearing the last overdue item there leaves "Catch up first" as it was, the row struck through', () => {
+      const last = da.lessons.filter((l) => l.week === 6).pop()
+      behindWeek7([last.id])
+      const row = boxes()[0]
+      expect(nameOf(row)).toBe(last.title)
+
+      fromRoadmap(last.id)
+      expect(headings()).toEqual([en.catchUpFirst, en.thisWeek])
+      expect(row.isConnected).toBe(true)
+      expect(row.getAttribute('aria-checked')).toBe('true')
+      // The all-clear belongs under a tick made here, where it moves nothing.
+      expect(container.textContent).not.toContain(en.catchUpFirstDone)
+    })
+
+    it('reopening an item there after the all-clear keeps the all-clear’s place, unread', () => {
+      const last = da.lessons.filter((l) => l.week === 6).pop()
+      behindWeek7([last.id])
+      click(boxes()[0])
+      const status = container.querySelector('[role="status"]')
+      expect(status.textContent).toBe(en.catchUpFirstDone)
+
+      fromRoadmap(da.lessons[0].id)
+      expect(visible(status)).toBe('')
+      expect(status.children).toHaveLength(1)
+    })
+
+    it('unticking an earlier lesson there does not bring "Catch up first" in mid-visit', () => {
+      renderLearner({
+        week: week7,
+        initiallyDone: doneThrough(6),
+        overdue: da.lessons.filter((l) => l.week < 7),
+        upcoming: contentWeeksAfter(da, 7),
+        unit: 'lesson',
+      })
+      expect(headings()).toEqual([])
+      fromRoadmap(da.lessons[0].id)
+      expect(headings()).toEqual([])
+    })
+
+    it('ticking overdue items there keeps the count line’s place once it has nothing to count', () => {
+      // Weeks 4–6 open: five lessons, three listed, "+2 more overdue".
+      const open = da.lessons.filter((l) => l.week >= 4 && l.week <= 6).map((l) => l.id)
+      behindWeek7(open)
+      const line = en.catchUpFirstMore(open.length - 3)
+      expect([...container.querySelectorAll('p')].some((p) => p.textContent === line)).toBe(true)
+
+      for (const id of open) fromRoadmap(id)
+      const held = [...container.querySelectorAll('.invisible[aria-hidden="true"]')].find(
+        (el) => el.textContent === line,
+      )
+      expect(held).toBeDefined()
+    })
+  })
+
   it('keeps "Get ahead" and its tick for the visit if the week above stops being done', () => {
     daWeek4(doneThrough(4))
     const ahead = boxesIn(aheadSection())[0]
@@ -789,7 +945,10 @@ describe('a week done early', () => {
         return next
       }),
     )
-    expect(weekNote().textContent).toBe('')
+    // The note is gone from sight and from the screen reader, its place held
+    // so the roadmap below, where the lesson was unticked, does not move.
+    expect(visible(weekNote())).toBe('')
+    expect(weekNote().children).toHaveLength(1)
     expect(ahead.isConnected).toBe(true)
     expect(ahead.getAttribute('aria-checked')).toBe('true')
     expect(aheadSection().contains(ahead)).toBe(true)
