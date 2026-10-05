@@ -96,6 +96,7 @@ const statusWith = (over = {}) => ({
   paceNeeds: 0,
   unit: 'lesson',
   plannedEnd: new Date(2026, 10, 25),
+  week: 4,
   forecast: 'on-track',
   forecastWeeks: 0,
   oldestOpenWeek: 4,
@@ -120,6 +121,7 @@ function rerenderCard(over = {}) {
 // Behind from Week 3 by 4 weeks (28 days), ahead by 2 (14 days), or done.
 const VERDICTS = {
   behind: {
+    week: 7,
     forecast: 'behind',
     forecastWeeks: 4,
     oldestOpenWeek: 3,
@@ -141,8 +143,15 @@ const VERDICTS = {
   },
 }
 
-/** Text as a learner reads it: the no-break spaces that hold words together are spaces. */
-const read = (el) => el.textContent.replace(/\u00a0/g, ' ')
+/**
+ * Text as a learner reads it: no aria-hidden parts (the chip's held wordings),
+ * and the no-break spaces that hold words together are spaces.
+ */
+const read = (el) => {
+  const copy = el.cloneNode(true)
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent.replace(/\u00a0/g, ' ')
+}
 const card = () => container.querySelector('section')
 /** The verdict chip: the card's last paragraph. */
 const chip = () => [...card().querySelectorAll('p')].at(-1)
@@ -285,3 +294,74 @@ describe('the projected finish through a visit', () => {
     expect(read(card().querySelector('p.w-fit'))).toContain(en.forecastBehind(4))
   })
 })
+
+/*
+  The verdict line through a visit. A tick in the roadmap below can change the
+  verdict, and a wording on fewer lines pulled the roadmap up under the finger:
+  clearing the last overdue lesson there turned "≈ 1 semaine de retard · …"
+  (two lines at 375px) into "En bonne voie pour finir le …" (one), 16px. So
+  the line holds the size of every wording the visit is likely to bring,
+  unseen and unread behind the pill.
+*/
+describe('the verdict line through a visit', () => {
+  const pill = () => card().querySelector('p.w-fit')
+  const heldWordings = () =>
+    [...card().querySelectorAll('p.invisible[aria-hidden="true"]')].map((p) =>
+      p.textContent.replace(/\u00a0/g, ' '),
+    )
+  const onTrack = en.forecastOnTrack('Nov 25, 2026')
+  const behind = (n, week) => `${en.forecastBehind(n)} · ${en.forecastOldestOpen(week).replace(/\u00a0/g, ' ')}`
+
+  it('on track: holds the leads a tick can bring, and stays the pill it was', () => {
+    renderCard(VERDICTS['on track'])
+    expect(heldWordings()).toEqual([
+      onTrack,
+      onTrack,
+      en.forecastAheadSome,
+      en.forecastAhead(1),
+      en.forecastAhead(2),
+    ])
+    // The pill is the one read, and keeps its own width over the held lines.
+    expect(read(pill())).toBe(onTrack)
+    expect(pill().getAttribute('aria-hidden')).toBeNull()
+    expect(pill().className).toContain('w-fit')
+    expect(read(card())).not.toContain(en.forecastAheadSome)
+  })
+
+  it('keeps what it holds when a tick changes the verdict', () => {
+    renderCard(VERDICTS['on track'])
+    const held = heldWordings()
+    rerenderCard({ forecast: 'ahead', forecastWeeks: 0, finishShiftDays: 0 })
+    expect(read(pill())).toBe(en.forecastAheadSome)
+    expect(heldWordings()).toEqual(held)
+  })
+
+  it('behind: holds the gap as it closes, the oldest open week moving on, and on track', () => {
+    renderCard(VERDICTS.behind)
+    expect(heldWordings()).toEqual([
+      behind(4, 3),
+      onTrack,
+      en.forecastAheadSome,
+      en.forecastAhead(1),
+      en.forecastAhead(2),
+      // A week more, as on arrival, then two and one, which Arabic writes out;
+      // each with the week on arrival, and this week's for a longer number.
+      ...[5, 4, 2, 1].flatMap((n) => [behind(n, 3), behind(n, 7)]),
+    ])
+    // Caught up in the roadmap: on track, the line as tall as it was.
+    rerenderCard(VERDICTS['on track'])
+    expect(read(pill())).toBe(onTrack)
+    expect(heldWordings()[0]).toBe(behind(4, 3))
+  })
+
+  it('ahead: holds the lead a week either way, and down to "Ahead of plan"', () => {
+    renderCard(VERDICTS.ahead)
+    expect(heldWordings()).toEqual([
+      en.forecastAhead(2),
+      onTrack,
+      en.forecastAheadSome,
+      ...[3, 2, 1].map((n) => en.forecastAhead(n)),
+    ])
+  })
+})
+

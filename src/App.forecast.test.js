@@ -71,8 +71,15 @@ const upTo = (week, program = 'da') =>
   SCHEDULES[program].lessons.filter((l) => l.week < week).map((l) => l.id)
 const click = (el) => act(() => el.dispatchEvent(new MouseEvent('click', { bubbles: true })))
 const region = (name) => container.querySelector(`main > section[aria-label="${name}"]`)
-/** Text as a learner reads it: the no-break spaces that hold words together are spaces. */
-const read = (el) => el.textContent.replace(/\u00a0/g, ' ')
+/**
+ * Text as a learner reads it: no aria-hidden parts (the chip's held wordings),
+ * and the no-break spaces that hold words together are spaces.
+ */
+const read = (el) => {
+  const copy = el.cloneNode(true)
+  for (const hidden of copy.querySelectorAll('[aria-hidden="true"]')) hidden.remove()
+  return copy.textContent.replace(/\u00a0/g, ' ')
+}
 const status = () => read(region(en.pacingStatusAria))
 const pace = () => read(region(en.yourPace))
 /** The card's forecast: its projected finish, if any, and its verdict chip. */

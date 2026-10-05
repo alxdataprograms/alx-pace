@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { CalendarCheck, Gauge } from 'lucide-react'
+import { widestCounts } from './SteadyText'
 import { useLang } from '../i18n/LanguageContext'
 import { formatHumanDate } from '../lib/formatDate'
 
@@ -52,6 +53,18 @@ export default function ForecastCard({ paceStatus }) {
     the next visit, decides afresh.
   */
   const [finishShown] = useState(showFinish)
+  // The verdict on arrival, which sets with the others below the height its
+  // line keeps for the visit (see the chip).
+  const [arrival] = useState(() =>
+    paceStatus
+      ? {
+          forecast: paceStatus.forecast,
+          forecastWeeks: paceStatus.forecastWeeks,
+          oldestOpenWeek: paceStatus.oldestOpenWeek,
+          week: paceStatus.week,
+        }
+      : null,
+  )
   if (!paceStatus) return null
 
   const {
@@ -73,20 +86,53 @@ export default function ForecastCard({ paceStatus }) {
     On track, the date is held together: Arabic had left "16" at the end of
     one line and "ديسمبر 2026" on the next.
   */
-  const verdict =
-    forecast === 'behind' ? (
+  const say = (v) =>
+    v.forecast === 'behind' ? (
       <>
-        <span className="inline-block">{t.forecastBehind(forecastWeeks)}</span>
+        <span className="inline-block">{t.forecastBehind(v.forecastWeeks)}</span>
         {'\u00a0· '}
-        <span className="inline-block">{t.forecastOldestOpen(oldestOpenWeek)}</span>
+        <span className="inline-block">{t.forecastOldestOpen(v.oldestOpenWeek)}</span>
       </>
-    ) : forecast === 'ahead' ? (
-      forecastWeeks > 0 ? t.forecastAhead(forecastWeeks) : t.forecastAheadSome
-    ) : forecast === 'finished' ? (
+    ) : v.forecast === 'ahead' ? (
+      v.forecastWeeks > 0 ? t.forecastAhead(v.forecastWeeks) : t.forecastAheadSome
+    ) : v.forecast === 'finished' ? (
       t.forecastFinished
     ) : (
       t.forecastOnTrack(formatHumanDate(plannedEnd, lang).replace(/ /g, '\u00a0'))
     )
+  const verdict = say({ forecast, forecastWeeks, oldestOpenWeek })
+  /*
+    The verdict line keeps the height of every wording a tick in the roadmap
+    below is likely to bring this visit: the arrival's; "On track for …"; the
+    lead, from "Ahead of plan" to a week more than on arrival; and, behind,
+    the gap as it closes or opens by a week, its count written out in Arabic
+    at one and two, and the oldest open week moving on to a longer number
+    ("Week 9" to "Week 13"; this week's number stands in for the longest).
+    Clearing the last overdue lesson there turned two lines of "≈ 1 semaine
+    de retard · …" into one of "En bonne voie pour finir le …", and the card
+    pulled the roadmap up 16px under the finger. The held wordings are
+    unseen, unread blocks across the card behind the pill, so the pill keeps
+    its own width.
+  */
+  const counts = (n) => [...new Set([n + 1, ...widestCounts(n), 2, 1])]
+  const held = arrival
+    ? [
+        arrival,
+        { forecast: 'on-track' },
+        { forecast: 'ahead', forecastWeeks: 0 },
+        ...counts(arrival.forecast === 'ahead' ? arrival.forecastWeeks : 0)
+          .filter((n) => n > 0)
+          .map((n) => ({ forecast: 'ahead', forecastWeeks: n })),
+        ...(arrival.forecast === 'behind'
+          ? counts(arrival.forecastWeeks)
+              .filter((n) => n > 0)
+              .flatMap((n) => [
+                { forecast: 'behind', forecastWeeks: n, oldestOpenWeek: arrival.oldestOpenWeek },
+                { forecast: 'behind', forecastWeeks: n, oldestOpenWeek: arrival.week },
+              ])
+          : []),
+      ]
+    : []
 
   return (
     <section className="alx-card" aria-label={t.yourPace}>
@@ -129,9 +175,22 @@ export default function ForecastCard({ paceStatus }) {
       )}
 
       {/* One line, it is the pill it always was; two, a rounded box (see verdict). */}
-      <p className={`mt-3 w-fit rounded-xl px-3 py-1 text-xs font-bold ${TONE[forecast]}`}>
-        {verdict}
-      </p>
+      <div className="mt-3 grid">
+        {held.map((v, i) => (
+          <p
+            key={i}
+            aria-hidden="true"
+            className="invisible col-start-1 row-start-1 px-3 py-1 text-xs font-bold"
+          >
+            {say(v)}
+          </p>
+        ))}
+        <p
+          className={`col-start-1 row-start-1 w-fit self-start rounded-xl px-3 py-1 text-xs font-bold ${TONE[forecast]}`}
+        >
+          {verdict}
+        </p>
+      </div>
     </section>
   )
 }
