@@ -11,6 +11,7 @@ import { LanguageProvider } from './i18n/LanguageContext'
 import { translations } from './i18n/translations'
 import { toISODateString } from './lib/pacing'
 import { SCHEDULES } from './lib/schedule'
+import { PROGRAMS } from './lib/programs'
 
 /*
   The accessibility failures the UX review measured in Chromium at 375px, by
@@ -95,7 +96,7 @@ const statusHeadline = () =>
   container.querySelector(`section[aria-label="${en.pacingStatusAria}"] [tabindex="-1"]`)
 
 describe('a setup step hands focus to the heading of the card that replaces it', () => {
-  it('through Creative Tech, a track and a start date', () => {
+  it.skipIf(PROGRAMS.cc?.hidden)('through Creative Tech, a track and a start date', () => {
     render({ program: '' })
     expect(focused()).toBe(document.body)
 

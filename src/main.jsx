@@ -5,7 +5,7 @@ import { LanguageProvider } from './i18n/LanguageContext'
 import { translations } from './i18n/translations'
 import { runHandoff } from './lib/handoff'
 import { captureInstallPrompt } from './lib/install'
-import { migrateLegacyProgram } from './lib/programs'
+import { PROGRAMS, migrateLegacyProgram } from './lib/programs'
 import { SCHEDULES } from './lib/schedule'
 import './index.css'
 
@@ -41,6 +41,10 @@ try {
 */
 try {
   migrateLegacyProgram(window.localStorage)
+  const currentProgram = window.localStorage.getItem('program')
+  if (currentProgram && PROGRAMS[currentProgram]?.hidden) {
+    window.localStorage.setItem('program', 'da')
+  }
 } catch {
   /* storage blocked — the picker simply shows */
 }

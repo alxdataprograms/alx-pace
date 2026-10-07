@@ -11,14 +11,25 @@
  */
 export const PROGRAMS = {
   da: { id: 'da', family: 'data-analytics', layout: 'cyu', csv: 'da-schedule.csv' },
-  cc: { id: 'cc', family: 'creative-tech', layout: 'activity', csv: 'cc-schedule.csv' },
-  gd: { id: 'gd', family: 'creative-tech', layout: 'activity', csv: 'gd-schedule.csv' },
+  cc: { id: 'cc', family: 'creative-tech', layout: 'activity', csv: 'cc-schedule.csv', hidden: true },
+  gd: { id: 'gd', family: 'creative-tech', layout: 'activity', csv: 'gd-schedule.csv', hidden: true },
 }
 
 export const PROGRAM_IDS = Object.keys(PROGRAMS)
 
 /** The two Creative Tech tracks, in picker order. */
 export const CREATIVE_TECH_TRACKS = PROGRAM_IDS.filter((id) => PROGRAMS[id].family === 'creative-tech')
+
+/** Programs visible in the app. Other courses are kept in code but hidden. */
+export const VISIBLE_PROGRAMS = Object.fromEntries(
+  Object.entries(PROGRAMS).filter(([, p]) => !p.hidden),
+)
+
+export const VISIBLE_PROGRAM_IDS = Object.keys(VISIBLE_PROGRAMS)
+
+export const VISIBLE_CREATIVE_TECH_TRACKS = CREATIVE_TECH_TRACKS.filter(
+  (id) => !PROGRAMS[id]?.hidden,
+)
 
 /** localStorage key holding the learner's chosen program id ('' = not chosen yet). */
 export const PROGRAM_KEY = 'program'

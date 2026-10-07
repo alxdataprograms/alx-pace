@@ -9,7 +9,7 @@ import {
   Palette,
   PenTool,
 } from 'lucide-react'
-import { CREATIVE_TECH_TRACKS, PROGRAMS } from '../lib/programs'
+import { PROGRAMS, VISIBLE_CREATIVE_TECH_TRACKS } from '../lib/programs'
 import { SCHEDULES } from '../lib/schedule'
 import { useLang } from '../i18n/LanguageContext'
 
@@ -26,9 +26,10 @@ const TRACK_ICONS = { cc: Clapperboard, gd: PenTool }
  */
 export default function ProgramPicker({ program, onSelect, onCancel, headingRef }) {
   const { t } = useLang()
+  const hasCreativeTech = VISIBLE_CREATIVE_TECH_TRACKS.length > 0
   const inCreativeTech = Boolean(program) && PROGRAMS[program]?.family === 'creative-tech'
-  // Re-opening the picker from a Creative Tech track lands on the track step.
-  const [step, setStep] = useState(inCreativeTech ? 'creative-tech' : 'family')
+  // Re-opening the picker from a Creative Tech track lands on the track step if visible.
+  const [step, setStep] = useState(inCreativeTech && hasCreativeTech ? 'creative-tech' : 'family')
   const onFamilyStep = step === 'family'
 
   /*
@@ -73,18 +74,20 @@ export default function ProgramPicker({ program, onSelect, onCancel, headingRef 
               selectedLabel={t.selected}
               onClick={() => onSelect('da')}
             />
-            <ProgramOption
-              Icon={Palette}
-              title={t.creativeTech}
-              meta={t.creativeTechMeta}
-              selected={inCreativeTech}
-              selectedLabel={t.selected}
-              onClick={() => setStep('creative-tech')}
-              opensStep
-            />
+            {hasCreativeTech && (
+              <ProgramOption
+                Icon={Palette}
+                title={t.creativeTech}
+                meta={t.creativeTechMeta}
+                selected={inCreativeTech}
+                selectedLabel={t.selected}
+                onClick={() => setStep('creative-tech')}
+                opensStep
+              />
+            )}
           </>
         ) : (
-          CREATIVE_TECH_TRACKS.map((id) => (
+          VISIBLE_CREATIVE_TECH_TRACKS.map((id) => (
             <ProgramOption
               key={id}
               Icon={TRACK_ICONS[id] || Palette}
@@ -122,7 +125,7 @@ export default function ProgramPicker({ program, onSelect, onCancel, headingRef 
         </div>
       )}
 
-      {program && <p className="mt-1 text-[11px] text-ink-mute dark:text-paper/60">{t.pickerSwitchNote}</p>}
+      {program && hasCreativeTech && <p className="mt-1 text-[11px] text-ink-mute dark:text-paper/60">{t.pickerSwitchNote}</p>}
     </section>
   )
 }
